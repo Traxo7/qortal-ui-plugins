@@ -95,7 +95,7 @@ class RewardShare extends LitElement {
                 <mwc-dialog id="createRewardShareDialog" scrimClickAction="${this.createRewardShareLoading ? '' : 'close'}">
                     <div>You must be level 5 or above to create a rewardshare!</div>
                     <br>
-                    <mwc-textfield style="width:100%;" ?disabled="${this.createRewardShareLoading}" label="Reward share public key" id="recipientPublicKey"></mwc-textfield>
+                    <mwc-textfield style="width:100%;" ?disabled="${this.createRewardShareLoading}" label="Recipient public key" id="recipientPublicKey"></mwc-textfield>
                     <p style="margin-bottom:0;">
                         Reward share percentage: ${this.rewardSharePercentage}
                         <!-- <mwc-textfield style="width:36px;" ?disabled="${this.createRewardShareLoading}" id="createRewardShare"></mwc-textfield> -->
