@@ -40169,6 +40169,9 @@
         loading: {
           type: Boolean
         },
+        upTime: {
+          type: String
+        },
         mintingAccounts: {
           type: Array
         },
@@ -40181,10 +40184,16 @@
         addPeerLoading: {
           type: Boolean
         },
+        confPeerLoading: {
+          type: Boolean
+        },
         addMintingAccountKey: {
           type: String
         },
         addPeerMessage: {
+          type: String
+        },
+        confPeerMessage: {
           type: String
         },
         addMintingAccountMessage: {
@@ -40219,6 +40228,11 @@
                 --mdc-theme-primary: red;
             }
 
+            .red-button {
+                --mdc-theme-primary: red;
+                --mdc-theme-on-primary: white;
+            }
+
             mwc-button.red-button {
                 --mdc-theme-primary: red;
                 --mdc-theme-on-primary: white;
@@ -40245,17 +40259,25 @@
                 display: hidden !important;
                 visibility: none !important;
             }
+            .details {
+                display: flex;
+                font-size: 18px;
+            }
+
         `;
     }
 
     constructor() {
       super();
+      this.upTime = "";
       this.mintingAccounts = [];
       this.peers = [];
       this.addPeerLoading = false;
+      this.confPeerLoading = false;
       this.addMintingAccountLoading = false;
       this.addMintingAccountKey = '';
       this.addPeerMessage = '';
+      this.confPeerMessage = '';
       this.addMintingAccountMessage = '';
       this.config = {
         user: {
@@ -40270,7 +40292,7 @@
 
                 <div class="node-card">
                     <h2>Node management for ${this.config.user.node.domain}</h2>
-                    <span><br>Node has been online for 12d 13h 16m</span>
+                    <span><br>Node has been online for ${this.upTime}</span>
 
                     <br><br>
                     <div id="minting">
@@ -40365,6 +40387,8 @@
                         <vaadin-grid id="peersGrid" style="height:auto;" ?hidden="${this.isEmptyArray(this.peers)}" aria-label="Peers" .items="${this.peers}" height-by-rows>
                             <vaadin-grid-column path="address"></vaadin-grid-column>
                             <vaadin-grid-column path="lastHeight"></vaadin-grid-column>
+                            <vaadin-grid-column path="version" header="Build Version"></vaadin-grid-column>
+                            <!-- <vaadin-grid-column id="details"></vaadin-grid-column> -->
                         </vaadin-grid>
 
                         ${this.isEmptyArray(this.peers) ? html`
@@ -40376,7 +40400,41 @@
                 </div>
             </div>
         `;
-    }
+    } // getPeersGrid() {
+    //     const myGrid = this.shadowRoot.querySelector('#peersGrid')
+    //     myGrid.rowDetailsRenderer = (root, myGrid, rowData) => {
+    //         if (!root.firstElementChild) {
+    //             render(html`
+    //                 <div class="details">
+    //                     <p><span>Peer Address: ${rowData.item.address}</span><br>
+    //                     ${!rowData.item.lastHeight ? "" : html`<small>${rowData.item.lastHeight}</small>`}
+    //                     </p><br>
+    //                     <span ?hidden="${this.confPeerLoading}">
+    //                         ${this.confPeerMessage} &nbsp;
+    //                     </span> <br>
+    //                     <mwc-button slot="primaryAction" @click=${() => this.syncPeer(rowData.item.address)}>Sync To Peer</mwc-button>
+    //                     <mwc-button slot="secondaryAction" @click=${() => this.removePeer(rowData.item.address)} class="red-button"><mwc-icon style="width:16px;">highlight_off</mwc-icon>&nbsp; Remove Peer</mwc-button>
+    //                 </div>`, root)
+    //         }
+    //         root.firstElementChild.querySelector('small').textContent = 'Last Height: ' + rowData.item.lastHeight;
+    //     }
+    //     const detailsToggleColumn = this.shadowRoot.querySelector('#details');
+    //     detailsToggleColumn.renderer = function (root, column, rowData) {
+    //         if (!root.firstElementChild) {
+    //             root.innerHTML = '<vaadin-checkbox>Show Actions</vaadin-checkbox>';
+    //             root.firstElementChild.addEventListener('checked-changed', function (e) {
+    //                 if (e.detail.value) {
+    //                     myGrid.openItemDetails(root.item);
+    //                 } else {
+    //                     myGrid.closeItemDetails(root.item);
+    //                 }
+    //             });
+    //         }
+    //         root.item = rowData.item;
+    //         root.firstElementChild.checked = myGrid.detailsOpenedItems.indexOf(root.item) > -1;
+    //     };
+    // }
+
 
     addPeer(e) {
       this.addPeerLoading = true;
@@ -40390,7 +40448,50 @@
         console.log(res);
         this.addPeerLoading = false;
       });
-    }
+    } // removePeer(peerAddress) {
+    //     this.confPeerLoading = true
+    //     parentEpml.request('apiCall', {
+    //         url: `/peers`,
+    //         method: 'DELETE',
+    //         body: peerAddress
+    //     }).then(res => {
+    //         if (res === true) {
+    //             this.confPeerMessage = `Successfully removed peer: ${peerAddress}`
+    //             console.log(res)
+    //             this.confPeerLoading = false
+    //         } else {
+    //             this.confPeerMessage = `Failed to remove peer: ${peerAddress}`
+    //             console.log(res)
+    //             this.confPeerLoading = false
+    //         }
+    //     })
+    // }
+    // syncPeer(peerAddress) {
+    //     this.confPeerLoading = true
+    //     parentEpml.request('apiCall', {
+    //         url: `/admin/forcesync`,
+    //         method: 'POST',
+    //         body: peerAddress
+    //     }).then(res => {
+    //         this.confPeerLoading = false
+    //         this.confPeerMessage = res
+    //         // if (res === true) {
+    //         //     this.confPeerLoading = false
+    //         //     this.confPeerMessage = `Successfully Synced To Peer: ${peerAddress}`
+    //         //     console.log(res)
+    //         // } else if (res === "NOTHING_TO_DO") {
+    //         //     this.confPeerLoading = false
+    //         //     this.confPeerMessage = `Node is already synced!`
+    //         //     console.log(res)
+    //         // }
+    //         // else {
+    //         //     this.confPeerLoading = false
+    //         //     this.confPeerMessage = `Failed to sync to Peer: ${peerAddress}`
+    //         //     console.log(res)
+    //         // }
+    //     })
+    // }
+
 
     addMintingAccount(e) {
       this.addMintingAccountLoading = true;
@@ -40401,15 +40502,44 @@
         method: 'POST',
         body: addMintingAccountKey
       }).then(res => {
-        this.addMintingAccountMessage = res.message;
+        this.addMintingAccountMessage = res.message.includes(' ') === true ? res.message.split(' ').join('_').toLocaleUpperCase() : res.message;
         this.addMintingAccountLoading = false;
-        if (res === 'true') this.addMintingAccountMessage = 'Success!';
+        if (res === 'true') this.addMintingAccountMessage = 'Minting Node Added Successfully!';
       }); // this.addMintingAccountLoading = false
     }
 
     firstUpdated() {
+      // Calls the getPeersGrid func..
+      // this.getPeersGrid()
+      // Calculate HH MM SS from Milliseconds...
+      const convertMsToTime = milliseconds => {
+        let day, hour, minute, seconds;
+        seconds = Math.floor(milliseconds / 1000);
+        minute = Math.floor(seconds / 60);
+        seconds = seconds % 60;
+        hour = Math.floor(minute / 60);
+        minute = minute % 60;
+        day = Math.floor(hour / 24);
+        hour = hour % 24;
+        return day + "d " + hour + "h " + minute + "m";
+      };
+
+      const getNodeUpTime = () => {
+        console.log("=========================================");
+        parentEpml.request("apiCall", {
+          url: `/admin/uptime`
+        }).then(res => {
+          // console.log(res);
+          this.upTime = "";
+          setTimeout(() => {
+            this.upTime = convertMsToTime(res);
+          }, 1);
+        });
+        setTimeout(getNodeUpTime, this.config.user.nodeSettings.pingInterval);
+      };
+
       const updateMintingAccounts = () => {
-        console.log('=========================================');
+        // console.log('=========================================')
         parentEpml.request('apiCall', {
           url: `/admin/mintingaccounts`
         }).then(res => {
@@ -40438,6 +40568,7 @@
       parentEpml.ready().then(() => {
         parentEpml.subscribe('config', c => {
           if (!configLoaded) {
+            setTimeout(getNodeUpTime, 1);
             setTimeout(updatePeers, 1);
             setTimeout(updateMintingAccounts, 1);
             configLoaded = true;
