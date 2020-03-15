@@ -41400,9 +41400,9 @@
     /*
     <h2>Create reward shares</h2>
                 <span><br>Creating a reward share for another account requires an account with level 5 or higher. If you are doing a self share (a reward share to your account) then put 0% for reward share percentage.</span>
-                  <paper-input label="Recipient public key" id="recipientPublicKey" type="text" value="${this.recipientPublicKey}"></paper-input>
+                 <paper-input label="Recipient public key" id="recipientPublicKey" type="text" value="${this.recipientPublicKey}"></paper-input>
                 <paper-input label="Reward share percentage" id="percentageShare" type="number" value="${this.percentageShare}"></paper-input>
-                  <mwc-button @click=${this.createRewardShare} style="width:100%;">Create rewardshare key</mwc-button>
+                 <mwc-button @click=${this.createRewardShare} style="width:100%;">Create rewardshare key</mwc-button>
     */
 
 
@@ -41414,15 +41414,17 @@
                     <mwc-button style="float:right;" @click=${() => this.shadowRoot.querySelector('#createRewardShareDialog').show()}><mwc-icon>add</mwc-icon>Create reward share</mwc-button>
                 </div>
 
-                <vaadin-grid id="accountRewardSharesGrid" style="height:auto;" ?hidden="${this.isEmptyArray(this.accountRewardShares)}" aria-label="Peers" .items="${this.accountRewardShares}" height-by-rows>
-                    <vaadin-grid-column path="address"></vaadin-grid-column>
-                    <vaadin-grid-column path="lastHeight"></vaadin-grid-column>
+                <vaadin-grid id="accountRewardSharesGrid" style="height:auto;" ?hidden="${this.isEmptyArray(this.rewardShares)}" aria-label="Peers" .items="${this.rewardShares}" height-by-rows>
+                    <vaadin-grid-column path="mintingAccount"></vaadin-grid-column>
+                    <vaadin-grid-column width="7.8rem" flex-grow="0" path="sharePercent"></vaadin-grid-column>
+                    <vaadin-grid-column path="recipient"></vaadin-grid-column>
+                    <vaadin-grid-column path="rewardSharePublicKey"></vaadin-grid-column>
                 </vaadin-grid>
 
                 <mwc-dialog id="createRewardShareDialog" scrimClickAction="${this.createRewardShareLoading ? '' : 'close'}">
                     <div>You must be level 5 or above to create a rewardshare!</div>
                     <br>
-                    <mwc-textfield style="width:100%;" ?disabled="${this.createRewardShareLoading}" label="Reward share public key" id="recipientPublicKey"></mwc-textfield>
+                    <mwc-textfield style="width:100%;" ?disabled="${this.createRewardShareLoading}" label="Recipient public key" id="recipientPublicKey"></mwc-textfield>
                     <p style="margin-bottom:0;">
                         Reward share percentage: ${this.rewardSharePercentage}
                         <!-- <mwc-textfield style="width:36px;" ?disabled="${this.createRewardShareLoading}" id="createRewardShare"></mwc-textfield> -->
@@ -41468,8 +41470,7 @@
                     </mwc-button>
                 </mwc-dialog>
 
-
-                ${this.isEmptyArray(this.accountRewardShares) ? html`
+                ${this.isEmptyArray(this.rewardShares) ? html`
                     Account is not involved in any reward shares
                 ` : ''}
             </div>
@@ -41488,7 +41489,7 @@
             this.rewardShares = res;
           }, 1);
         });
-        setTimeout(updateRewardshares, this.config.user.nodeSettings.pingInterval); // Perhaps should be slower...?
+        setTimeout(updateRewardshares, this.config.user.nodeSettings.pingInterval); //THOUGHTS: No config is definded, when then use it here....    // Perhaps should be slower...?
       };
 
       let configLoaded = false;
@@ -41522,43 +41523,135 @@
       // var fee = this.fee
       // Check for valid...^
 
-      this.createRewardShareLoading = true;
+      this.createRewardShareLoading = true; // Get Last Ref
 
-      try {
-        const lastReference = await parentEpml.request('apiCall', {
+      const getLastRef = async () => {
+        let myRef = await parentEpml.request('apiCall', {
           type: 'api',
           url: `/addresses/lastreference/${this.selectedAddress.address}`
-        }); // console.log(lastReference)
+        });
+        return myRef;
+      }; // Get Account Details
 
-        const txRequestResponse = await parentEpml.request('transaction', {
+
+      const getAccountDetails = async () => {
+        let myAccountDetails = await parentEpml.request('apiCall', {
+          type: 'api',
+          url: `/addresses/${this.selectedAddress.address}`
+        });
+        return myAccountDetails;
+      }; // Validate Reward Share by Level
+
+
+      const validateReceiver = async recipient => {
+        let accountDetails = await getAccountDetails();
+        console.log(accountDetails);
+        let lastRef = await getLastRef();
+        console.log(lastRef); // Check for creating self share at different levels
+
+        if (accountDetails.publicKey === recipientPublicKey) {
+          if (accountDetails.level === 0) {
+            this.error = true;
+            this.message = `CANNOT CREATE SELF SHARE! at level ${accountDetails.level}`;
+            console.log("Cannot Create Reward Share");
+          } else {
+            this.error = false;
+            this.message = '';
+            let myTransaction = await makeTransactionRequest(lastRef);
+            getTxnRequestResponse(myTransaction);
+          }
+        } else {
+          //Check for creating reward shares
+          if (accountDetails.level === 0) {
+            this.error = true;
+            this.message = `CANNOT CREATE REWARD SHARE! at level ${accountDetails.level}`;
+            console.log("Cannot Create Reward Share");
+          } else if (accountDetails.level === 1 || accountDetails.level <= 4) {
+            this.error = true;
+            this.message = `CANNOT CREATE REWARD SHARE! at level ${accountDetails.level}`;
+            console.log("Only Self Share");
+          } else {
+            this.error = false;
+            this.message = '';
+            let myTransaction = await makeTransactionRequest(lastRef);
+            getTxnRequestResponse(myTransaction);
+            console.log("BOTH self share and reward");
+          }
+        }
+      }; // Make Transaction Request
+
+
+      const makeTransactionRequest = async lastRef => {
+        let mylastRef = lastRef;
+        let myTxnrequest = await parentEpml.request('transaction', {
           type: 38,
           nonce: this.selectedAddress.nonce,
           params: {
             recipientPublicKey,
             percentageShare,
-            lastReference // ,
-            // fee
-
+            lastReference: mylastRef
           }
-        }); // const responseData = JSON.parse(txRequestResponse) // JSON.parse(txRequestResponse)
-        // console.log(txRequestResponse)
-
-        if (txRequestResponse.data !== true) {
-          if (txRequestResponse.success === false) {
-            throw new Error(txRequestResponse.message);
-          } // ${ERROR_CODES[responseData]}
-          // if (ERROR_CODES[responseData]) throw new Error(`Error!. Code ${responseData}: ${ERROR_CODES[responseData]}`)
+        });
+        return myTxnrequest;
+      }; // FAILED txnResponse = {success: false, message: "User declined transaction"}
+      // SUCCESS txnResponse = { success: true, data: true }
 
 
-          throw new Error(`Error code: ${txRequestResponse.data.error},  ${txRequestResponse.data.message}`); // throw new Error(`Error!. ${ ERROR_CODES[responseData]}`)
+      const getTxnRequestResponse = txnResponse => {
+        console.log(txnResponse);
+
+        if (txnResponse.success === false && txnResponse.message) {
+          this.error = true;
+          this.message = txnResponse.message;
+          throw new Error(txnResponse);
+        } else if (txnResponse.success === true && !txnResponse.data.error) {
+          this.message = 'Reward Share Successful!';
+          this.error = false;
+        } else {
+          this.error = true;
+          this.message = txnResponse.data.message;
+          throw new Error(txnResponse);
         }
+      }; // Call validateReceiver
+      // setTimeout(() => {
+      //     validateReceiver(recipient)
+      // }, 1000);
 
-        this.message = 'Success!';
-        this.error = false;
-      } catch (e) {
-        this.error = true;
-        this.message = e.message;
-      }
+
+      validateReceiver(); // try {
+      //     const lastReference = await parentEpml.request('apiCall', {
+      //         type: 'api',
+      //         url: `/addresses/lastreference/${this.selectedAddress.address}`
+      //     })
+      //     // console.log(lastReference)
+      //     const txRequestResponse = await parentEpml.request('transaction', {
+      //         type: 38,
+      //         nonce: this.selectedAddress.nonce,
+      //         params: {
+      //             recipientPublicKey,
+      //             percentageShare,
+      //             lastReference
+      //             // ,
+      //             // fee
+      //         }
+      //     })
+      //     // const responseData = JSON.parse(txRequestResponse) // JSON.parse(txRequestResponse)
+      //     // console.log(txRequestResponse)
+      //     if (txRequestResponse.data !== true) {
+      //         if (txRequestResponse.success === false) {
+      //             throw new Error(txRequestResponse.message)
+      //         }
+      //         // ${ERROR_CODES[responseData]}
+      //         // if (ERROR_CODES[responseData]) throw new Error(`Error!. Code ${responseData}: ${ERROR_CODES[responseData]}`)
+      //         throw new Error(`Error code: ${txRequestResponse.data.error},  ${txRequestResponse.data.message}`)
+      //         // throw new Error(`Error!. ${ ERROR_CODES[responseData]}`)
+      //     }
+      //     this.message = 'Success!'
+      //     this.error = false
+      // } catch (e) {
+      //     this.error = true
+      //     this.message = e.message
+      // }
 
       this.createRewardShareLoading = false;
     }

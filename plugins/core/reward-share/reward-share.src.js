@@ -87,7 +87,7 @@ class RewardShare extends LitElement {
 
                 <vaadin-grid id="accountRewardSharesGrid" style="height:auto;" ?hidden="${this.isEmptyArray(this.rewardShares)}" aria-label="Peers" .items="${this.rewardShares}" height-by-rows>
                     <vaadin-grid-column path="mintingAccount"></vaadin-grid-column>
-                    <vaadin-grid-column path="sharePercent"></vaadin-grid-column>
+                    <vaadin-grid-column width="7.8rem" flex-grow="0" path="sharePercent"></vaadin-grid-column>
                     <vaadin-grid-column path="recipient"></vaadin-grid-column>
                     <vaadin-grid-column path="rewardSharePublicKey"></vaadin-grid-column>
                 </vaadin-grid>
@@ -195,44 +195,146 @@ class RewardShare extends LitElement {
         // Check for valid...^
         this.createRewardShareLoading = true
 
-        try {
-            const lastReference = await parentEpml.request('apiCall', {
+        // Get Last Ref
+        const getLastRef = async () => {
+            let myRef = await parentEpml.request('apiCall', {
                 type: 'api',
                 url: `/addresses/lastreference/${this.selectedAddress.address}`
             })
+            return myRef
+        };
 
-            // console.log(lastReference)
+        // Get Account Details
+        const getAccountDetails = async () => {
+            let myAccountDetails = await parentEpml.request('apiCall', {
+                type: 'api',
+                url: `/addresses/${this.selectedAddress.address}`
+            })
+            return myAccountDetails
+        };
 
-            const txRequestResponse = await parentEpml.request('transaction', {
+
+        // Validate Reward Share by Level
+        const validateReceiver = async recipient => {
+            let accountDetails = await getAccountDetails();
+            console.log(accountDetails)
+            let lastRef = await getLastRef();
+            console.log(lastRef)
+
+            // Check for creating self share at different levels
+            if (accountDetails.publicKey === recipientPublicKey) {
+                if (accountDetails.level === 0) {
+                    this.error = true
+                    this.message = `CANNOT CREATE SELF SHARE! at level ${accountDetails.level}`
+                    console.log("Cannot Create Reward Share")
+                } else {
+                    this.error = false
+                    this.message = ''
+                    let myTransaction = await makeTransactionRequest(lastRef)
+                    getTxnRequestResponse(myTransaction)
+                }
+            } else { //Check for creating reward shares
+                if (accountDetails.level === 0) {
+                    this.error = true
+                    this.message = `CANNOT CREATE REWARD SHARE! at level ${accountDetails.level}`
+                    console.log("Cannot Create Reward Share")
+                } else if (accountDetails.level === 1 || accountDetails.level <= 4) {
+                    this.error = true
+                    this.message = `CANNOT CREATE REWARD SHARE! at level ${accountDetails.level}`
+                    console.log("Only Self Share")
+                } else {
+                    this.error = false
+                    this.message = ''
+                    let myTransaction = await makeTransactionRequest(lastRef)
+                    getTxnRequestResponse(myTransaction)
+                    console.log("BOTH self share and reward")
+                }
+            }
+        }
+
+        // Make Transaction Request
+        const makeTransactionRequest = async (lastRef) => {
+
+            let mylastRef = lastRef
+
+            let myTxnrequest = await parentEpml.request('transaction', {
                 type: 38,
                 nonce: this.selectedAddress.nonce,
                 params: {
                     recipientPublicKey,
                     percentageShare,
-                    lastReference
-                    // ,
-                    // fee
+                    lastReference: mylastRef,
                 }
             })
 
-            // const responseData = JSON.parse(txRequestResponse) // JSON.parse(txRequestResponse)
-            // console.log(txRequestResponse)
-            if (txRequestResponse.data !== true) {
-                if (txRequestResponse.success === false) {
-                    throw new Error(txRequestResponse.message)
-                }
-                // ${ERROR_CODES[responseData]}
-                // if (ERROR_CODES[responseData]) throw new Error(`Error!. Code ${responseData}: ${ERROR_CODES[responseData]}`)
-                throw new Error(`Error code: ${txRequestResponse.data.error},  ${txRequestResponse.data.message}`)
-                // throw new Error(`Error!. ${ ERROR_CODES[responseData]}`)
-            }
-            this.message = 'Success!'
-            this.error = false
-        } catch (e) {
-            this.error = true
-            this.message = e.message
-
+            return myTxnrequest
         }
+
+        // FAILED txnResponse = {success: false, message: "User declined transaction"}
+        // SUCCESS txnResponse = { success: true, data: true }
+
+        const getTxnRequestResponse = (txnResponse) => {
+            console.log(txnResponse)
+            if (txnResponse.success === false && txnResponse.message) {
+                this.error = true
+                this.message = txnResponse.message
+                throw new Error(txnResponse)
+            } else if (txnResponse.success === true && !txnResponse.data.error) {
+                this.message = 'Reward Share Successful!'
+                this.error = false
+            } else {
+                this.error = true
+                this.message = txnResponse.data.message
+                throw new Error(txnResponse)
+            }
+        }
+
+
+        // Call validateReceiver
+        // setTimeout(() => {
+        //     validateReceiver(recipient)
+        // }, 1000);
+
+        validateReceiver(recipient)
+
+        // try {
+        //     const lastReference = await parentEpml.request('apiCall', {
+        //         type: 'api',
+        //         url: `/addresses/lastreference/${this.selectedAddress.address}`
+        //     })
+
+        //     // console.log(lastReference)
+
+        //     const txRequestResponse = await parentEpml.request('transaction', {
+        //         type: 38,
+        //         nonce: this.selectedAddress.nonce,
+        //         params: {
+        //             recipientPublicKey,
+        //             percentageShare,
+        //             lastReference
+        //             // ,
+        //             // fee
+        //         }
+        //     })
+
+        //     // const responseData = JSON.parse(txRequestResponse) // JSON.parse(txRequestResponse)
+        //     // console.log(txRequestResponse)
+        //     if (txRequestResponse.data !== true) {
+        //         if (txRequestResponse.success === false) {
+        //             throw new Error(txRequestResponse.message)
+        //         }
+        //         // ${ERROR_CODES[responseData]}
+        //         // if (ERROR_CODES[responseData]) throw new Error(`Error!. Code ${responseData}: ${ERROR_CODES[responseData]}`)
+        //         throw new Error(`Error code: ${txRequestResponse.data.error},  ${txRequestResponse.data.message}`)
+        //         // throw new Error(`Error!. ${ ERROR_CODES[responseData]}`)
+        //     }
+        //     this.message = 'Success!'
+        //     this.error = false
+        // } catch (e) {
+        //     this.error = true
+        //     this.message = e.message
+
+        // }
         this.createRewardShareLoading = false
     }
 

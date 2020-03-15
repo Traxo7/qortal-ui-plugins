@@ -9,6 +9,9 @@ import { render } from 'lit-html'
 import { Epml } from '../../../epml.js'
 
 import '@material/mwc-icon'
+import '@material/mwc-button'
+import '@material/mwc-dialog'
+
 import '@polymer/paper-spinner/paper-spinner-lite.js'
 // import * as thing from 'time-elements'
 import '@vaadin/vaadin-grid/vaadin-grid.js'
@@ -73,7 +76,8 @@ class WalletApp extends LitElement {
             unconfirmedTransactionStreams: { type: Object },
             transactions: { type: Object },
             addressInfo: { type: Object },
-            balance: { type: Number }
+            balance: { type: Number },
+            selectedTransaction: { type: Object }
         }
     }
 
@@ -145,6 +149,41 @@ class WalletApp extends LitElement {
                 height:100vh;
                 background: #fff;
             }
+            span {
+                font-size: 18px;
+                word-break: break-all;
+            }
+            .title {
+                font-weight:600;
+                font-size:12px;
+                line-height: 32px;
+                opacity: 0.66;
+            }
+            #transactionList {
+                padding:0;
+            }
+            #transactionList > * {
+                /* padding-left:24px;
+                padding-right:24px; */
+            }
+            .color-in {
+                color: #02977e;
+                background-color: rgba(0,201,167,.2);
+                font-weight: 700;
+                font-size: .60938rem;
+                border-radius: .25rem!important;
+                padding: .2rem .5rem;
+                margin-left: 4px;
+            }
+            .color-out {
+                color: #b47d00;
+                background-color: rgba(219,154,4,.2);
+                font-weight: 700;
+                font-size: .60938rem;
+                border-radius: .25rem!important;
+                padding: .2rem .5rem;
+                margin-left: 4px;
+            }
         `
     }
 
@@ -170,6 +209,7 @@ class WalletApp extends LitElement {
         this.addressesUnconfirmedTransactions = {}
         this.addressInfoStreams = {}
         this.unconfirmedTransactionStreams = {}
+        this.selectedTransaction = {}
     }
 
     /*
@@ -227,12 +267,19 @@ class WalletApp extends LitElement {
                                 by claiming KEX from the airdrop. -->
                             </div>
 
-                            <vaadin-grid id="gransactionsGrid" style="height:auto;" ?hidden="${this.isEmptyArray(this.transactions)}" aria-label="Peers" .items="${this.transactions}" height-by-rows>
-                                <vaadin-grid-column path="type"></vaadin-grid-column>
-                                <vaadin-grid-column path="recipient"></vaadin-grid-column>
-                                <vaadin-grid-column path="fee"></vaadin-grid-column>
-                                <vaadin-grid-column path="amount"></vaadin-grid-column>
-                                <vaadin-grid-column header="Time" .renderer=${(root, column, data) => {
+                            <vaadin-grid id="transactionsGrid" style="height:auto;" ?hidden="${this.isEmptyArray(this.transactions)}" aria-label="Peers" .items="${this.transactions}" height-by-rows>
+                                <vaadin-grid-column width="6.4rem" header="Type" .renderer=${(root, column, data) => {
+                render(html`
+                                ${data.item.type} 
+                                    ${data.item.creatorAddress === this.selectedAddress.address ? html`<span class="color-out">OUT</span>` : html`<span class="color-in">IN</span>`}
+
+                `, root)
+            }}>
+                                </vaadin-grid-column>
+                                <vaadin-grid-column width="10rem" path="recipient"></vaadin-grid-column>
+                                <vaadin-grid-column width="2rem" path="fee"></vaadin-grid-column>
+                                <vaadin-grid-column width="2rem" path="amount"></vaadin-grid-column>
+                                <vaadin-grid-column width="2rem" header="Time" .renderer=${(root, column, data) => {
                 // console.log(data.item.timestamp)
                 // console.log(root)
                 const time = new Date(data.item.timestamp)
@@ -245,12 +292,73 @@ class WalletApp extends LitElement {
                                 </vaadin-grid-column>
                             </vaadin-grid>
                     </div>
+
+                    <div>
+                        <mwc-dialog id="showTransactionDetailsDialog" scrimClickAction="${this.showTransactionDetailsLoading ? '' : 'close'}">
+                            <div style="text-align:center">
+                            <h1>Transaction Details</h1>
+                            <hr>
+                            </div>
+
+                            <div id="transactionList">
+                            <span class="title"> Transaction Type </span>
+                            <br>
+                            <div><span class="">${this.selectedTransaction.type}</span>
+                                    ${this.selectedTransaction.txnFlow === "OUT" ? html`<span class="color-out">OUT</span>` : html`<span class="color-in">IN</span>`}
+                            </div>
+
+                            <span class="title">Receiver</span>
+                            <br>
+                            <div><span class="">${this.selectedTransaction.recipient}</span></div>
+
+                            ${!this.selectedTransaction.amount ? '' : html`
+                                    <span class="title">Amount</span>
+                                    <br>
+                                    <div><span class="">${this.selectedTransaction.amount} QORT</span></div>
+                                `
+            }
+
+                            <span class="title"> Transaction Fee </span>
+                            <br>
+                            <div><span class="">${this.selectedTransaction.fee}</span></div>
+
+                            <span class="title">Block</span>
+                            <br>
+                            <div><span class="">${this.selectedTransaction.blockHeight}</span></div>
+
+                            <span class="title">Time</span>
+                            <br>
+                            <div><span class="">${new Date(this.selectedTransaction.timestamp).toString()}</span></div>
+
+                            <span class="title"> Transaction Signature </span>
+                            <br>
+                            <div><span class="">${this.selectedTransaction.signature}</span></div>
+                            </div>
+
+                        </mwc-dialog>
+                    </div>
                 </div>
             </div>
         `
     }
 
+    getGridTransaction() {
+
+        const myGrid = this.shadowRoot.querySelector('#transactionsGrid')
+
+        myGrid.addEventListener('click', (e) => {
+            let myItem = myGrid.getEventContext(e).item
+            console.log(myItem)
+            this.showTransactionDetails(myItem, this.transactions)
+        })
+
+    }
+
     firstUpdated() {
+
+        // Calls the getGridTransaction func..
+        this.getGridTransaction()
+
         let configLoaded = false
         parentEpml.ready().then(() => {
             parentEpml.subscribe('config', c => {
@@ -301,15 +409,15 @@ class WalletApp extends LitElement {
         coreEpml.imReady()
     }
 
-
     updateAccountTransactions() {
         clearTimeout(this.updateAccountTransactionTimeout)
         parentEpml.request('apiCall', {
-            url: `/transactions/search?address=${this.selectedAddress.address}&confirmationStatus=BOTH&limit=20`
+            url: `/transactions/search?address=${this.selectedAddress.address}&confirmationStatus=BOTH&limit=20&reverse=true`
         }).then(res => {
             // console.log(res.rev)
             this.transactions = res
-            this.transactions.reverse()
+            // I made the API call return a reversed result so I can reduce complexity... 
+            // this.transactions.reverse() // Not needed
             // console.log(this.config.user.nodeSettings.pingInterval)
             this.updateAccountTransactionTimeout = setTimeout(() => this.updateAccountTransactions(), this.config.user.nodeSettings.pingInterval ? this.config.user.nodeSettings.pingInterval : 4000)
         })
@@ -337,6 +445,21 @@ class WalletApp extends LitElement {
             // console.log(this.config.user.nodeSettings.pingInterval)
             this.updateAccountBalanceTimeout = setTimeout(() => this.updateAccountBalance(), this.config.user.nodeSettings.pingInterval ? this.config.user.nodeSettings.pingInterval : 4000)
         })
+    }
+
+    showTransactionDetails(myTransaction, allTransactions) {
+
+        allTransactions.forEach(transaction => {
+            if (myTransaction.signature === transaction.signature) {
+                // Do something...
+                let txnFlow = myTransaction.creatorAddress === this.selectedAddress.address ? "OUT" : "IN";
+                this.selectedTransaction = { ...transaction, txnFlow };
+                if (this.selectedTransaction.signature.length != 0) {
+                    this.shadowRoot.querySelector('#showTransactionDetailsDialog').show()
+                }
+                console.log("Transaction The Same")
+            }
+        });
     }
 
     isEmptyArray(arr) {

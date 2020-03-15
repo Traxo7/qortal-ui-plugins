@@ -231,6 +231,52 @@
    * http://polymer.github.io/PATENTS.txt
    */
   const directives = new WeakMap();
+  /**
+   * Brands a function as a directive factory function so that lit-html will call
+   * the function during template rendering, rather than passing as a value.
+   *
+   * A _directive_ is a function that takes a Part as an argument. It has the
+   * signature: `(part: Part) => void`.
+   *
+   * A directive _factory_ is a function that takes arguments for data and
+   * configuration and returns a directive. Users of directive usually refer to
+   * the directive factory as the directive. For example, "The repeat directive".
+   *
+   * Usually a template author will invoke a directive factory in their template
+   * with relevant arguments, which will then return a directive function.
+   *
+   * Here's an example of using the `repeat()` directive factory that takes an
+   * array and a function to render an item:
+   *
+   * ```js
+   * html`<ul><${repeat(items, (item) => html`<li>${item}</li>`)}</ul>`
+   * ```
+   *
+   * When `repeat` is invoked, it returns a directive function that closes over
+   * `items` and the template function. When the outer template is rendered, the
+   * return directive function is called with the Part for the expression.
+   * `repeat` then performs it's custom logic to render multiple items.
+   *
+   * @param f The directive factory function. Must be a function that returns a
+   * function of the signature `(part: Part) => void`. The returned function will
+   * be called with the part object.
+   *
+   * @example
+   *
+   * import {directive, html} from 'lit-html';
+   *
+   * const immutable = directive((v) => (part) => {
+   *   if (part.value !== v) {
+   *     part.setValue(v)
+   *   }
+   * });
+   */
+
+  const directive = f => (...args) => {
+    const d = f(...args);
+    directives.set(d, true);
+    return d;
+  };
   const isDirective = o => {
     return typeof o === 'function' && directives.has(o);
   };
@@ -2696,6 +2742,99 @@
 
   const customElement = tagName => classOrDescriptor => typeof classOrDescriptor === 'function' ? legacyCustomElement(tagName, classOrDescriptor) : standardCustomElement(tagName, classOrDescriptor);
 
+  const standardProperty = (options, element) => {
+    // When decorating an accessor, pass it through and add property metadata.
+    // Note, the `hasOwnProperty` check in `createProperty` ensures we don't
+    // stomp over the user's accessor.
+    if (element.kind === 'method' && element.descriptor && !('value' in element.descriptor)) {
+      return Object.assign({}, element, {
+        finisher(clazz) {
+          clazz.createProperty(element.key, options);
+        }
+
+      });
+    } else {
+      // createProperty() takes care of defining the property, but we still
+      // must return some kind of descriptor, so return a descriptor for an
+      // unused prototype field. The finisher calls createProperty().
+      return {
+        kind: 'field',
+        key: Symbol(),
+        placement: 'own',
+        descriptor: {},
+
+        // When @babel/plugin-proposal-decorators implements initializers,
+        // do this instead of the initializer below. See:
+        // https://github.com/babel/babel/issues/9260 extras: [
+        //   {
+        //     kind: 'initializer',
+        //     placement: 'own',
+        //     initializer: descriptor.initializer,
+        //   }
+        // ],
+        initializer() {
+          if (typeof element.initializer === 'function') {
+            this[element.key] = element.initializer.call(this);
+          }
+        },
+
+        finisher(clazz) {
+          clazz.createProperty(element.key, options);
+        }
+
+      };
+    }
+  };
+
+  const legacyProperty = (options, proto, name) => {
+    proto.constructor.createProperty(name, options);
+  };
+  /**
+   * A property decorator which creates a LitElement property which reflects a
+   * corresponding attribute value. A `PropertyDeclaration` may optionally be
+   * supplied to configure property features.
+   *
+   * @ExportDecoratedItems
+   */
+
+
+  function property(options) {
+    // tslint:disable-next-line:no-any decorator
+    return (protoOrDescriptor, name) => name !== undefined ? legacyProperty(options, protoOrDescriptor, name) : standardProperty(options, protoOrDescriptor);
+  }
+  /**
+   * A property decorator that converts a class property into a getter that
+   * executes a querySelector on the element's renderRoot.
+   *
+   * @ExportDecoratedItems
+   */
+
+  function query(selector) {
+    return (protoOrDescriptor, // tslint:disable-next-line:no-any decorator
+    name) => {
+      const descriptor = {
+        get() {
+          return this.renderRoot.querySelector(selector);
+        },
+
+        enumerable: true,
+        configurable: true
+      };
+      return name !== undefined ? legacyQuery(descriptor, protoOrDescriptor, name) : standardQuery(descriptor, protoOrDescriptor);
+    };
+  }
+
+  const legacyQuery = (descriptor, proto, name) => {
+    Object.defineProperty(proto, name, descriptor);
+  };
+
+  const standardQuery = (descriptor, element) => ({
+    kind: 'method',
+    placement: 'prototype',
+    key: element.key,
+    descriptor
+  });
+
   /**
   @license
   Copyright (c) 2019 The Polymer Project Authors. All rights reserved.
@@ -3919,6 +4058,42 @@
   See the Apache Version 2.0 License for specific language governing permissions
   and limitations under the License.
   ***************************************************************************** */
+
+  /* global Reflect, Promise */
+  var extendStatics = function (d, b) {
+    extendStatics = Object.setPrototypeOf || {
+      __proto__: []
+    } instanceof Array && function (d, b) {
+      d.__proto__ = b;
+    } || function (d, b) {
+      for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
+    };
+
+    return extendStatics(d, b);
+  };
+
+  function __extends(d, b) {
+    extendStatics(d, b);
+
+    function __() {
+      this.constructor = d;
+    }
+
+    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+  }
+  var __assign = function () {
+    __assign = Object.assign || function __assign(t) {
+      for (var s, i = 1, n = arguments.length; i < n; i++) {
+        s = arguments[i];
+
+        for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p)) t[p] = s[p];
+      }
+
+      return t;
+    };
+
+    return __assign.apply(this, arguments);
+  };
   function __decorate(decorators, target, key, desc) {
     var c = arguments.length,
         r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc,
@@ -3953,6 +4128,3472 @@
   };
   Icon.styles = style;
   Icon = __decorate([customElement('mwc-icon')], Icon);
+
+  /**
+   * @license
+   * Copyright 2019 Google Inc.
+   *
+   * Permission is hereby granted, free of charge, to any person obtaining a copy
+   * of this software and associated documentation files (the "Software"), to deal
+   * in the Software without restriction, including without limitation the rights
+   * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+   * copies of the Software, and to permit persons to whom the Software is
+   * furnished to do so, subject to the following conditions:
+   *
+   * The above copyright notice and this permission notice shall be included in
+   * all copies or substantial portions of the Software.
+   *
+   * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+   * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+   * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+   * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+   * THE SOFTWARE.
+   */
+
+  /**
+   * Stores result from applyPassive to avoid redundant processing to detect
+   * passive event listener support.
+   */
+  var supportsPassive_;
+  /**
+   * Determine whether the current browser supports passive event listeners, and
+   * if so, use them.
+   */
+
+  function applyPassive(globalObj, forceRefresh) {
+    if (globalObj === void 0) {
+      globalObj = window;
+    }
+
+    if (forceRefresh === void 0) {
+      forceRefresh = false;
+    }
+
+    if (supportsPassive_ === undefined || forceRefresh) {
+      var isSupported_1 = false;
+
+      try {
+        globalObj.document.addEventListener('test', function () {
+          return undefined;
+        }, {
+          get passive() {
+            isSupported_1 = true;
+            return isSupported_1;
+          }
+
+        });
+      } catch (e) {} // tslint:disable-line:no-empty cannot throw error due to tests. tslint also disables console.log.
+
+
+      supportsPassive_ = isSupported_1;
+    }
+
+    return supportsPassive_ ? {
+      passive: true
+    } : false;
+  }
+
+  /**
+   * @license
+   * Copyright 2018 Google Inc.
+   *
+   * Permission is hereby granted, free of charge, to any person obtaining a copy
+   * of this software and associated documentation files (the "Software"), to deal
+   * in the Software without restriction, including without limitation the rights
+   * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+   * copies of the Software, and to permit persons to whom the Software is
+   * furnished to do so, subject to the following conditions:
+   *
+   * The above copyright notice and this permission notice shall be included in
+   * all copies or substantial portions of the Software.
+   *
+   * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+   * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+   * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+   * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+   * THE SOFTWARE.
+   */
+
+  /**
+   * @fileoverview A "ponyfill" is a polyfill that doesn't modify the global prototype chain.
+   * This makes ponyfills safer than traditional polyfills, especially for libraries like MDC.
+   */
+  function closest(element, selector) {
+    if (element.closest) {
+      return element.closest(selector);
+    }
+
+    var el = element;
+
+    while (el) {
+      if (matches(el, selector)) {
+        return el;
+      }
+
+      el = el.parentElement;
+    }
+
+    return null;
+  }
+  function matches(element, selector) {
+    var nativeMatches = element.matches || element.webkitMatchesSelector || element.msMatchesSelector;
+    return nativeMatches.call(element, selector);
+  }
+
+  /**
+   * @license
+   * Copyright 2016 Google Inc.
+   *
+   * Permission is hereby granted, free of charge, to any person obtaining a copy
+   * of this software and associated documentation files (the "Software"), to deal
+   * in the Software without restriction, including without limitation the rights
+   * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+   * copies of the Software, and to permit persons to whom the Software is
+   * furnished to do so, subject to the following conditions:
+   *
+   * The above copyright notice and this permission notice shall be included in
+   * all copies or substantial portions of the Software.
+   *
+   * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+   * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+   * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+   * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+   * THE SOFTWARE.
+   */
+  var MDCFoundation =
+  /** @class */
+  function () {
+    function MDCFoundation(adapter) {
+      if (adapter === void 0) {
+        adapter = {};
+      }
+
+      this.adapter_ = adapter;
+    }
+
+    Object.defineProperty(MDCFoundation, "cssClasses", {
+      get: function () {
+        // Classes extending MDCFoundation should implement this method to return an object which exports every
+        // CSS class the foundation class needs as a property. e.g. {ACTIVE: 'mdc-component--active'}
+        return {};
+      },
+      enumerable: true,
+      configurable: true
+    });
+    Object.defineProperty(MDCFoundation, "strings", {
+      get: function () {
+        // Classes extending MDCFoundation should implement this method to return an object which exports all
+        // semantic strings as constants. e.g. {ARIA_ROLE: 'tablist'}
+        return {};
+      },
+      enumerable: true,
+      configurable: true
+    });
+    Object.defineProperty(MDCFoundation, "numbers", {
+      get: function () {
+        // Classes extending MDCFoundation should implement this method to return an object which exports all
+        // of its semantic numbers as constants. e.g. {ANIMATION_DELAY_MS: 350}
+        return {};
+      },
+      enumerable: true,
+      configurable: true
+    });
+    Object.defineProperty(MDCFoundation, "defaultAdapter", {
+      get: function () {
+        // Classes extending MDCFoundation may choose to implement this getter in order to provide a convenient
+        // way of viewing the necessary methods of an adapter. In the future, this could also be used for adapter
+        // validation.
+        return {};
+      },
+      enumerable: true,
+      configurable: true
+    });
+
+    MDCFoundation.prototype.init = function () {// Subclasses should override this method to perform initialization routines (registering events, etc.)
+    };
+
+    MDCFoundation.prototype.destroy = function () {// Subclasses should override this method to perform de-initialization routines (de-registering events, etc.)
+    };
+
+    return MDCFoundation;
+  }();
+
+  /**
+   * @license
+   * Copyright 2016 Google Inc.
+   *
+   * Permission is hereby granted, free of charge, to any person obtaining a copy
+   * of this software and associated documentation files (the "Software"), to deal
+   * in the Software without restriction, including without limitation the rights
+   * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+   * copies of the Software, and to permit persons to whom the Software is
+   * furnished to do so, subject to the following conditions:
+   *
+   * The above copyright notice and this permission notice shall be included in
+   * all copies or substantial portions of the Software.
+   *
+   * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+   * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+   * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+   * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+   * THE SOFTWARE.
+   */
+  var cssClasses = {
+    // Ripple is a special case where the "root" component is really a "mixin" of sorts,
+    // given that it's an 'upgrade' to an existing component. That being said it is the root
+    // CSS class that all other CSS classes derive from.
+    BG_FOCUSED: 'mdc-ripple-upgraded--background-focused',
+    FG_ACTIVATION: 'mdc-ripple-upgraded--foreground-activation',
+    FG_DEACTIVATION: 'mdc-ripple-upgraded--foreground-deactivation',
+    ROOT: 'mdc-ripple-upgraded',
+    UNBOUNDED: 'mdc-ripple-upgraded--unbounded'
+  };
+  var strings = {
+    VAR_FG_SCALE: '--mdc-ripple-fg-scale',
+    VAR_FG_SIZE: '--mdc-ripple-fg-size',
+    VAR_FG_TRANSLATE_END: '--mdc-ripple-fg-translate-end',
+    VAR_FG_TRANSLATE_START: '--mdc-ripple-fg-translate-start',
+    VAR_LEFT: '--mdc-ripple-left',
+    VAR_TOP: '--mdc-ripple-top'
+  };
+  var numbers = {
+    DEACTIVATION_TIMEOUT_MS: 225,
+    FG_DEACTIVATION_MS: 150,
+    INITIAL_ORIGIN_SCALE: 0.6,
+    PADDING: 10,
+    TAP_DELAY_MS: 300
+  };
+
+  /**
+   * Stores result from supportsCssVariables to avoid redundant processing to
+   * detect CSS custom variable support.
+   */
+  var supportsCssVariables_;
+  function supportsCssVariables(windowObj, forceRefresh) {
+    if (forceRefresh === void 0) {
+      forceRefresh = false;
+    }
+
+    var CSS = windowObj.CSS;
+    var supportsCssVars = supportsCssVariables_;
+
+    if (typeof supportsCssVariables_ === 'boolean' && !forceRefresh) {
+      return supportsCssVariables_;
+    }
+
+    var supportsFunctionPresent = CSS && typeof CSS.supports === 'function';
+
+    if (!supportsFunctionPresent) {
+      return false;
+    }
+
+    var explicitlySupportsCssVars = CSS.supports('--css-vars', 'yes'); // See: https://bugs.webkit.org/show_bug.cgi?id=154669
+    // See: README section on Safari
+
+    var weAreFeatureDetectingSafari10plus = CSS.supports('(--css-vars: yes)') && CSS.supports('color', '#00000000');
+    supportsCssVars = explicitlySupportsCssVars || weAreFeatureDetectingSafari10plus;
+
+    if (!forceRefresh) {
+      supportsCssVariables_ = supportsCssVars;
+    }
+
+    return supportsCssVars;
+  }
+  function getNormalizedEventCoords(evt, pageOffset, clientRect) {
+    if (!evt) {
+      return {
+        x: 0,
+        y: 0
+      };
+    }
+
+    var x = pageOffset.x,
+        y = pageOffset.y;
+    var documentX = x + clientRect.left;
+    var documentY = y + clientRect.top;
+    var normalizedX;
+    var normalizedY; // Determine touch point relative to the ripple container.
+
+    if (evt.type === 'touchstart') {
+      var touchEvent = evt;
+      normalizedX = touchEvent.changedTouches[0].pageX - documentX;
+      normalizedY = touchEvent.changedTouches[0].pageY - documentY;
+    } else {
+      var mouseEvent = evt;
+      normalizedX = mouseEvent.pageX - documentX;
+      normalizedY = mouseEvent.pageY - documentY;
+    }
+
+    return {
+      x: normalizedX,
+      y: normalizedY
+    };
+  }
+
+  /**
+   * @license
+   * Copyright 2016 Google Inc.
+   *
+   * Permission is hereby granted, free of charge, to any person obtaining a copy
+   * of this software and associated documentation files (the "Software"), to deal
+   * in the Software without restriction, including without limitation the rights
+   * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+   * copies of the Software, and to permit persons to whom the Software is
+   * furnished to do so, subject to the following conditions:
+   *
+   * The above copyright notice and this permission notice shall be included in
+   * all copies or substantial portions of the Software.
+   *
+   * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+   * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+   * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+   * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+   * THE SOFTWARE.
+   */
+
+  var ACTIVATION_EVENT_TYPES = ['touchstart', 'pointerdown', 'mousedown', 'keydown']; // Deactivation events registered on documentElement when a pointer-related down event occurs
+
+  var POINTER_DEACTIVATION_EVENT_TYPES = ['touchend', 'pointerup', 'mouseup', 'contextmenu']; // simultaneous nested activations
+
+  var activatedTargets = [];
+
+  var MDCRippleFoundation =
+  /** @class */
+  function (_super) {
+    __extends(MDCRippleFoundation, _super);
+
+    function MDCRippleFoundation(adapter) {
+      var _this = _super.call(this, __assign({}, MDCRippleFoundation.defaultAdapter, adapter)) || this;
+
+      _this.activationAnimationHasEnded_ = false;
+      _this.activationTimer_ = 0;
+      _this.fgDeactivationRemovalTimer_ = 0;
+      _this.fgScale_ = '0';
+      _this.frame_ = {
+        width: 0,
+        height: 0
+      };
+      _this.initialSize_ = 0;
+      _this.layoutFrame_ = 0;
+      _this.maxRadius_ = 0;
+      _this.unboundedCoords_ = {
+        left: 0,
+        top: 0
+      };
+      _this.activationState_ = _this.defaultActivationState_();
+
+      _this.activationTimerCallback_ = function () {
+        _this.activationAnimationHasEnded_ = true;
+
+        _this.runDeactivationUXLogicIfReady_();
+      };
+
+      _this.activateHandler_ = function (e) {
+        return _this.activate_(e);
+      };
+
+      _this.deactivateHandler_ = function () {
+        return _this.deactivate_();
+      };
+
+      _this.focusHandler_ = function () {
+        return _this.handleFocus();
+      };
+
+      _this.blurHandler_ = function () {
+        return _this.handleBlur();
+      };
+
+      _this.resizeHandler_ = function () {
+        return _this.layout();
+      };
+
+      return _this;
+    }
+
+    Object.defineProperty(MDCRippleFoundation, "cssClasses", {
+      get: function () {
+        return cssClasses;
+      },
+      enumerable: true,
+      configurable: true
+    });
+    Object.defineProperty(MDCRippleFoundation, "strings", {
+      get: function () {
+        return strings;
+      },
+      enumerable: true,
+      configurable: true
+    });
+    Object.defineProperty(MDCRippleFoundation, "numbers", {
+      get: function () {
+        return numbers;
+      },
+      enumerable: true,
+      configurable: true
+    });
+    Object.defineProperty(MDCRippleFoundation, "defaultAdapter", {
+      get: function () {
+        return {
+          addClass: function () {
+            return undefined;
+          },
+          browserSupportsCssVars: function () {
+            return true;
+          },
+          computeBoundingRect: function () {
+            return {
+              top: 0,
+              right: 0,
+              bottom: 0,
+              left: 0,
+              width: 0,
+              height: 0
+            };
+          },
+          containsEventTarget: function () {
+            return true;
+          },
+          deregisterDocumentInteractionHandler: function () {
+            return undefined;
+          },
+          deregisterInteractionHandler: function () {
+            return undefined;
+          },
+          deregisterResizeHandler: function () {
+            return undefined;
+          },
+          getWindowPageOffset: function () {
+            return {
+              x: 0,
+              y: 0
+            };
+          },
+          isSurfaceActive: function () {
+            return true;
+          },
+          isSurfaceDisabled: function () {
+            return true;
+          },
+          isUnbounded: function () {
+            return true;
+          },
+          registerDocumentInteractionHandler: function () {
+            return undefined;
+          },
+          registerInteractionHandler: function () {
+            return undefined;
+          },
+          registerResizeHandler: function () {
+            return undefined;
+          },
+          removeClass: function () {
+            return undefined;
+          },
+          updateCssVariable: function () {
+            return undefined;
+          }
+        };
+      },
+      enumerable: true,
+      configurable: true
+    });
+
+    MDCRippleFoundation.prototype.init = function () {
+      var _this = this;
+
+      var supportsPressRipple = this.supportsPressRipple_();
+      this.registerRootHandlers_(supportsPressRipple);
+
+      if (supportsPressRipple) {
+        var _a = MDCRippleFoundation.cssClasses,
+            ROOT_1 = _a.ROOT,
+            UNBOUNDED_1 = _a.UNBOUNDED;
+        requestAnimationFrame(function () {
+          _this.adapter_.addClass(ROOT_1);
+
+          if (_this.adapter_.isUnbounded()) {
+            _this.adapter_.addClass(UNBOUNDED_1); // Unbounded ripples need layout logic applied immediately to set coordinates for both shade and ripple
+
+
+            _this.layoutInternal_();
+          }
+        });
+      }
+    };
+
+    MDCRippleFoundation.prototype.destroy = function () {
+      var _this = this;
+
+      if (this.supportsPressRipple_()) {
+        if (this.activationTimer_) {
+          clearTimeout(this.activationTimer_);
+          this.activationTimer_ = 0;
+          this.adapter_.removeClass(MDCRippleFoundation.cssClasses.FG_ACTIVATION);
+        }
+
+        if (this.fgDeactivationRemovalTimer_) {
+          clearTimeout(this.fgDeactivationRemovalTimer_);
+          this.fgDeactivationRemovalTimer_ = 0;
+          this.adapter_.removeClass(MDCRippleFoundation.cssClasses.FG_DEACTIVATION);
+        }
+
+        var _a = MDCRippleFoundation.cssClasses,
+            ROOT_2 = _a.ROOT,
+            UNBOUNDED_2 = _a.UNBOUNDED;
+        requestAnimationFrame(function () {
+          _this.adapter_.removeClass(ROOT_2);
+
+          _this.adapter_.removeClass(UNBOUNDED_2);
+
+          _this.removeCssVars_();
+        });
+      }
+
+      this.deregisterRootHandlers_();
+      this.deregisterDeactivationHandlers_();
+    };
+    /**
+     * @param evt Optional event containing position information.
+     */
+
+
+    MDCRippleFoundation.prototype.activate = function (evt) {
+      this.activate_(evt);
+    };
+
+    MDCRippleFoundation.prototype.deactivate = function () {
+      this.deactivate_();
+    };
+
+    MDCRippleFoundation.prototype.layout = function () {
+      var _this = this;
+
+      if (this.layoutFrame_) {
+        cancelAnimationFrame(this.layoutFrame_);
+      }
+
+      this.layoutFrame_ = requestAnimationFrame(function () {
+        _this.layoutInternal_();
+
+        _this.layoutFrame_ = 0;
+      });
+    };
+
+    MDCRippleFoundation.prototype.setUnbounded = function (unbounded) {
+      var UNBOUNDED = MDCRippleFoundation.cssClasses.UNBOUNDED;
+
+      if (unbounded) {
+        this.adapter_.addClass(UNBOUNDED);
+      } else {
+        this.adapter_.removeClass(UNBOUNDED);
+      }
+    };
+
+    MDCRippleFoundation.prototype.handleFocus = function () {
+      var _this = this;
+
+      requestAnimationFrame(function () {
+        return _this.adapter_.addClass(MDCRippleFoundation.cssClasses.BG_FOCUSED);
+      });
+    };
+
+    MDCRippleFoundation.prototype.handleBlur = function () {
+      var _this = this;
+
+      requestAnimationFrame(function () {
+        return _this.adapter_.removeClass(MDCRippleFoundation.cssClasses.BG_FOCUSED);
+      });
+    };
+    /**
+     * We compute this property so that we are not querying information about the client
+     * until the point in time where the foundation requests it. This prevents scenarios where
+     * client-side feature-detection may happen too early, such as when components are rendered on the server
+     * and then initialized at mount time on the client.
+     */
+
+
+    MDCRippleFoundation.prototype.supportsPressRipple_ = function () {
+      return this.adapter_.browserSupportsCssVars();
+    };
+
+    MDCRippleFoundation.prototype.defaultActivationState_ = function () {
+      return {
+        activationEvent: undefined,
+        hasDeactivationUXRun: false,
+        isActivated: false,
+        isProgrammatic: false,
+        wasActivatedByPointer: false,
+        wasElementMadeActive: false
+      };
+    };
+    /**
+     * supportsPressRipple Passed from init to save a redundant function call
+     */
+
+
+    MDCRippleFoundation.prototype.registerRootHandlers_ = function (supportsPressRipple) {
+      var _this = this;
+
+      if (supportsPressRipple) {
+        ACTIVATION_EVENT_TYPES.forEach(function (evtType) {
+          _this.adapter_.registerInteractionHandler(evtType, _this.activateHandler_);
+        });
+
+        if (this.adapter_.isUnbounded()) {
+          this.adapter_.registerResizeHandler(this.resizeHandler_);
+        }
+      }
+
+      this.adapter_.registerInteractionHandler('focus', this.focusHandler_);
+      this.adapter_.registerInteractionHandler('blur', this.blurHandler_);
+    };
+
+    MDCRippleFoundation.prototype.registerDeactivationHandlers_ = function (evt) {
+      var _this = this;
+
+      if (evt.type === 'keydown') {
+        this.adapter_.registerInteractionHandler('keyup', this.deactivateHandler_);
+      } else {
+        POINTER_DEACTIVATION_EVENT_TYPES.forEach(function (evtType) {
+          _this.adapter_.registerDocumentInteractionHandler(evtType, _this.deactivateHandler_);
+        });
+      }
+    };
+
+    MDCRippleFoundation.prototype.deregisterRootHandlers_ = function () {
+      var _this = this;
+
+      ACTIVATION_EVENT_TYPES.forEach(function (evtType) {
+        _this.adapter_.deregisterInteractionHandler(evtType, _this.activateHandler_);
+      });
+      this.adapter_.deregisterInteractionHandler('focus', this.focusHandler_);
+      this.adapter_.deregisterInteractionHandler('blur', this.blurHandler_);
+
+      if (this.adapter_.isUnbounded()) {
+        this.adapter_.deregisterResizeHandler(this.resizeHandler_);
+      }
+    };
+
+    MDCRippleFoundation.prototype.deregisterDeactivationHandlers_ = function () {
+      var _this = this;
+
+      this.adapter_.deregisterInteractionHandler('keyup', this.deactivateHandler_);
+      POINTER_DEACTIVATION_EVENT_TYPES.forEach(function (evtType) {
+        _this.adapter_.deregisterDocumentInteractionHandler(evtType, _this.deactivateHandler_);
+      });
+    };
+
+    MDCRippleFoundation.prototype.removeCssVars_ = function () {
+      var _this = this;
+
+      var rippleStrings = MDCRippleFoundation.strings;
+      var keys = Object.keys(rippleStrings);
+      keys.forEach(function (key) {
+        if (key.indexOf('VAR_') === 0) {
+          _this.adapter_.updateCssVariable(rippleStrings[key], null);
+        }
+      });
+    };
+
+    MDCRippleFoundation.prototype.activate_ = function (evt) {
+      var _this = this;
+
+      if (this.adapter_.isSurfaceDisabled()) {
+        return;
+      }
+
+      var activationState = this.activationState_;
+
+      if (activationState.isActivated) {
+        return;
+      } // Avoid reacting to follow-on events fired by touch device after an already-processed user interaction
+
+
+      var previousActivationEvent = this.previousActivationEvent_;
+      var isSameInteraction = previousActivationEvent && evt !== undefined && previousActivationEvent.type !== evt.type;
+
+      if (isSameInteraction) {
+        return;
+      }
+
+      activationState.isActivated = true;
+      activationState.isProgrammatic = evt === undefined;
+      activationState.activationEvent = evt;
+      activationState.wasActivatedByPointer = activationState.isProgrammatic ? false : evt !== undefined && (evt.type === 'mousedown' || evt.type === 'touchstart' || evt.type === 'pointerdown');
+      var hasActivatedChild = evt !== undefined && activatedTargets.length > 0 && activatedTargets.some(function (target) {
+        return _this.adapter_.containsEventTarget(target);
+      });
+
+      if (hasActivatedChild) {
+        // Immediately reset activation state, while preserving logic that prevents touch follow-on events
+        this.resetActivationState_();
+        return;
+      }
+
+      if (evt !== undefined) {
+        activatedTargets.push(evt.target);
+        this.registerDeactivationHandlers_(evt);
+      }
+
+      activationState.wasElementMadeActive = this.checkElementMadeActive_(evt);
+
+      if (activationState.wasElementMadeActive) {
+        this.animateActivation_();
+      }
+
+      requestAnimationFrame(function () {
+        // Reset array on next frame after the current event has had a chance to bubble to prevent ancestor ripples
+        activatedTargets = [];
+
+        if (!activationState.wasElementMadeActive && evt !== undefined && (evt.key === ' ' || evt.keyCode === 32)) {
+          // If space was pressed, try again within an rAF call to detect :active, because different UAs report
+          // active states inconsistently when they're called within event handling code:
+          // - https://bugs.chromium.org/p/chromium/issues/detail?id=635971
+          // - https://bugzilla.mozilla.org/show_bug.cgi?id=1293741
+          // We try first outside rAF to support Edge, which does not exhibit this problem, but will crash if a CSS
+          // variable is set within a rAF callback for a submit button interaction (#2241).
+          activationState.wasElementMadeActive = _this.checkElementMadeActive_(evt);
+
+          if (activationState.wasElementMadeActive) {
+            _this.animateActivation_();
+          }
+        }
+
+        if (!activationState.wasElementMadeActive) {
+          // Reset activation state immediately if element was not made active.
+          _this.activationState_ = _this.defaultActivationState_();
+        }
+      });
+    };
+
+    MDCRippleFoundation.prototype.checkElementMadeActive_ = function (evt) {
+      return evt !== undefined && evt.type === 'keydown' ? this.adapter_.isSurfaceActive() : true;
+    };
+
+    MDCRippleFoundation.prototype.animateActivation_ = function () {
+      var _this = this;
+
+      var _a = MDCRippleFoundation.strings,
+          VAR_FG_TRANSLATE_START = _a.VAR_FG_TRANSLATE_START,
+          VAR_FG_TRANSLATE_END = _a.VAR_FG_TRANSLATE_END;
+      var _b = MDCRippleFoundation.cssClasses,
+          FG_DEACTIVATION = _b.FG_DEACTIVATION,
+          FG_ACTIVATION = _b.FG_ACTIVATION;
+      var DEACTIVATION_TIMEOUT_MS = MDCRippleFoundation.numbers.DEACTIVATION_TIMEOUT_MS;
+      this.layoutInternal_();
+      var translateStart = '';
+      var translateEnd = '';
+
+      if (!this.adapter_.isUnbounded()) {
+        var _c = this.getFgTranslationCoordinates_(),
+            startPoint = _c.startPoint,
+            endPoint = _c.endPoint;
+
+        translateStart = startPoint.x + "px, " + startPoint.y + "px";
+        translateEnd = endPoint.x + "px, " + endPoint.y + "px";
+      }
+
+      this.adapter_.updateCssVariable(VAR_FG_TRANSLATE_START, translateStart);
+      this.adapter_.updateCssVariable(VAR_FG_TRANSLATE_END, translateEnd); // Cancel any ongoing activation/deactivation animations
+
+      clearTimeout(this.activationTimer_);
+      clearTimeout(this.fgDeactivationRemovalTimer_);
+      this.rmBoundedActivationClasses_();
+      this.adapter_.removeClass(FG_DEACTIVATION); // Force layout in order to re-trigger the animation.
+
+      this.adapter_.computeBoundingRect();
+      this.adapter_.addClass(FG_ACTIVATION);
+      this.activationTimer_ = setTimeout(function () {
+        return _this.activationTimerCallback_();
+      }, DEACTIVATION_TIMEOUT_MS);
+    };
+
+    MDCRippleFoundation.prototype.getFgTranslationCoordinates_ = function () {
+      var _a = this.activationState_,
+          activationEvent = _a.activationEvent,
+          wasActivatedByPointer = _a.wasActivatedByPointer;
+      var startPoint;
+
+      if (wasActivatedByPointer) {
+        startPoint = getNormalizedEventCoords(activationEvent, this.adapter_.getWindowPageOffset(), this.adapter_.computeBoundingRect());
+      } else {
+        startPoint = {
+          x: this.frame_.width / 2,
+          y: this.frame_.height / 2
+        };
+      } // Center the element around the start point.
+
+
+      startPoint = {
+        x: startPoint.x - this.initialSize_ / 2,
+        y: startPoint.y - this.initialSize_ / 2
+      };
+      var endPoint = {
+        x: this.frame_.width / 2 - this.initialSize_ / 2,
+        y: this.frame_.height / 2 - this.initialSize_ / 2
+      };
+      return {
+        startPoint: startPoint,
+        endPoint: endPoint
+      };
+    };
+
+    MDCRippleFoundation.prototype.runDeactivationUXLogicIfReady_ = function () {
+      var _this = this; // This method is called both when a pointing device is released, and when the activation animation ends.
+      // The deactivation animation should only run after both of those occur.
+
+
+      var FG_DEACTIVATION = MDCRippleFoundation.cssClasses.FG_DEACTIVATION;
+      var _a = this.activationState_,
+          hasDeactivationUXRun = _a.hasDeactivationUXRun,
+          isActivated = _a.isActivated;
+      var activationHasEnded = hasDeactivationUXRun || !isActivated;
+
+      if (activationHasEnded && this.activationAnimationHasEnded_) {
+        this.rmBoundedActivationClasses_();
+        this.adapter_.addClass(FG_DEACTIVATION);
+        this.fgDeactivationRemovalTimer_ = setTimeout(function () {
+          _this.adapter_.removeClass(FG_DEACTIVATION);
+        }, numbers.FG_DEACTIVATION_MS);
+      }
+    };
+
+    MDCRippleFoundation.prototype.rmBoundedActivationClasses_ = function () {
+      var FG_ACTIVATION = MDCRippleFoundation.cssClasses.FG_ACTIVATION;
+      this.adapter_.removeClass(FG_ACTIVATION);
+      this.activationAnimationHasEnded_ = false;
+      this.adapter_.computeBoundingRect();
+    };
+
+    MDCRippleFoundation.prototype.resetActivationState_ = function () {
+      var _this = this;
+
+      this.previousActivationEvent_ = this.activationState_.activationEvent;
+      this.activationState_ = this.defaultActivationState_(); // Touch devices may fire additional events for the same interaction within a short time.
+      // Store the previous event until it's safe to assume that subsequent events are for new interactions.
+
+      setTimeout(function () {
+        return _this.previousActivationEvent_ = undefined;
+      }, MDCRippleFoundation.numbers.TAP_DELAY_MS);
+    };
+
+    MDCRippleFoundation.prototype.deactivate_ = function () {
+      var _this = this;
+
+      var activationState = this.activationState_; // This can happen in scenarios such as when you have a keyup event that blurs the element.
+
+      if (!activationState.isActivated) {
+        return;
+      }
+
+      var state = __assign({}, activationState);
+
+      if (activationState.isProgrammatic) {
+        requestAnimationFrame(function () {
+          return _this.animateDeactivation_(state);
+        });
+        this.resetActivationState_();
+      } else {
+        this.deregisterDeactivationHandlers_();
+        requestAnimationFrame(function () {
+          _this.activationState_.hasDeactivationUXRun = true;
+
+          _this.animateDeactivation_(state);
+
+          _this.resetActivationState_();
+        });
+      }
+    };
+
+    MDCRippleFoundation.prototype.animateDeactivation_ = function (_a) {
+      var wasActivatedByPointer = _a.wasActivatedByPointer,
+          wasElementMadeActive = _a.wasElementMadeActive;
+
+      if (wasActivatedByPointer || wasElementMadeActive) {
+        this.runDeactivationUXLogicIfReady_();
+      }
+    };
+
+    MDCRippleFoundation.prototype.layoutInternal_ = function () {
+      var _this = this;
+
+      this.frame_ = this.adapter_.computeBoundingRect();
+      var maxDim = Math.max(this.frame_.height, this.frame_.width); // Surface diameter is treated differently for unbounded vs. bounded ripples.
+      // Unbounded ripple diameter is calculated smaller since the surface is expected to already be padded appropriately
+      // to extend the hitbox, and the ripple is expected to meet the edges of the padded hitbox (which is typically
+      // square). Bounded ripples, on the other hand, are fully expected to expand beyond the surface's longest diameter
+      // (calculated based on the diagonal plus a constant padding), and are clipped at the surface's border via
+      // `overflow: hidden`.
+
+      var getBoundedRadius = function () {
+        var hypotenuse = Math.sqrt(Math.pow(_this.frame_.width, 2) + Math.pow(_this.frame_.height, 2));
+        return hypotenuse + MDCRippleFoundation.numbers.PADDING;
+      };
+
+      this.maxRadius_ = this.adapter_.isUnbounded() ? maxDim : getBoundedRadius(); // Ripple is sized as a fraction of the largest dimension of the surface, then scales up using a CSS scale transform
+
+      var initialSize = Math.floor(maxDim * MDCRippleFoundation.numbers.INITIAL_ORIGIN_SCALE); // Unbounded ripple size should always be even number to equally center align.
+
+      if (this.adapter_.isUnbounded() && initialSize % 2 !== 0) {
+        this.initialSize_ = initialSize - 1;
+      } else {
+        this.initialSize_ = initialSize;
+      }
+
+      this.fgScale_ = "" + this.maxRadius_ / this.initialSize_;
+      this.updateLayoutCssVars_();
+    };
+
+    MDCRippleFoundation.prototype.updateLayoutCssVars_ = function () {
+      var _a = MDCRippleFoundation.strings,
+          VAR_FG_SIZE = _a.VAR_FG_SIZE,
+          VAR_LEFT = _a.VAR_LEFT,
+          VAR_TOP = _a.VAR_TOP,
+          VAR_FG_SCALE = _a.VAR_FG_SCALE;
+      this.adapter_.updateCssVariable(VAR_FG_SIZE, this.initialSize_ + "px");
+      this.adapter_.updateCssVariable(VAR_FG_SCALE, this.fgScale_);
+
+      if (this.adapter_.isUnbounded()) {
+        this.unboundedCoords_ = {
+          left: Math.round(this.frame_.width / 2 - this.initialSize_ / 2),
+          top: Math.round(this.frame_.height / 2 - this.initialSize_ / 2)
+        };
+        this.adapter_.updateCssVariable(VAR_LEFT, this.unboundedCoords_.left + "px");
+        this.adapter_.updateCssVariable(VAR_TOP, this.unboundedCoords_.top + "px");
+      }
+    };
+
+    return MDCRippleFoundation;
+  }(MDCFoundation);
+
+  /**
+  @license
+  Copyright 2018 Google Inc. All Rights Reserved.
+
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+      http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+  */
+  const style$1 = css`@keyframes mdc-ripple-fg-radius-in{from{animation-timing-function:cubic-bezier(0.4, 0, 0.2, 1);transform:translate(var(--mdc-ripple-fg-translate-start, 0)) scale(1)}to{transform:translate(var(--mdc-ripple-fg-translate-end, 0)) scale(var(--mdc-ripple-fg-scale, 1))}}@keyframes mdc-ripple-fg-opacity-in{from{animation-timing-function:linear;opacity:0}to{opacity:var(--mdc-ripple-fg-opacity, 0)}}@keyframes mdc-ripple-fg-opacity-out{from{animation-timing-function:linear;opacity:var(--mdc-ripple-fg-opacity, 0)}to{opacity:0}}`;
+
+  /**
+  @license
+  Copyright 2018 Google Inc. All Rights Reserved.
+
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+      http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+  */
+  const supportsCssVariablesWin = supportsCssVariables(window); // NOTE: This is a workaround for
+  // https://bugs.webkit.org/show_bug.cgi?id=173027. Since keyframes on
+  // pseudo-elements (:after) are not supported in Shadow DOM, we put the keyframe
+  // style into the <head> element.
+
+  const isSafari = navigator.userAgent.match(/Safari/);
+  let didApplyRippleStyle = false;
+
+  const applyRippleStyle = () => {
+    didApplyRippleStyle = true;
+    const styleElement = document.createElement('style');
+    const part = new NodePart({
+      templateFactory
+    });
+    part.appendInto(styleElement);
+    part.setValue(style$1);
+    part.commit(); // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+
+    document.head.appendChild(styleElement);
+  };
+  /**
+   * Applied a ripple to the node specified by {surfaceNode}.
+   * @param options {RippleNodeOptions}
+   */
+
+
+  const rippleNode = options => {
+    if (isSafari && !didApplyRippleStyle) {
+      applyRippleStyle();
+    } // TODO(sorvell): This directive requires bringing css yourself. We probably
+    // need to do this because of ShadyCSS, but on Safari, the keyframes styling
+    // must be global. Perhaps this directive could fix that.
+
+
+    const surfaceNode = options.surfaceNode;
+    const interactionNode = options.interactionNode || surfaceNode; // only style interaction node if not in the same root
+
+    if (interactionNode.getRootNode() !== surfaceNode.getRootNode()) {
+      if (interactionNode.style.position === '') {
+        interactionNode.style.position = 'relative';
+      }
+    }
+
+    const adapter = {
+      browserSupportsCssVars: () => supportsCssVariablesWin,
+      isUnbounded: () => options.unbounded === undefined ? true : options.unbounded,
+      isSurfaceActive: () => matches(interactionNode, ':active'),
+      isSurfaceDisabled: () => Boolean(interactionNode.hasAttribute('disabled')),
+      addClass: className => surfaceNode.classList.add(className),
+      removeClass: className => surfaceNode.classList.remove(className),
+      containsEventTarget: target => interactionNode.contains(target),
+      registerInteractionHandler: (type, handler) => interactionNode.addEventListener(type, handler, applyPassive()),
+      deregisterInteractionHandler: (type, handler) => interactionNode.removeEventListener(type, handler, applyPassive()),
+      registerDocumentInteractionHandler: (evtType, handler) => // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      document.documentElement.addEventListener(evtType, handler, applyPassive()),
+      deregisterDocumentInteractionHandler: (evtType, handler) => // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      document.documentElement.removeEventListener(evtType, handler, applyPassive()),
+      registerResizeHandler: handler => window.addEventListener('resize', handler),
+      deregisterResizeHandler: handler => window.removeEventListener('resize', handler),
+      updateCssVariable: (varName, value) => surfaceNode.style.setProperty(varName, value),
+      computeBoundingRect: () => surfaceNode.getBoundingClientRect(),
+      getWindowPageOffset: () => ({
+        x: window.pageXOffset,
+        y: window.pageYOffset
+      })
+    };
+    const rippleFoundation = new MDCRippleFoundation(adapter);
+    rippleFoundation.init();
+    return rippleFoundation;
+  };
+  const rippleInteractionNodes = new WeakMap();
+  /**
+   * A directive that applies a Material ripple to a part node. The directive
+   * should be applied to a PropertyPart.
+   * @param options {RippleOptions}
+   */
+
+  const ripple = directive((options = {}) => part => {
+    const surfaceNode = part.committer.element;
+    const interactionNode = options.interactionNode || surfaceNode;
+    let rippleFoundation = part.value; // if the interaction node changes, destroy and invalidate the foundation.
+
+    const existingInteractionNode = rippleInteractionNodes.get(rippleFoundation);
+
+    if (existingInteractionNode !== undefined && existingInteractionNode !== interactionNode) {
+      rippleFoundation.destroy();
+      rippleFoundation = noChange;
+    } // make the ripple, if needed
+
+
+    if (rippleFoundation === noChange) {
+      rippleFoundation = rippleNode(Object.assign({}, options, {
+        surfaceNode
+      }));
+      rippleInteractionNodes.set(rippleFoundation, interactionNode);
+      part.setValue(rippleFoundation); // otherwise update settings as needed.
+    } else {
+      if (options.unbounded !== undefined) {
+        rippleFoundation.setUnbounded(options.unbounded);
+      }
+
+      if (options.disabled !== undefined) {
+        rippleFoundation.setUnbounded(options.disabled);
+      }
+    }
+
+    if (options.active === true) {
+      rippleFoundation.activate();
+    } else if (options.active === false) {
+      rippleFoundation.deactivate();
+    }
+  });
+
+  /**
+   * @license
+   * Copyright (c) 2018 The Polymer Project Authors. All rights reserved.
+   * This code may only be used under the BSD style license found at
+   * http://polymer.github.io/LICENSE.txt
+   * The complete set of authors may be found at
+   * http://polymer.github.io/AUTHORS.txt
+   * The complete set of contributors may be found at
+   * http://polymer.github.io/CONTRIBUTORS.txt
+   * Code distributed by Google as part of the polymer project is also
+   * subject to an additional IP rights grant found at
+   * http://polymer.github.io/PATENTS.txt
+   */
+  /**
+   * Stores the ClassInfo object applied to a given AttributePart.
+   * Used to unset existing values when a new ClassInfo object is applied.
+   */
+
+  const classMapCache = new WeakMap();
+  /**
+   * A directive that applies CSS classes. This must be used in the `class`
+   * attribute and must be the only part used in the attribute. It takes each
+   * property in the `classInfo` argument and adds the property name to the
+   * element's `classList` if the property value is truthy; if the property value
+   * is falsey, the property name is removed from the element's `classList`. For
+   * example
+   * `{foo: bar}` applies the class `foo` if the value of `bar` is truthy.
+   * @param classInfo {ClassInfo}
+   */
+
+  const classMap = directive(classInfo => part => {
+    if (!(part instanceof AttributePart) || part instanceof PropertyPart || part.committer.name !== 'class' || part.committer.parts.length > 1) {
+      throw new Error('The `classMap` directive must be used in the `class` attribute ' + 'and must be the only part in the attribute.');
+    }
+
+    const {
+      committer
+    } = part;
+    const {
+      element
+    } = committer; // handle static classes
+
+    if (!classMapCache.has(part)) {
+      element.className = committer.strings.join(' ');
+    }
+
+    const {
+      classList
+    } = element; // remove old classes that no longer apply
+
+    const oldInfo = classMapCache.get(part);
+
+    for (const name in oldInfo) {
+      if (!(name in classInfo)) {
+        classList.remove(name);
+      }
+    } // add new classes
+
+
+    for (const name in classInfo) {
+      const value = classInfo[name];
+
+      if (!oldInfo || value !== oldInfo[name]) {
+        // We explicitly want a loose truthy check here because
+        // it seems more convenient that '' and 0 are skipped.
+        const method = value ? 'add' : 'remove';
+        classList[method](name);
+      }
+    }
+
+    classMapCache.set(part, classInfo);
+  });
+
+  class ButtonBase extends LitElement {
+    constructor() {
+      super(...arguments);
+      this.raised = false;
+      this.unelevated = false;
+      this.outlined = false;
+      this.dense = false;
+      this.disabled = false;
+      this.trailingIcon = false;
+      this.icon = '';
+      this.label = '';
+    }
+
+    createRenderRoot() {
+      return this.attachShadow({
+        mode: 'open',
+        delegatesFocus: true
+      });
+    }
+
+    focus() {
+      const buttonElement = this.buttonElement;
+
+      if (buttonElement) {
+        const ripple = buttonElement.ripple;
+
+        if (ripple) {
+          ripple.handleFocus();
+        }
+
+        buttonElement.focus();
+      }
+    }
+
+    blur() {
+      const buttonElement = this.buttonElement;
+
+      if (buttonElement) {
+        const ripple = buttonElement.ripple;
+
+        if (ripple) {
+          ripple.handleBlur();
+        }
+
+        buttonElement.blur();
+      }
+    }
+
+    render() {
+      const classes = {
+        'mdc-button--raised': this.raised,
+        'mdc-button--unelevated': this.unelevated,
+        'mdc-button--outlined': this.outlined,
+        'mdc-button--dense': this.dense
+      };
+      const mdcButtonIcon = html`<span class="material-icons mdc-button__icon">${this.icon}</span>`;
+      const buttonRipple = ripple({
+        unbounded: false
+      });
+      return html`
+      <button
+          id="button"
+          .ripple="${buttonRipple}"
+          class="mdc-button ${classMap(classes)}"
+          ?disabled="${this.disabled}"
+          aria-label="${this.label || this.icon}">
+        <div class="mdc-button__ripple"></div>
+        ${this.icon && !this.trailingIcon ? mdcButtonIcon : ''}
+        <span class="mdc-button__label">${this.label}</span>
+        ${this.icon && this.trailingIcon ? mdcButtonIcon : ''}
+        <slot></slot>
+      </button>`;
+    }
+
+  }
+
+  __decorate([property({
+    type: Boolean
+  })], ButtonBase.prototype, "raised", void 0);
+
+  __decorate([property({
+    type: Boolean
+  })], ButtonBase.prototype, "unelevated", void 0);
+
+  __decorate([property({
+    type: Boolean
+  })], ButtonBase.prototype, "outlined", void 0);
+
+  __decorate([property({
+    type: Boolean
+  })], ButtonBase.prototype, "dense", void 0);
+
+  __decorate([property({
+    type: Boolean,
+    reflect: true
+  })], ButtonBase.prototype, "disabled", void 0);
+
+  __decorate([property({
+    type: Boolean
+  })], ButtonBase.prototype, "trailingIcon", void 0);
+
+  __decorate([property()], ButtonBase.prototype, "icon", void 0);
+
+  __decorate([property()], ButtonBase.prototype, "label", void 0);
+
+  __decorate([query('#button')], ButtonBase.prototype, "buttonElement", void 0);
+
+  /**
+  @license
+  Copyright 2018 Google Inc. All Rights Reserved.
+
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+      http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+  */
+  const style$2 = css`.mdc-touch-target-wrapper{display:inline}.mdc-elevation-overlay{position:absolute;border-radius:inherit;opacity:0;pointer-events:none;transition:opacity 280ms cubic-bezier(0.4, 0, 0.2, 1);background-color:#fff}.mdc-button{font-family:Roboto, sans-serif;-moz-osx-font-smoothing:grayscale;-webkit-font-smoothing:antialiased;font-size:.875rem;line-height:2.25rem;font-weight:500;letter-spacing:.0892857143em;text-decoration:none;text-transform:uppercase;padding:0 8px 0 8px;position:relative;display:inline-flex;align-items:center;justify-content:center;box-sizing:border-box;min-width:64px;border:none;outline:none;line-height:inherit;user-select:none;-webkit-appearance:none;overflow:visible;vertical-align:middle;border-radius:4px}.mdc-button .mdc-elevation-overlay{width:100%;height:100%;top:0;left:0}.mdc-button::-moz-focus-inner{padding:0;border:0}.mdc-button:active{outline:none}.mdc-button:hover{cursor:pointer}.mdc-button:disabled{cursor:default;pointer-events:none}.mdc-button .mdc-button__ripple{border-radius:4px}.mdc-button:not(:disabled){background-color:transparent}.mdc-button:disabled{background-color:transparent}.mdc-button .mdc-button__icon{margin-left:0;margin-right:8px;display:inline-block;width:18px;height:18px;font-size:18px;vertical-align:top}[dir=rtl] .mdc-button .mdc-button__icon,.mdc-button .mdc-button__icon[dir=rtl]{margin-left:8px;margin-right:0}.mdc-button .mdc-button__touch{position:absolute;top:50%;right:0;height:48px;left:0;transform:translateY(-50%)}.mdc-button:not(:disabled){color:#6200ee;color:var(--mdc-theme-primary, #6200ee)}.mdc-button:disabled{color:rgba(0,0,0,.38)}.mdc-button__label+.mdc-button__icon{margin-left:8px;margin-right:0}[dir=rtl] .mdc-button__label+.mdc-button__icon,.mdc-button__label+.mdc-button__icon[dir=rtl]{margin-left:0;margin-right:8px}svg.mdc-button__icon{fill:currentColor}.mdc-button--raised .mdc-button__icon,.mdc-button--unelevated .mdc-button__icon,.mdc-button--outlined .mdc-button__icon{margin-left:-4px;margin-right:8px}[dir=rtl] .mdc-button--raised .mdc-button__icon,.mdc-button--raised .mdc-button__icon[dir=rtl],[dir=rtl] .mdc-button--unelevated .mdc-button__icon,.mdc-button--unelevated .mdc-button__icon[dir=rtl],[dir=rtl] .mdc-button--outlined .mdc-button__icon,.mdc-button--outlined .mdc-button__icon[dir=rtl]{margin-left:8px;margin-right:-4px}.mdc-button--raised .mdc-button__label+.mdc-button__icon,.mdc-button--unelevated .mdc-button__label+.mdc-button__icon,.mdc-button--outlined .mdc-button__label+.mdc-button__icon{margin-left:8px;margin-right:-4px}[dir=rtl] .mdc-button--raised .mdc-button__label+.mdc-button__icon,.mdc-button--raised .mdc-button__label+.mdc-button__icon[dir=rtl],[dir=rtl] .mdc-button--unelevated .mdc-button__label+.mdc-button__icon,.mdc-button--unelevated .mdc-button__label+.mdc-button__icon[dir=rtl],[dir=rtl] .mdc-button--outlined .mdc-button__label+.mdc-button__icon,.mdc-button--outlined .mdc-button__label+.mdc-button__icon[dir=rtl]{margin-left:-4px;margin-right:8px}.mdc-button--raised,.mdc-button--unelevated{padding:0 16px 0 16px}.mdc-button--raised:not(:disabled),.mdc-button--unelevated:not(:disabled){background-color:#6200ee;background-color:var(--mdc-theme-primary, #6200ee)}.mdc-button--raised:not(:disabled),.mdc-button--unelevated:not(:disabled){color:#fff;color:var(--mdc-theme-on-primary, #fff)}.mdc-button--raised:disabled,.mdc-button--unelevated:disabled{background-color:rgba(0,0,0,.12)}.mdc-button--raised:disabled,.mdc-button--unelevated:disabled{color:rgba(0,0,0,.38)}.mdc-button--raised{box-shadow:0px 3px 1px -2px rgba(0, 0, 0, 0.2),0px 2px 2px 0px rgba(0, 0, 0, 0.14),0px 1px 5px 0px rgba(0,0,0,.12);transition:box-shadow 280ms cubic-bezier(0.4, 0, 0.2, 1)}.mdc-button--raised:hover,.mdc-button--raised:focus{box-shadow:0px 2px 4px -1px rgba(0, 0, 0, 0.2),0px 4px 5px 0px rgba(0, 0, 0, 0.14),0px 1px 10px 0px rgba(0,0,0,.12)}.mdc-button--raised:active{box-shadow:0px 5px 5px -3px rgba(0, 0, 0, 0.2),0px 8px 10px 1px rgba(0, 0, 0, 0.14),0px 3px 14px 2px rgba(0,0,0,.12)}.mdc-button--raised:disabled{box-shadow:0px 0px 0px 0px rgba(0, 0, 0, 0.2),0px 0px 0px 0px rgba(0, 0, 0, 0.14),0px 0px 0px 0px rgba(0,0,0,.12)}.mdc-button--outlined{padding:0 15px 0 15px;border-width:1px;border-style:solid}.mdc-button--outlined .mdc-button__ripple{top:-1px;left:-1px;border:1px solid transparent}.mdc-button--outlined:not(:disabled){border-color:rgba(0,0,0,.12)}.mdc-button--outlined:disabled{border-color:rgba(0,0,0,.12)}.mdc-button--touch{margin-top:6px;margin-bottom:6px}@keyframes mdc-ripple-fg-radius-in{from{animation-timing-function:cubic-bezier(0.4, 0, 0.2, 1);transform:translate(var(--mdc-ripple-fg-translate-start, 0)) scale(1)}to{transform:translate(var(--mdc-ripple-fg-translate-end, 0)) scale(var(--mdc-ripple-fg-scale, 1))}}@keyframes mdc-ripple-fg-opacity-in{from{animation-timing-function:linear;opacity:0}to{opacity:var(--mdc-ripple-fg-opacity, 0)}}@keyframes mdc-ripple-fg-opacity-out{from{animation-timing-function:linear;opacity:var(--mdc-ripple-fg-opacity, 0)}to{opacity:0}}.mdc-button{--mdc-ripple-fg-size: 0;--mdc-ripple-left: 0;--mdc-ripple-top: 0;--mdc-ripple-fg-scale: 1;--mdc-ripple-fg-translate-end: 0;--mdc-ripple-fg-translate-start: 0;-webkit-tap-highlight-color:rgba(0,0,0,0)}.mdc-button .mdc-button__ripple::before,.mdc-button .mdc-button__ripple::after{position:absolute;border-radius:50%;opacity:0;pointer-events:none;content:""}.mdc-button .mdc-button__ripple::before{transition:opacity 15ms linear,background-color 15ms linear;z-index:1}.mdc-button.mdc-ripple-upgraded .mdc-button__ripple::before{transform:scale(var(--mdc-ripple-fg-scale, 1))}.mdc-button.mdc-ripple-upgraded .mdc-button__ripple::after{top:0;left:0;transform:scale(0);transform-origin:center center}.mdc-button.mdc-ripple-upgraded--unbounded .mdc-button__ripple::after{top:var(--mdc-ripple-top, 0);left:var(--mdc-ripple-left, 0)}.mdc-button.mdc-ripple-upgraded--foreground-activation .mdc-button__ripple::after{animation:mdc-ripple-fg-radius-in 225ms forwards,mdc-ripple-fg-opacity-in 75ms forwards}.mdc-button.mdc-ripple-upgraded--foreground-deactivation .mdc-button__ripple::after{animation:mdc-ripple-fg-opacity-out 150ms;transform:translate(var(--mdc-ripple-fg-translate-end, 0)) scale(var(--mdc-ripple-fg-scale, 1))}.mdc-button .mdc-button__ripple::before,.mdc-button .mdc-button__ripple::after{top:calc(50% - 100%);left:calc(50% - 100%);width:200%;height:200%}.mdc-button.mdc-ripple-upgraded .mdc-button__ripple::after{width:var(--mdc-ripple-fg-size, 100%);height:var(--mdc-ripple-fg-size, 100%)}.mdc-button .mdc-button__ripple::before,.mdc-button .mdc-button__ripple::after{background-color:#6200ee;background-color:var(--mdc-theme-primary, #6200ee)}.mdc-button:hover .mdc-button__ripple::before{opacity:.04}.mdc-button.mdc-ripple-upgraded--background-focused .mdc-button__ripple::before,.mdc-button:not(.mdc-ripple-upgraded):focus .mdc-button__ripple::before{transition-duration:75ms;opacity:.12}.mdc-button:not(.mdc-ripple-upgraded) .mdc-button__ripple::after{transition:opacity 150ms linear}.mdc-button:not(.mdc-ripple-upgraded):active .mdc-button__ripple::after{transition-duration:75ms;opacity:.12}.mdc-button.mdc-ripple-upgraded{--mdc-ripple-fg-opacity: 0.12}.mdc-button .mdc-button__ripple{position:absolute;box-sizing:content-box;width:100%;height:100%;overflow:hidden}.mdc-button:not(.mdc-button--outlined) .mdc-button__ripple{top:0;left:0}.mdc-button--raised .mdc-button__ripple::before,.mdc-button--raised .mdc-button__ripple::after,.mdc-button--unelevated .mdc-button__ripple::before,.mdc-button--unelevated .mdc-button__ripple::after{background-color:#fff;background-color:var(--mdc-theme-on-primary, #fff)}.mdc-button--raised:hover .mdc-button__ripple::before,.mdc-button--unelevated:hover .mdc-button__ripple::before{opacity:.08}.mdc-button--raised.mdc-ripple-upgraded--background-focused .mdc-button__ripple::before,.mdc-button--raised:not(.mdc-ripple-upgraded):focus .mdc-button__ripple::before,.mdc-button--unelevated.mdc-ripple-upgraded--background-focused .mdc-button__ripple::before,.mdc-button--unelevated:not(.mdc-ripple-upgraded):focus .mdc-button__ripple::before{transition-duration:75ms;opacity:.24}.mdc-button--raised:not(.mdc-ripple-upgraded) .mdc-button__ripple::after,.mdc-button--unelevated:not(.mdc-ripple-upgraded) .mdc-button__ripple::after{transition:opacity 150ms linear}.mdc-button--raised:not(.mdc-ripple-upgraded):active .mdc-button__ripple::after,.mdc-button--unelevated:not(.mdc-ripple-upgraded):active .mdc-button__ripple::after{transition-duration:75ms;opacity:.24}.mdc-button--raised.mdc-ripple-upgraded,.mdc-button--unelevated.mdc-ripple-upgraded{--mdc-ripple-fg-opacity: 0.24}.mdc-button{height:36px}.material-icons{font-family:var(--mdc-icon-font, "Material Icons");font-weight:normal;font-style:normal;font-size:var(--mdc-icon-size, 24px);line-height:1;letter-spacing:normal;text-transform:none;display:inline-block;white-space:nowrap;word-wrap:normal;direction:ltr;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;-moz-osx-font-smoothing:grayscale;font-feature-settings:"liga"}:host{display:inline-flex;outline:none;vertical-align:top}:host([disabled]){pointer-events:none}.mdc-button{flex:auto;overflow:hidden;text-transform:var(--mdc-button-text-transform, uppercase);letter-spacing:var(--mdc-button-letter-spacing, 0.0892857143em);padding:0 var(--mdc-button-horizontal-padding, 8px) 0 var(--mdc-button-horizontal-padding, 8px)}.mdc-button.mdc-button--raised,.mdc-button.mdc-button--unelevated{padding:0 var(--mdc-button-horizontal-padding, 16px) 0 var(--mdc-button-horizontal-padding, 16px)}.mdc-button.mdc-button--outlined{padding:0 calc(var(--mdc-button-horizontal-padding, 16px) - var(--mdc-button-outline-width, 1px)) 0 calc(var(--mdc-button-horizontal-padding, 16px) - var(--mdc-button-outline-width, 1px));border-width:var(--mdc-button-outline-width, 1px);border-color:var(--mdc-button-outline-color, var(--mdc-theme-primary, #6200ee))}.mdc-button .mdc-button__ripple{border-radius:0}:host([disabled]) .mdc-button.mdc-button--raised,:host([disabled]) .mdc-button.mdc-button--unelevated{background-color:var(--mdc-button-disabled-fill-color, rgba(0, 0, 0, 0.12));color:var(--mdc-button-disabled-ink-color, rgba(0, 0, 0, 0.38))}:host([disabled]) .mdc-button:not(.mdc-button--raised):not(.mdc-button--unelevated){color:var(--mdc-button-disabled-ink-color, rgba(0, 0, 0, 0.38))}:host([disabled]) .mdc-button.mdc-button--outlined{border-color:var(--mdc-button-disabled-ink-color, rgba(0, 0, 0, 0.38));border-color:var(--mdc-button-disabled-outline-color, var(--mdc-button-disabled-ink-color, rgba(0, 0, 0, 0.38)))}`;
+
+  let Button = class Button extends ButtonBase {};
+  Button.styles = style$2;
+  Button = __decorate([customElement('mwc-button')], Button);
+
+  /**
+   * @license
+   * Copyright 2016 Google Inc. All rights reserved.
+   *
+   * Licensed under the Apache License, Version 2.0 (the "License");
+   * you may not use this file except in compliance with the License.
+   * You may obtain a copy of the License at
+   *
+   *     http://www.apache.org/licenses/LICENSE-2.0
+   *
+   * Unless required by applicable law or agreed to in writing, software
+   * distributed under the License is distributed on an "AS IS" BASIS,
+   * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   * See the License for the specific language governing permissions and
+   * limitations under the License.
+   */
+  (() => {
+    var _a, _b, _c;
+    /* Symbols for private properties */
+
+
+    const _blockingElements = Symbol();
+
+    const _alreadyInertElements = Symbol();
+
+    const _topElParents = Symbol();
+
+    const _siblingsToRestore = Symbol();
+
+    const _parentMO = Symbol();
+    /* Symbols for private static methods */
+
+
+    const _topChanged = Symbol();
+
+    const _swapInertedSibling = Symbol();
+
+    const _inertSiblings = Symbol();
+
+    const _restoreInertedSiblings = Symbol();
+
+    const _getParents = Symbol();
+
+    const _getDistributedChildren = Symbol();
+
+    const _isInertable = Symbol();
+
+    const _handleMutations = Symbol();
+
+    class BlockingElementsImpl {
+      constructor() {
+        /**
+         * The blocking elements.
+         */
+        this[_a] = [];
+        /**
+         * Used to keep track of the parents of the top element, from the element
+         * itself up to body. When top changes, the old top might have been removed
+         * from the document, so we need to memoize the inerted parents' siblings
+         * in order to restore their inerteness when top changes.
+         */
+
+        this[_b] = [];
+        /**
+         * Elements that are already inert before the first blocking element is
+         * pushed.
+         */
+
+        this[_c] = new Set();
+      }
+
+      destructor() {
+        // Restore original inertness.
+        this[_restoreInertedSiblings](this[_topElParents]); // Note we don't want to make these properties nullable on the class,
+        // since then we'd need non-null casts in many places. Calling a method on
+        // a BlockingElements instance after calling destructor will result in an
+        // exception.
+
+
+        const nullable = this;
+        nullable[_blockingElements] = null;
+        nullable[_topElParents] = null;
+        nullable[_alreadyInertElements] = null;
+      }
+
+      get top() {
+        const elems = this[_blockingElements];
+        return elems[elems.length - 1] || null;
+      }
+
+      push(element) {
+        if (!element || element === this.top) {
+          return;
+        } // Remove it from the stack, we'll bring it to the top.
+
+
+        this.remove(element);
+
+        this[_topChanged](element);
+
+        this[_blockingElements].push(element);
+      }
+
+      remove(element) {
+        const i = this[_blockingElements].indexOf(element);
+
+        if (i === -1) {
+          return false;
+        }
+
+        this[_blockingElements].splice(i, 1); // Top changed only if the removed element was the top element.
+
+
+        if (i === this[_blockingElements].length) {
+          this[_topChanged](this.top);
+        }
+
+        return true;
+      }
+
+      pop() {
+        const top = this.top;
+        top && this.remove(top);
+        return top;
+      }
+
+      has(element) {
+        return this[_blockingElements].indexOf(element) !== -1;
+      }
+      /**
+       * Sets `inert` to all document elements except the new top element, its
+       * parents, and its distributed content.
+       */
+
+
+      [(_a = _blockingElements, _b = _topElParents, _c = _alreadyInertElements, _topChanged)](newTop) {
+        const toKeepInert = this[_alreadyInertElements];
+        const oldParents = this[_topElParents]; // No new top, reset old top if any.
+
+        if (!newTop) {
+          this[_restoreInertedSiblings](oldParents);
+
+          toKeepInert.clear();
+          this[_topElParents] = [];
+          return;
+        }
+
+        const newParents = this[_getParents](newTop); // New top is not contained in the main document!
+
+
+        if (newParents[newParents.length - 1].parentNode !== document.body) {
+          throw Error('Non-connected element cannot be a blocking element');
+        } // Cast here because we know we'll call _inertSiblings on newParents
+        // below.
+
+
+        this[_topElParents] = newParents;
+
+        const toSkip = this[_getDistributedChildren](newTop); // No previous top element.
+
+
+        if (!oldParents.length) {
+          this[_inertSiblings](newParents, toSkip, toKeepInert);
+
+          return;
+        }
+
+        let i = oldParents.length - 1;
+        let j = newParents.length - 1; // Find common parent. Index 0 is the element itself (so stop before it).
+
+        while (i > 0 && j > 0 && oldParents[i] === newParents[j]) {
+          i--;
+          j--;
+        } // If up the parents tree there are 2 elements that are siblings, swap
+        // the inerted sibling.
+
+
+        if (oldParents[i] !== newParents[j]) {
+          this[_swapInertedSibling](oldParents[i], newParents[j]);
+        } // Restore old parents siblings inertness.
+
+
+        i > 0 && this[_restoreInertedSiblings](oldParents.slice(0, i)); // Make new parents siblings inert.
+
+        j > 0 && this[_inertSiblings](newParents.slice(0, j), toSkip, null);
+      }
+      /**
+       * Swaps inertness between two sibling elements.
+       * Sets the property `inert` over the attribute since the inert spec
+       * doesn't specify if it should be reflected.
+       * https://html.spec.whatwg.org/multipage/interaction.html#inert
+       */
+
+
+      [_swapInertedSibling](oldInert, newInert) {
+        const siblingsToRestore = oldInert[_siblingsToRestore]; // oldInert is not contained in siblings to restore, so we have to check
+        // if it's inertable and if already inert.
+
+        if (this[_isInertable](oldInert) && !oldInert.inert) {
+          oldInert.inert = true;
+          siblingsToRestore.add(oldInert);
+        } // If newInert was already between the siblings to restore, it means it is
+        // inertable and must be restored.
+
+
+        if (siblingsToRestore.has(newInert)) {
+          newInert.inert = false;
+          siblingsToRestore.delete(newInert);
+        }
+
+        newInert[_parentMO] = oldInert[_parentMO];
+        newInert[_siblingsToRestore] = siblingsToRestore;
+        oldInert[_parentMO] = undefined;
+        oldInert[_siblingsToRestore] = undefined;
+      }
+      /**
+       * Restores original inertness to the siblings of the elements.
+       * Sets the property `inert` over the attribute since the inert spec
+       * doesn't specify if it should be reflected.
+       * https://html.spec.whatwg.org/multipage/interaction.html#inert
+       */
+
+
+      [_restoreInertedSiblings](elements) {
+        for (const element of elements) {
+          const mo = element[_parentMO];
+          mo.disconnect();
+          element[_parentMO] = undefined;
+          const siblings = element[_siblingsToRestore];
+
+          for (const sibling of siblings) {
+            sibling.inert = false;
+          }
+
+          element[_siblingsToRestore] = undefined;
+        }
+      }
+      /**
+       * Inerts the siblings of the elements except the elements to skip. Stores
+       * the inerted siblings into the element's symbol `_siblingsToRestore`.
+       * Pass `toKeepInert` to collect the already inert elements.
+       * Sets the property `inert` over the attribute since the inert spec
+       * doesn't specify if it should be reflected.
+       * https://html.spec.whatwg.org/multipage/interaction.html#inert
+       */
+
+
+      [_inertSiblings](elements, toSkip, toKeepInert) {
+        for (const element of elements) {
+          // Assume element is not a Document, so it must have a parentNode.
+          const parent = element.parentNode;
+          const children = parent.children;
+          const inertedSiblings = new Set();
+
+          for (let j = 0; j < children.length; j++) {
+            const sibling = children[j]; // Skip the input element, if not inertable or to be skipped.
+
+            if (sibling === element || !this[_isInertable](sibling) || toSkip && toSkip.has(sibling)) {
+              continue;
+            } // Should be collected since already inerted.
+
+
+            if (toKeepInert && sibling.inert) {
+              toKeepInert.add(sibling);
+            } else {
+              sibling.inert = true;
+              inertedSiblings.add(sibling);
+            }
+          } // Store the siblings that were inerted.
+
+
+          element[_siblingsToRestore] = inertedSiblings; // Observe only immediate children mutations on the parent.
+
+          const mo = new MutationObserver(this[_handleMutations].bind(this));
+          element[_parentMO] = mo;
+          let parentToObserve = parent; // If we're using the ShadyDOM polyfill, then our parent could be a
+          // shady root, which is an object that acts like a ShadowRoot, but isn't
+          // actually a node in the real DOM. Observe the real DOM parent instead.
+
+          const maybeShadyRoot = parentToObserve;
+
+          if (maybeShadyRoot.__shady && maybeShadyRoot.host) {
+            parentToObserve = maybeShadyRoot.host;
+          }
+
+          mo.observe(parentToObserve, {
+            childList: true
+          });
+        }
+      }
+      /**
+       * Handles newly added/removed nodes by toggling their inertness.
+       * It also checks if the current top Blocking Element has been removed,
+       * notifying and removing it.
+       */
+
+
+      [_handleMutations](mutations) {
+        const parents = this[_topElParents];
+        const toKeepInert = this[_alreadyInertElements];
+
+        for (const mutation of mutations) {
+          // If the target is a shadowRoot, get its host as we skip shadowRoots when
+          // computing _topElParents.
+          const target = mutation.target.host || mutation.target;
+          const idx = target === document.body ? parents.length : parents.indexOf(target);
+          const inertedChild = parents[idx - 1];
+          const inertedSiblings = inertedChild[_siblingsToRestore]; // To restore.
+
+          for (let i = 0; i < mutation.removedNodes.length; i++) {
+            const sibling = mutation.removedNodes[i];
+
+            if (sibling === inertedChild) {
+              console.info('Detected removal of the top Blocking Element.');
+              this.pop();
+              return;
+            }
+
+            if (inertedSiblings.has(sibling)) {
+              sibling.inert = false;
+              inertedSiblings.delete(sibling);
+            }
+          } // To inert.
+
+
+          for (let i = 0; i < mutation.addedNodes.length; i++) {
+            const sibling = mutation.addedNodes[i];
+
+            if (!this[_isInertable](sibling)) {
+              continue;
+            }
+
+            if (toKeepInert && sibling.inert) {
+              toKeepInert.add(sibling);
+            } else {
+              sibling.inert = true;
+              inertedSiblings.add(sibling);
+            }
+          }
+        }
+      }
+      /**
+       * Returns if the element is inertable.
+       */
+
+
+      [_isInertable](element) {
+        return false === /^(style|template|script)$/.test(element.localName);
+      }
+      /**
+       * Returns the list of newParents of an element, starting from element
+       * (included) up to `document.body` (excluded).
+       */
+
+
+      [_getParents](element) {
+        const parents = [];
+        let current = element; // Stop to body.
+
+        while (current && current !== document.body) {
+          // Skip shadow roots.
+          if (current.nodeType === Node.ELEMENT_NODE) {
+            parents.push(current);
+          } // ShadowDom v1
+
+
+          if (current.assignedSlot) {
+            // Collect slots from deepest slot to top.
+            while (current = current.assignedSlot) {
+              parents.push(current);
+            } // Continue the search on the top slot.
+
+
+            current = parents.pop();
+            continue;
+          }
+
+          current = current.parentNode || current.host;
+        }
+
+        return parents;
+      }
+      /**
+       * Returns the distributed children of the element's shadow root.
+       * Returns null if the element doesn't have a shadow root.
+       */
+
+
+      [_getDistributedChildren](element) {
+        const shadowRoot = element.shadowRoot;
+
+        if (!shadowRoot) {
+          return null;
+        }
+
+        const result = new Set();
+        let i;
+        let j;
+        let nodes;
+        const slots = shadowRoot.querySelectorAll('slot');
+
+        if (slots.length && slots[0].assignedNodes) {
+          for (i = 0; i < slots.length; i++) {
+            nodes = slots[i].assignedNodes({
+              flatten: true
+            });
+
+            for (j = 0; j < nodes.length; j++) {
+              if (nodes[j].nodeType === Node.ELEMENT_NODE) {
+                result.add(nodes[j]);
+              }
+            }
+          } // No need to search for <content>.
+
+        }
+
+        return result;
+      }
+
+    }
+
+    document.$blockingElements = new BlockingElementsImpl();
+  })();
+
+  /**
+   * This work is licensed under the W3C Software and Document License
+   * (http://www.w3.org/Consortium/Legal/2015/copyright-software-and-document).
+   */
+  // Convenience function for converting NodeLists.
+
+  /** @type {typeof Array.prototype.slice} */
+  const slice = Array.prototype.slice;
+  /**
+   * IE has a non-standard name for "matches".
+   * @type {typeof Element.prototype.matches}
+   */
+
+  const matches$1 = Element.prototype.matches || Element.prototype.msMatchesSelector;
+  /** @type {string} */
+
+  const _focusableElementsString = ['a[href]', 'area[href]', 'input:not([disabled])', 'select:not([disabled])', 'textarea:not([disabled])', 'button:not([disabled])', 'iframe', 'object', 'embed', '[contenteditable]'].join(',');
+  /**
+   * `InertRoot` manages a single inert subtree, i.e. a DOM subtree whose root element has an `inert`
+   * attribute.
+   *
+   * Its main functions are:
+   *
+   * - to create and maintain a set of managed `InertNode`s, including when mutations occur in the
+   *   subtree. The `makeSubtreeUnfocusable()` method handles collecting `InertNode`s via registering
+   *   each focusable node in the subtree with the singleton `InertManager` which manages all known
+   *   focusable nodes within inert subtrees. `InertManager` ensures that a single `InertNode`
+   *   instance exists for each focusable node which has at least one inert root as an ancestor.
+   *
+   * - to notify all managed `InertNode`s when this subtree stops being inert (i.e. when the `inert`
+   *   attribute is removed from the root node). This is handled in the destructor, which calls the
+   *   `deregister` method on `InertManager` for each managed inert node.
+   */
+
+
+  class InertRoot {
+    /**
+     * @param {!Element} rootElement The Element at the root of the inert subtree.
+     * @param {!InertManager} inertManager The global singleton InertManager object.
+     */
+    constructor(rootElement, inertManager) {
+      /** @type {!InertManager} */
+      this._inertManager = inertManager;
+      /** @type {!Element} */
+
+      this._rootElement = rootElement;
+      /**
+       * @type {!Set<!InertNode>}
+       * All managed focusable nodes in this InertRoot's subtree.
+       */
+
+      this._managedNodes = new Set(); // Make the subtree hidden from assistive technology
+
+      if (this._rootElement.hasAttribute('aria-hidden')) {
+        /** @type {?string} */
+        this._savedAriaHidden = this._rootElement.getAttribute('aria-hidden');
+      } else {
+        this._savedAriaHidden = null;
+      }
+
+      this._rootElement.setAttribute('aria-hidden', 'true'); // Make all focusable elements in the subtree unfocusable and add them to _managedNodes
+
+
+      this._makeSubtreeUnfocusable(this._rootElement); // Watch for:
+      // - any additions in the subtree: make them unfocusable too
+      // - any removals from the subtree: remove them from this inert root's managed nodes
+      // - attribute changes: if `tabindex` is added, or removed from an intrinsically focusable
+      //   element, make that node a managed node.
+
+
+      this._observer = new MutationObserver(this._onMutation.bind(this));
+
+      this._observer.observe(this._rootElement, {
+        attributes: true,
+        childList: true,
+        subtree: true
+      });
+    }
+    /**
+     * Call this whenever this object is about to become obsolete.  This unwinds all of the state
+     * stored in this object and updates the state of all of the managed nodes.
+     */
+
+
+    destructor() {
+      this._observer.disconnect();
+
+      if (this._rootElement) {
+        if (this._savedAriaHidden !== null) {
+          this._rootElement.setAttribute('aria-hidden', this._savedAriaHidden);
+        } else {
+          this._rootElement.removeAttribute('aria-hidden');
+        }
+      }
+
+      this._managedNodes.forEach(function (inertNode) {
+        this._unmanageNode(inertNode.node);
+      }, this); // Note we cast the nulls to the ANY type here because:
+      // 1) We want the class properties to be declared as non-null, or else we
+      //    need even more casts throughout this code. All bets are off if an
+      //    instance has been destroyed and a method is called.
+      // 2) We don't want to cast "this", because we want type-aware optimizations
+      //    to know which properties we're setting.
+
+
+      this._observer =
+      /** @type {?} */
+      null;
+      this._rootElement =
+      /** @type {?} */
+      null;
+      this._managedNodes =
+      /** @type {?} */
+      null;
+      this._inertManager =
+      /** @type {?} */
+      null;
+    }
+    /**
+     * @return {!Set<!InertNode>} A copy of this InertRoot's managed nodes set.
+     */
+
+
+    get managedNodes() {
+      return new Set(this._managedNodes);
+    }
+    /** @return {boolean} */
+
+
+    get hasSavedAriaHidden() {
+      return this._savedAriaHidden !== null;
+    }
+    /** @param {?string} ariaHidden */
+
+
+    set savedAriaHidden(ariaHidden) {
+      this._savedAriaHidden = ariaHidden;
+    }
+    /** @return {?string} */
+
+
+    get savedAriaHidden() {
+      return this._savedAriaHidden;
+    }
+    /**
+     * @param {!Node} startNode
+     */
+
+
+    _makeSubtreeUnfocusable(startNode) {
+      composedTreeWalk(startNode, node => this._visitNode(node));
+      let activeElement = document.activeElement;
+
+      if (!document.body.contains(startNode)) {
+        // startNode may be in shadow DOM, so find its nearest shadowRoot to get the activeElement.
+        let node = startNode;
+        /** @type {!ShadowRoot|undefined} */
+
+        let root = undefined;
+
+        while (node) {
+          if (node.nodeType === Node.DOCUMENT_FRAGMENT_NODE) {
+            root =
+            /** @type {!ShadowRoot} */
+            node;
+            break;
+          }
+
+          node = node.parentNode;
+        }
+
+        if (root) {
+          activeElement = root.activeElement;
+        }
+      }
+
+      if (startNode.contains(activeElement)) {
+        activeElement.blur(); // In IE11, if an element is already focused, and then set to tabindex=-1
+        // calling blur() will not actually move the focus.
+        // To work around this we call focus() on the body instead.
+
+        if (activeElement === document.activeElement) {
+          document.body.focus();
+        }
+      }
+    }
+    /**
+     * @param {!Node} node
+     */
+
+
+    _visitNode(node) {
+      if (node.nodeType !== Node.ELEMENT_NODE) {
+        return;
+      }
+
+      const element =
+      /** @type {!Element} */
+      node; // If a descendant inert root becomes un-inert, its descendants will still be inert because of
+      // this inert root, so all of its managed nodes need to be adopted by this InertRoot.
+
+      if (element !== this._rootElement && element.hasAttribute('inert')) {
+        this._adoptInertRoot(element);
+      }
+
+      if (matches$1.call(element, _focusableElementsString) || element.hasAttribute('tabindex')) {
+        this._manageNode(element);
+      }
+    }
+    /**
+     * Register the given node with this InertRoot and with InertManager.
+     * @param {!Node} node
+     */
+
+
+    _manageNode(node) {
+      const inertNode = this._inertManager.register(node, this);
+
+      this._managedNodes.add(inertNode);
+    }
+    /**
+     * Unregister the given node with this InertRoot and with InertManager.
+     * @param {!Node} node
+     */
+
+
+    _unmanageNode(node) {
+      const inertNode = this._inertManager.deregister(node, this);
+
+      if (inertNode) {
+        this._managedNodes.delete(inertNode);
+      }
+    }
+    /**
+     * Unregister the entire subtree starting at `startNode`.
+     * @param {!Node} startNode
+     */
+
+
+    _unmanageSubtree(startNode) {
+      composedTreeWalk(startNode, node => this._unmanageNode(node));
+    }
+    /**
+     * If a descendant node is found with an `inert` attribute, adopt its managed nodes.
+     * @param {!Element} node
+     */
+
+
+    _adoptInertRoot(node) {
+      let inertSubroot = this._inertManager.getInertRoot(node); // During initialisation this inert root may not have been registered yet,
+      // so register it now if need be.
+
+
+      if (!inertSubroot) {
+        this._inertManager.setInert(node, true);
+
+        inertSubroot = this._inertManager.getInertRoot(node);
+      }
+
+      inertSubroot.managedNodes.forEach(function (savedInertNode) {
+        this._manageNode(savedInertNode.node);
+      }, this);
+    }
+    /**
+     * Callback used when mutation observer detects subtree additions, removals, or attribute changes.
+     * @param {!Array<!MutationRecord>} records
+     * @param {!MutationObserver} self
+     */
+
+
+    _onMutation(records, self) {
+      records.forEach(function (record) {
+        const target =
+        /** @type {!Element} */
+        record.target;
+
+        if (record.type === 'childList') {
+          // Manage added nodes
+          slice.call(record.addedNodes).forEach(function (node) {
+            this._makeSubtreeUnfocusable(node);
+          }, this); // Un-manage removed nodes
+
+          slice.call(record.removedNodes).forEach(function (node) {
+            this._unmanageSubtree(node);
+          }, this);
+        } else if (record.type === 'attributes') {
+          if (record.attributeName === 'tabindex') {
+            // Re-initialise inert node if tabindex changes
+            this._manageNode(target);
+          } else if (target !== this._rootElement && record.attributeName === 'inert' && target.hasAttribute('inert')) {
+            // If a new inert root is added, adopt its managed nodes and make sure it knows about the
+            // already managed nodes from this inert subroot.
+            this._adoptInertRoot(target);
+
+            const inertSubroot = this._inertManager.getInertRoot(target);
+
+            this._managedNodes.forEach(function (managedNode) {
+              if (target.contains(managedNode.node)) {
+                inertSubroot._manageNode(managedNode.node);
+              }
+            });
+          }
+        }
+      }, this);
+    }
+
+  }
+  /**
+   * `InertNode` initialises and manages a single inert node.
+   * A node is inert if it is a descendant of one or more inert root elements.
+   *
+   * On construction, `InertNode` saves the existing `tabindex` value for the node, if any, and
+   * either removes the `tabindex` attribute or sets it to `-1`, depending on whether the element
+   * is intrinsically focusable or not.
+   *
+   * `InertNode` maintains a set of `InertRoot`s which are descendants of this `InertNode`. When an
+   * `InertRoot` is destroyed, and calls `InertManager.deregister()`, the `InertManager` notifies the
+   * `InertNode` via `removeInertRoot()`, which in turn destroys the `InertNode` if no `InertRoot`s
+   * remain in the set. On destruction, `InertNode` reinstates the stored `tabindex` if one exists,
+   * or removes the `tabindex` attribute if the element is intrinsically focusable.
+   */
+
+
+  class InertNode {
+    /**
+     * @param {!Node} node A focusable element to be made inert.
+     * @param {!InertRoot} inertRoot The inert root element associated with this inert node.
+     */
+    constructor(node, inertRoot) {
+      /** @type {!Node} */
+      this._node = node;
+      /** @type {boolean} */
+
+      this._overrodeFocusMethod = false;
+      /**
+       * @type {!Set<!InertRoot>} The set of descendant inert roots.
+       *    If and only if this set becomes empty, this node is no longer inert.
+       */
+
+      this._inertRoots = new Set([inertRoot]);
+      /** @type {?number} */
+
+      this._savedTabIndex = null;
+      /** @type {boolean} */
+
+      this._destroyed = false; // Save any prior tabindex info and make this node untabbable
+
+      this.ensureUntabbable();
+    }
+    /**
+     * Call this whenever this object is about to become obsolete.
+     * This makes the managed node focusable again and deletes all of the previously stored state.
+     */
+
+
+    destructor() {
+      this._throwIfDestroyed();
+
+      if (this._node && this._node.nodeType === Node.ELEMENT_NODE) {
+        const element =
+        /** @type {!Element} */
+        this._node;
+
+        if (this._savedTabIndex !== null) {
+          element.setAttribute('tabindex', this._savedTabIndex);
+        } else {
+          element.removeAttribute('tabindex');
+        } // Use `delete` to restore native focus method.
+
+
+        if (this._overrodeFocusMethod) {
+          delete element.focus;
+        }
+      } // See note in InertRoot.destructor for why we cast these nulls to ANY.
+
+
+      this._node =
+      /** @type {?} */
+      null;
+      this._inertRoots =
+      /** @type {?} */
+      null;
+      this._destroyed = true;
+    }
+    /**
+     * @type {boolean} Whether this object is obsolete because the managed node is no longer inert.
+     * If the object has been destroyed, any attempt to access it will cause an exception.
+     */
+
+
+    get destroyed() {
+      return (
+        /** @type {!InertNode} */
+        this._destroyed
+      );
+    }
+    /**
+     * Throw if user tries to access destroyed InertNode.
+     */
+
+
+    _throwIfDestroyed() {
+      if (this.destroyed) {
+        throw new Error('Trying to access destroyed InertNode');
+      }
+    }
+    /** @return {boolean} */
+
+
+    get hasSavedTabIndex() {
+      return this._savedTabIndex !== null;
+    }
+    /** @return {!Node} */
+
+
+    get node() {
+      this._throwIfDestroyed();
+
+      return this._node;
+    }
+    /** @param {?number} tabIndex */
+
+
+    set savedTabIndex(tabIndex) {
+      this._throwIfDestroyed();
+
+      this._savedTabIndex = tabIndex;
+    }
+    /** @return {?number} */
+
+
+    get savedTabIndex() {
+      this._throwIfDestroyed();
+
+      return this._savedTabIndex;
+    }
+    /** Save the existing tabindex value and make the node untabbable and unfocusable */
+
+
+    ensureUntabbable() {
+      if (this.node.nodeType !== Node.ELEMENT_NODE) {
+        return;
+      }
+
+      const element =
+      /** @type {!Element} */
+      this.node;
+
+      if (matches$1.call(element, _focusableElementsString)) {
+        if (
+        /** @type {!HTMLElement} */
+        element.tabIndex === -1 && this.hasSavedTabIndex) {
+          return;
+        }
+
+        if (element.hasAttribute('tabindex')) {
+          this._savedTabIndex =
+          /** @type {!HTMLElement} */
+          element.tabIndex;
+        }
+
+        element.setAttribute('tabindex', '-1');
+
+        if (element.nodeType === Node.ELEMENT_NODE) {
+          element.focus = function () {};
+
+          this._overrodeFocusMethod = true;
+        }
+      } else if (element.hasAttribute('tabindex')) {
+        this._savedTabIndex =
+        /** @type {!HTMLElement} */
+        element.tabIndex;
+        element.removeAttribute('tabindex');
+      }
+    }
+    /**
+     * Add another inert root to this inert node's set of managing inert roots.
+     * @param {!InertRoot} inertRoot
+     */
+
+
+    addInertRoot(inertRoot) {
+      this._throwIfDestroyed();
+
+      this._inertRoots.add(inertRoot);
+    }
+    /**
+     * Remove the given inert root from this inert node's set of managing inert roots.
+     * If the set of managing inert roots becomes empty, this node is no longer inert,
+     * so the object should be destroyed.
+     * @param {!InertRoot} inertRoot
+     */
+
+
+    removeInertRoot(inertRoot) {
+      this._throwIfDestroyed();
+
+      this._inertRoots.delete(inertRoot);
+
+      if (this._inertRoots.size === 0) {
+        this.destructor();
+      }
+    }
+
+  }
+  /**
+   * InertManager is a per-document singleton object which manages all inert roots and nodes.
+   *
+   * When an element becomes an inert root by having an `inert` attribute set and/or its `inert`
+   * property set to `true`, the `setInert` method creates an `InertRoot` object for the element.
+   * The `InertRoot` in turn registers itself as managing all of the element's focusable descendant
+   * nodes via the `register()` method. The `InertManager` ensures that a single `InertNode` instance
+   * is created for each such node, via the `_managedNodes` map.
+   */
+
+
+  class InertManager {
+    /**
+     * @param {!Document} document
+     */
+    constructor(document) {
+      if (!document) {
+        throw new Error('Missing required argument; InertManager needs to wrap a document.');
+      }
+      /** @type {!Document} */
+
+
+      this._document = document;
+      /**
+       * All managed nodes known to this InertManager. In a map to allow looking up by Node.
+       * @type {!Map<!Node, !InertNode>}
+       */
+
+      this._managedNodes = new Map();
+      /**
+       * All inert roots known to this InertManager. In a map to allow looking up by Node.
+       * @type {!Map<!Node, !InertRoot>}
+       */
+
+      this._inertRoots = new Map();
+      /**
+       * Observer for mutations on `document.body`.
+       * @type {!MutationObserver}
+       */
+
+      this._observer = new MutationObserver(this._watchForInert.bind(this)); // Add inert style.
+
+      addInertStyle(document.head || document.body || document.documentElement); // Wait for document to be loaded.
+
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', this._onDocumentLoaded.bind(this));
+      } else {
+        this._onDocumentLoaded();
+      }
+    }
+    /**
+     * Set whether the given element should be an inert root or not.
+     * @param {!Element} root
+     * @param {boolean} inert
+     */
+
+
+    setInert(root, inert) {
+      if (inert) {
+        if (this._inertRoots.has(root)) {
+          // element is already inert
+          return;
+        }
+
+        const inertRoot = new InertRoot(root, this);
+        root.setAttribute('inert', '');
+
+        this._inertRoots.set(root, inertRoot); // If not contained in the document, it must be in a shadowRoot.
+        // Ensure inert styles are added there.
+
+
+        if (!this._document.body.contains(root)) {
+          let parent = root.parentNode;
+
+          while (parent) {
+            if (parent.nodeType === 11) {
+              addInertStyle(parent);
+            }
+
+            parent = parent.parentNode;
+          }
+        }
+      } else {
+        if (!this._inertRoots.has(root)) {
+          // element is already non-inert
+          return;
+        }
+
+        const inertRoot = this._inertRoots.get(root);
+
+        inertRoot.destructor();
+
+        this._inertRoots.delete(root);
+
+        root.removeAttribute('inert');
+      }
+    }
+    /**
+     * Get the InertRoot object corresponding to the given inert root element, if any.
+     * @param {!Node} element
+     * @return {!InertRoot|undefined}
+     */
+
+
+    getInertRoot(element) {
+      return this._inertRoots.get(element);
+    }
+    /**
+     * Register the given InertRoot as managing the given node.
+     * In the case where the node has a previously existing inert root, this inert root will
+     * be added to its set of inert roots.
+     * @param {!Node} node
+     * @param {!InertRoot} inertRoot
+     * @return {!InertNode} inertNode
+     */
+
+
+    register(node, inertRoot) {
+      let inertNode = this._managedNodes.get(node);
+
+      if (inertNode !== undefined) {
+        // node was already in an inert subtree
+        inertNode.addInertRoot(inertRoot);
+      } else {
+        inertNode = new InertNode(node, inertRoot);
+      }
+
+      this._managedNodes.set(node, inertNode);
+
+      return inertNode;
+    }
+    /**
+     * De-register the given InertRoot as managing the given inert node.
+     * Removes the inert root from the InertNode's set of managing inert roots, and remove the inert
+     * node from the InertManager's set of managed nodes if it is destroyed.
+     * If the node is not currently managed, this is essentially a no-op.
+     * @param {!Node} node
+     * @param {!InertRoot} inertRoot
+     * @return {?InertNode} The potentially destroyed InertNode associated with this node, if any.
+     */
+
+
+    deregister(node, inertRoot) {
+      const inertNode = this._managedNodes.get(node);
+
+      if (!inertNode) {
+        return null;
+      }
+
+      inertNode.removeInertRoot(inertRoot);
+
+      if (inertNode.destroyed) {
+        this._managedNodes.delete(node);
+      }
+
+      return inertNode;
+    }
+    /**
+     * Callback used when document has finished loading.
+     */
+
+
+    _onDocumentLoaded() {
+      // Find all inert roots in document and make them actually inert.
+      const inertElements = slice.call(this._document.querySelectorAll('[inert]'));
+      inertElements.forEach(function (inertElement) {
+        this.setInert(inertElement, true);
+      }, this); // Comment this out to use programmatic API only.
+
+      this._observer.observe(this._document.body, {
+        attributes: true,
+        subtree: true,
+        childList: true
+      });
+    }
+    /**
+     * Callback used when mutation observer detects attribute changes.
+     * @param {!Array<!MutationRecord>} records
+     * @param {!MutationObserver} self
+     */
+
+
+    _watchForInert(records, self) {
+      const _this = this;
+
+      records.forEach(function (record) {
+        switch (record.type) {
+          case 'childList':
+            slice.call(record.addedNodes).forEach(function (node) {
+              if (node.nodeType !== Node.ELEMENT_NODE) {
+                return;
+              }
+
+              const inertElements = slice.call(node.querySelectorAll('[inert]'));
+
+              if (matches$1.call(node, '[inert]')) {
+                inertElements.unshift(node);
+              }
+
+              inertElements.forEach(function (inertElement) {
+                this.setInert(inertElement, true);
+              }, _this);
+            }, _this);
+            break;
+
+          case 'attributes':
+            if (record.attributeName !== 'inert') {
+              return;
+            }
+
+            const target =
+            /** @type {!Element} */
+            record.target;
+            const inert = target.hasAttribute('inert');
+
+            _this.setInert(target, inert);
+
+            break;
+        }
+      }, this);
+    }
+
+  }
+  /**
+   * Recursively walk the composed tree from |node|.
+   * @param {!Node} node
+   * @param {(function (!Element))=} callback Callback to be called for each element traversed,
+   *     before descending into child nodes.
+   * @param {?ShadowRoot=} shadowRootAncestor The nearest ShadowRoot ancestor, if any.
+   */
+
+
+  function composedTreeWalk(node, callback, shadowRootAncestor) {
+    if (node.nodeType == Node.ELEMENT_NODE) {
+      const element =
+      /** @type {!Element} */
+      node;
+
+      if (callback) {
+        callback(element);
+      } // Descend into node:
+      // If it has a ShadowRoot, ignore all child elements - these will be picked
+      // up by the <content> or <shadow> elements. Descend straight into the
+      // ShadowRoot.
+
+
+      const shadowRoot =
+      /** @type {!HTMLElement} */
+      element.shadowRoot;
+
+      if (shadowRoot) {
+        composedTreeWalk(shadowRoot, callback);
+        return;
+      } // If it is a <content> element, descend into distributed elements - these
+      // are elements from outside the shadow root which are rendered inside the
+      // shadow DOM.
+
+
+      if (element.localName == 'content') {
+        const content =
+        /** @type {!HTMLContentElement} */
+        element; // Verifies if ShadowDom v0 is supported.
+
+        const distributedNodes = content.getDistributedNodes ? content.getDistributedNodes() : [];
+
+        for (let i = 0; i < distributedNodes.length; i++) {
+          composedTreeWalk(distributedNodes[i], callback);
+        }
+
+        return;
+      } // If it is a <slot> element, descend into assigned nodes - these
+      // are elements from outside the shadow root which are rendered inside the
+      // shadow DOM.
+
+
+      if (element.localName == 'slot') {
+        const slot =
+        /** @type {!HTMLSlotElement} */
+        element; // Verify if ShadowDom v1 is supported.
+
+        const distributedNodes = slot.assignedNodes ? slot.assignedNodes({
+          flatten: true
+        }) : [];
+
+        for (let i = 0; i < distributedNodes.length; i++) {
+          composedTreeWalk(distributedNodes[i], callback);
+        }
+
+        return;
+      }
+    } // If it is neither the parent of a ShadowRoot, a <content> element, a <slot>
+    // element, nor a <shadow> element recurse normally.
+
+
+    let child = node.firstChild;
+
+    while (child != null) {
+      composedTreeWalk(child, callback);
+      child = child.nextSibling;
+    }
+  }
+  /**
+   * Adds a style element to the node containing the inert specific styles
+   * @param {!Node} node
+   */
+
+
+  function addInertStyle(node) {
+    if (node.querySelector('style#inert-style')) {
+      return;
+    }
+
+    const style = document.createElement('style');
+    style.setAttribute('id', 'inert-style');
+    style.textContent = '\n' + '[inert] {\n' + '  pointer-events: none;\n' + '  cursor: default;\n' + '}\n' + '\n' + '[inert], [inert] * {\n' + '  user-select: none;\n' + '  -webkit-user-select: none;\n' + '  -moz-user-select: none;\n' + '  -ms-user-select: none;\n' + '}\n';
+    node.appendChild(style);
+  }
+  /** @type {!InertManager} */
+
+
+  const inertManager = new InertManager(document);
+
+  if (!Element.prototype.hasOwnProperty('inert')) {
+    Object.defineProperty(Element.prototype, 'inert', {
+      enumerable: true,
+
+      /** @this {!Element} */
+      get: function () {
+        return this.hasAttribute('inert');
+      },
+
+      /** @this {!Element} */
+      set: function (inert) {
+        inertManager.setInert(this, inert);
+      }
+    });
+  }
+
+  /**
+   * @license
+   * Copyright 2016 Google Inc.
+   *
+   * Permission is hereby granted, free of charge, to any person obtaining a copy
+   * of this software and associated documentation files (the "Software"), to deal
+   * in the Software without restriction, including without limitation the rights
+   * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+   * copies of the Software, and to permit persons to whom the Software is
+   * furnished to do so, subject to the following conditions:
+   *
+   * The above copyright notice and this permission notice shall be included in
+   * all copies or substantial portions of the Software.
+   *
+   * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+   * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+   * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+   * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+   * THE SOFTWARE.
+   */
+  var cssClasses$1 = {
+    CLOSING: 'mdc-dialog--closing',
+    OPEN: 'mdc-dialog--open',
+    OPENING: 'mdc-dialog--opening',
+    SCROLLABLE: 'mdc-dialog--scrollable',
+    SCROLL_LOCK: 'mdc-dialog-scroll-lock',
+    STACKED: 'mdc-dialog--stacked'
+  };
+  var strings$1 = {
+    ACTION_ATTRIBUTE: 'data-mdc-dialog-action',
+    BUTTON_DEFAULT_ATTRIBUTE: 'data-mdc-dialog-button-default',
+    BUTTON_SELECTOR: '.mdc-dialog__button',
+    CLOSED_EVENT: 'MDCDialog:closed',
+    CLOSE_ACTION: 'close',
+    CLOSING_EVENT: 'MDCDialog:closing',
+    CONTAINER_SELECTOR: '.mdc-dialog__container',
+    CONTENT_SELECTOR: '.mdc-dialog__content',
+    DESTROY_ACTION: 'destroy',
+    INITIAL_FOCUS_ATTRIBUTE: 'data-mdc-dialog-initial-focus',
+    OPENED_EVENT: 'MDCDialog:opened',
+    OPENING_EVENT: 'MDCDialog:opening',
+    SCRIM_SELECTOR: '.mdc-dialog__scrim',
+    SUPPRESS_DEFAULT_PRESS_SELECTOR: ['textarea', '.mdc-menu .mdc-list-item'].join(', '),
+    SURFACE_SELECTOR: '.mdc-dialog__surface'
+  };
+  var numbers$1 = {
+    DIALOG_ANIMATION_CLOSE_TIME_MS: 75,
+    DIALOG_ANIMATION_OPEN_TIME_MS: 150
+  };
+
+  /**
+   * @license
+   * Copyright 2017 Google Inc.
+   *
+   * Permission is hereby granted, free of charge, to any person obtaining a copy
+   * of this software and associated documentation files (the "Software"), to deal
+   * in the Software without restriction, including without limitation the rights
+   * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+   * copies of the Software, and to permit persons to whom the Software is
+   * furnished to do so, subject to the following conditions:
+   *
+   * The above copyright notice and this permission notice shall be included in
+   * all copies or substantial portions of the Software.
+   *
+   * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+   * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+   * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+   * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+   * THE SOFTWARE.
+   */
+
+  var MDCDialogFoundation =
+  /** @class */
+  function (_super) {
+    __extends(MDCDialogFoundation, _super);
+
+    function MDCDialogFoundation(adapter) {
+      var _this = _super.call(this, __assign({}, MDCDialogFoundation.defaultAdapter, adapter)) || this;
+
+      _this.isOpen_ = false;
+      _this.animationFrame_ = 0;
+      _this.animationTimer_ = 0;
+      _this.layoutFrame_ = 0;
+      _this.escapeKeyAction_ = strings$1.CLOSE_ACTION;
+      _this.scrimClickAction_ = strings$1.CLOSE_ACTION;
+      _this.autoStackButtons_ = true;
+      _this.areButtonsStacked_ = false;
+      return _this;
+    }
+
+    Object.defineProperty(MDCDialogFoundation, "cssClasses", {
+      get: function () {
+        return cssClasses$1;
+      },
+      enumerable: true,
+      configurable: true
+    });
+    Object.defineProperty(MDCDialogFoundation, "strings", {
+      get: function () {
+        return strings$1;
+      },
+      enumerable: true,
+      configurable: true
+    });
+    Object.defineProperty(MDCDialogFoundation, "numbers", {
+      get: function () {
+        return numbers$1;
+      },
+      enumerable: true,
+      configurable: true
+    });
+    Object.defineProperty(MDCDialogFoundation, "defaultAdapter", {
+      get: function () {
+        return {
+          addBodyClass: function () {
+            return undefined;
+          },
+          addClass: function () {
+            return undefined;
+          },
+          areButtonsStacked: function () {
+            return false;
+          },
+          clickDefaultButton: function () {
+            return undefined;
+          },
+          eventTargetMatches: function () {
+            return false;
+          },
+          getActionFromEvent: function () {
+            return '';
+          },
+          getInitialFocusEl: function () {
+            return null;
+          },
+          hasClass: function () {
+            return false;
+          },
+          isContentScrollable: function () {
+            return false;
+          },
+          notifyClosed: function () {
+            return undefined;
+          },
+          notifyClosing: function () {
+            return undefined;
+          },
+          notifyOpened: function () {
+            return undefined;
+          },
+          notifyOpening: function () {
+            return undefined;
+          },
+          releaseFocus: function () {
+            return undefined;
+          },
+          removeBodyClass: function () {
+            return undefined;
+          },
+          removeClass: function () {
+            return undefined;
+          },
+          reverseButtons: function () {
+            return undefined;
+          },
+          trapFocus: function () {
+            return undefined;
+          }
+        };
+      },
+      enumerable: true,
+      configurable: true
+    });
+
+    MDCDialogFoundation.prototype.init = function () {
+      if (this.adapter_.hasClass(cssClasses$1.STACKED)) {
+        this.setAutoStackButtons(false);
+      }
+    };
+
+    MDCDialogFoundation.prototype.destroy = function () {
+      if (this.isOpen_) {
+        this.close(strings$1.DESTROY_ACTION);
+      }
+
+      if (this.animationTimer_) {
+        clearTimeout(this.animationTimer_);
+        this.handleAnimationTimerEnd_();
+      }
+
+      if (this.layoutFrame_) {
+        cancelAnimationFrame(this.layoutFrame_);
+        this.layoutFrame_ = 0;
+      }
+    };
+
+    MDCDialogFoundation.prototype.open = function () {
+      var _this = this;
+
+      this.isOpen_ = true;
+      this.adapter_.notifyOpening();
+      this.adapter_.addClass(cssClasses$1.OPENING); // Wait a frame once display is no longer "none", to establish basis for animation
+
+      this.runNextAnimationFrame_(function () {
+        _this.adapter_.addClass(cssClasses$1.OPEN);
+
+        _this.adapter_.addBodyClass(cssClasses$1.SCROLL_LOCK);
+
+        _this.layout();
+
+        _this.animationTimer_ = setTimeout(function () {
+          _this.handleAnimationTimerEnd_();
+
+          _this.adapter_.trapFocus(_this.adapter_.getInitialFocusEl());
+
+          _this.adapter_.notifyOpened();
+        }, numbers$1.DIALOG_ANIMATION_OPEN_TIME_MS);
+      });
+    };
+
+    MDCDialogFoundation.prototype.close = function (action) {
+      var _this = this;
+
+      if (action === void 0) {
+        action = '';
+      }
+
+      if (!this.isOpen_) {
+        // Avoid redundant close calls (and events), e.g. from keydown on elements that inherently emit click
+        return;
+      }
+
+      this.isOpen_ = false;
+      this.adapter_.notifyClosing(action);
+      this.adapter_.addClass(cssClasses$1.CLOSING);
+      this.adapter_.removeClass(cssClasses$1.OPEN);
+      this.adapter_.removeBodyClass(cssClasses$1.SCROLL_LOCK);
+      cancelAnimationFrame(this.animationFrame_);
+      this.animationFrame_ = 0;
+      clearTimeout(this.animationTimer_);
+      this.animationTimer_ = setTimeout(function () {
+        _this.adapter_.releaseFocus();
+
+        _this.handleAnimationTimerEnd_();
+
+        _this.adapter_.notifyClosed(action);
+      }, numbers$1.DIALOG_ANIMATION_CLOSE_TIME_MS);
+    };
+
+    MDCDialogFoundation.prototype.isOpen = function () {
+      return this.isOpen_;
+    };
+
+    MDCDialogFoundation.prototype.getEscapeKeyAction = function () {
+      return this.escapeKeyAction_;
+    };
+
+    MDCDialogFoundation.prototype.setEscapeKeyAction = function (action) {
+      this.escapeKeyAction_ = action;
+    };
+
+    MDCDialogFoundation.prototype.getScrimClickAction = function () {
+      return this.scrimClickAction_;
+    };
+
+    MDCDialogFoundation.prototype.setScrimClickAction = function (action) {
+      this.scrimClickAction_ = action;
+    };
+
+    MDCDialogFoundation.prototype.getAutoStackButtons = function () {
+      return this.autoStackButtons_;
+    };
+
+    MDCDialogFoundation.prototype.setAutoStackButtons = function (autoStack) {
+      this.autoStackButtons_ = autoStack;
+    };
+
+    MDCDialogFoundation.prototype.layout = function () {
+      var _this = this;
+
+      if (this.layoutFrame_) {
+        cancelAnimationFrame(this.layoutFrame_);
+      }
+
+      this.layoutFrame_ = requestAnimationFrame(function () {
+        _this.layoutInternal_();
+
+        _this.layoutFrame_ = 0;
+      });
+    };
+    /** Handles click on the dialog root element. */
+
+
+    MDCDialogFoundation.prototype.handleClick = function (evt) {
+      var isScrim = this.adapter_.eventTargetMatches(evt.target, strings$1.SCRIM_SELECTOR); // Check for scrim click first since it doesn't require querying ancestors.
+
+      if (isScrim && this.scrimClickAction_ !== '') {
+        this.close(this.scrimClickAction_);
+      } else {
+        var action = this.adapter_.getActionFromEvent(evt);
+
+        if (action) {
+          this.close(action);
+        }
+      }
+    };
+    /** Handles keydown on the dialog root element. */
+
+
+    MDCDialogFoundation.prototype.handleKeydown = function (evt) {
+      var isEnter = evt.key === 'Enter' || evt.keyCode === 13;
+
+      if (!isEnter) {
+        return;
+      }
+
+      var action = this.adapter_.getActionFromEvent(evt);
+
+      if (action) {
+        // Action button callback is handled in `handleClick`,
+        // since space/enter keydowns on buttons trigger click events.
+        return;
+      }
+
+      var isDefault = !this.adapter_.eventTargetMatches(evt.target, strings$1.SUPPRESS_DEFAULT_PRESS_SELECTOR);
+
+      if (isEnter && isDefault) {
+        this.adapter_.clickDefaultButton();
+      }
+    };
+    /** Handles keydown on the document. */
+
+
+    MDCDialogFoundation.prototype.handleDocumentKeydown = function (evt) {
+      var isEscape = evt.key === 'Escape' || evt.keyCode === 27;
+
+      if (isEscape && this.escapeKeyAction_ !== '') {
+        this.close(this.escapeKeyAction_);
+      }
+    };
+
+    MDCDialogFoundation.prototype.layoutInternal_ = function () {
+      if (this.autoStackButtons_) {
+        this.detectStackedButtons_();
+      }
+
+      this.detectScrollableContent_();
+    };
+
+    MDCDialogFoundation.prototype.handleAnimationTimerEnd_ = function () {
+      this.animationTimer_ = 0;
+      this.adapter_.removeClass(cssClasses$1.OPENING);
+      this.adapter_.removeClass(cssClasses$1.CLOSING);
+    };
+    /**
+     * Runs the given logic on the next animation frame, using setTimeout to factor in Firefox reflow behavior.
+     */
+
+
+    MDCDialogFoundation.prototype.runNextAnimationFrame_ = function (callback) {
+      var _this = this;
+
+      cancelAnimationFrame(this.animationFrame_);
+      this.animationFrame_ = requestAnimationFrame(function () {
+        _this.animationFrame_ = 0;
+        clearTimeout(_this.animationTimer_);
+        _this.animationTimer_ = setTimeout(callback, 0);
+      });
+    };
+
+    MDCDialogFoundation.prototype.detectStackedButtons_ = function () {
+      // Remove the class first to let us measure the buttons' natural positions.
+      this.adapter_.removeClass(cssClasses$1.STACKED);
+      var areButtonsStacked = this.adapter_.areButtonsStacked();
+
+      if (areButtonsStacked) {
+        this.adapter_.addClass(cssClasses$1.STACKED);
+      }
+
+      if (areButtonsStacked !== this.areButtonsStacked_) {
+        this.adapter_.reverseButtons();
+        this.areButtonsStacked_ = areButtonsStacked;
+      }
+    };
+
+    MDCDialogFoundation.prototype.detectScrollableContent_ = function () {
+      // Remove the class first to let us measure the natural height of the content.
+      this.adapter_.removeClass(cssClasses$1.SCROLLABLE);
+
+      if (this.adapter_.isContentScrollable()) {
+        this.adapter_.addClass(cssClasses$1.SCROLLABLE);
+      }
+    };
+
+    return MDCDialogFoundation;
+  }(MDCFoundation);
+
+  const observer = observer => // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (proto, propName) => {
+    // if we haven't wrapped `updated` in this class, do so
+    if (!proto.constructor._observers) {
+      proto.constructor._observers = new Map();
+      const userUpdated = proto.updated;
+
+      proto.updated = function (changedProperties) {
+        userUpdated.call(this, changedProperties);
+        changedProperties.forEach((v, k) => {
+          const observer = this.constructor._observers.get(k);
+
+          if (observer !== undefined) {
+            observer.call(this, this[k], v);
+          }
+        });
+      }; // clone any existing observers (superclasses)
+
+    } else if (!proto.constructor.hasOwnProperty('_observers')) {
+      const observers = proto.constructor._observers;
+      proto.constructor._observers = new Map();
+      observers.forEach( // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (v, k) => proto.constructor._observers.set(k, v));
+    } // set this method
+
+
+    proto.constructor._observers.set(propName, observer);
+  };
+
+  /**
+  @license
+  Copyright 2018 Google Inc. All Rights Reserved.
+
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+      http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+  */
+  function addHasRemoveClass(element) {
+    return {
+      addClass: className => {
+        element.classList.add(className);
+      },
+      removeClass: className => {
+        element.classList.remove(className);
+      },
+      hasClass: className => element.classList.contains(className)
+    };
+  }
+
+  const fn = () => {};
+
+  const optionsBlock = {
+    get passive() {
+      return false;
+    }
+
+  };
+  document.addEventListener('x', fn, optionsBlock);
+  document.removeEventListener('x', fn);
+
+  /**
+  @license
+  Copyright 2018 Google Inc. All Rights Reserved.
+
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+      http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+  */
+  class BaseElement extends LitElement {
+    /**
+     * Create and attach the MDC Foundation to the instance
+     */
+    createFoundation() {
+      if (this.mdcFoundation !== undefined) {
+        this.mdcFoundation.destroy();
+      }
+
+      this.mdcFoundation = new this.mdcFoundationClass(this.createAdapter());
+      this.mdcFoundation.init();
+    }
+
+    firstUpdated() {
+      this.createFoundation();
+    }
+
+  }
+
+  const blockingElements = document.$blockingElements;
+  class DialogBase extends BaseElement {
+    constructor() {
+      super(...arguments);
+      this.hideActions = false;
+      this.stacked = false;
+      this.heading = '';
+      this.scrimClickAction = 'close';
+      this.escapeKeyAction = 'close';
+      this.open = false;
+      this.defaultAction = 'close';
+      this.actionAttribute = 'dialogAction';
+      this.initialFocusAttribute = 'dialogInitialFocus';
+      this.mdcFoundationClass = MDCDialogFoundation;
+      this.boundLayout = null;
+      this.boundHandleClick = null;
+      this.boundHandleKeydown = null;
+      this.boundHandleDocumentKeydown = null;
+    }
+
+    get primaryButton() {
+      let assignedNodes = this.primarySlot.assignedNodes();
+      assignedNodes = assignedNodes.filter(node => node instanceof HTMLElement);
+      const button = assignedNodes[0];
+      return button ? button : null;
+    }
+
+    emitNotification(name, action) {
+      const init = {
+        detail: action ? {
+          action
+        } : {}
+      };
+      const ev = new CustomEvent(name, init);
+      this.dispatchEvent(ev);
+    }
+
+    getInitialFocusEl() {
+      const initFocusSelector = `[${this.initialFocusAttribute}]`; // only search light DOM. This typically handles all the cases
+
+      const lightDomQs = this.querySelector(initFocusSelector);
+
+      if (lightDomQs) {
+        return lightDomQs;
+      } // if not in light dom, search each flattened distributed node.
+
+
+      const primarySlot = this.primarySlot;
+      const primaryNodes = primarySlot.assignedNodes({
+        flatten: true
+      });
+      const primaryFocusElement = this.searchNodeTreesForAttribute(primaryNodes, this.initialFocusAttribute);
+
+      if (primaryFocusElement) {
+        return primaryFocusElement;
+      }
+
+      const secondarySlot = this.secondarySlot;
+      const secondaryNodes = secondarySlot.assignedNodes({
+        flatten: true
+      });
+      const secondaryFocusElement = this.searchNodeTreesForAttribute(secondaryNodes, this.initialFocusAttribute);
+
+      if (secondaryFocusElement) {
+        return secondaryFocusElement;
+      }
+
+      const contentSlot = this.contentSlot;
+      const contentNodes = contentSlot.assignedNodes({
+        flatten: true
+      });
+      const initFocusElement = this.searchNodeTreesForAttribute(contentNodes, this.initialFocusAttribute);
+      return initFocusElement;
+    }
+
+    searchNodeTreesForAttribute(nodes, attribute) {
+      for (const node of nodes) {
+        if (!(node instanceof HTMLElement)) {
+          continue;
+        }
+
+        if (node.hasAttribute(attribute)) {
+          return node;
+        } else {
+          const selection = node.querySelector(`[${attribute}]`);
+
+          if (selection) {
+            return selection;
+          }
+        }
+      }
+
+      return null;
+    }
+
+    createAdapter() {
+      return Object.assign(Object.assign({}, addHasRemoveClass(this.mdcRoot)), {
+        addBodyClass: () => document.body.style.overflow = 'hidden',
+        removeBodyClass: () => document.body.style.overflow = '',
+        areButtonsStacked: () => this.stacked,
+        clickDefaultButton: () => {
+          const primary = this.primaryButton;
+
+          if (primary) {
+            primary.click();
+          }
+        },
+        eventTargetMatches: (target, selector) => target ? matches(target, selector) : false,
+        getActionFromEvent: e => {
+          if (!e.target) {
+            return '';
+          }
+
+          const element = closest(e.target, `[${this.actionAttribute}]`);
+          const action = element && element.getAttribute(this.actionAttribute);
+          return action;
+        },
+        getInitialFocusEl: () => {
+          return this.getInitialFocusEl();
+        },
+        isContentScrollable: () => {
+          const el = this.contentElement;
+          return el ? el.scrollHeight > el.offsetHeight : false;
+        },
+        notifyClosed: action => this.emitNotification('closed', action),
+        notifyClosing: action => {
+          if (!this.closingDueToDisconnect) {
+            // Don't set our open state to closed just because we were
+            // disconnected. That way if we get reconnected, we'll know to
+            // re-open.
+            this.open = false;
+          }
+
+          this.emitNotification('closing', action);
+        },
+        notifyOpened: () => this.emitNotification('opened'),
+        notifyOpening: () => {
+          this.open = true;
+          this.emitNotification('opening');
+        },
+        reverseButtons: () => {},
+        releaseFocus: () => {
+          blockingElements.remove(this);
+        },
+        trapFocus: el => {
+          blockingElements.push(this);
+
+          if (el) {
+            el.focus();
+          }
+        }
+      });
+    }
+
+    render() {
+      const classes = {
+        [cssClasses$1.STACKED]: this.stacked
+      };
+      let heading = html``;
+
+      if (this.heading) {
+        heading = html`
+        <h2 id="title" class="mdc-dialog__title">${this.heading}</h2>`;
+      }
+
+      const actionsClasses = {
+        'mdc-dialog__actions': !this.hideActions
+      };
+      return html`
+    <div class="mdc-dialog ${classMap(classes)}"
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="title"
+        aria-describedby="content">
+      <div class="mdc-dialog__container">
+        <div class="mdc-dialog__surface">
+          ${heading}
+          <div id="content" class="mdc-dialog__content">
+            <slot id="contentSlot"></slot>
+          </div>
+          <footer
+              id="actions"
+              class="${classMap(actionsClasses)}">
+            <span>
+              <slot name="secondaryAction"></slot>
+            </span>
+            <span>
+             <slot name="primaryAction"></slot>
+            </span>
+          </footer>
+        </div>
+      </div>
+      <div class="mdc-dialog__scrim"></div>
+    </div>`;
+    }
+
+    firstUpdated() {
+      super.firstUpdated();
+      this.mdcFoundation.setAutoStackButtons(true);
+    }
+
+    connectedCallback() {
+      super.connectedCallback();
+
+      if (this.open && this.mdcFoundation && !this.mdcFoundation.isOpen()) {
+        // We probably got disconnected while we were still open. Re-open,
+        // matching the behavior of native <dialog>.
+        this.setEventListeners();
+        this.mdcFoundation.open();
+      }
+    }
+
+    disconnectedCallback() {
+      super.disconnectedCallback();
+
+      if (this.open && this.mdcFoundation) {
+        // If this dialog is opened and then disconnected, we want to close
+        // the foundation, so that 1) any pending timers are cancelled
+        // (in particular for trapFocus), and 2) if we reconnect, we can open
+        // the foundation again to retrigger animations and focus.
+        this.removeEventListeners();
+        this.closingDueToDisconnect = true;
+        this.mdcFoundation.close(this.currentAction || this.defaultAction);
+        this.closingDueToDisconnect = false;
+        this.currentAction = undefined; // When we close normally, the releaseFocus callback handles removing
+        // ourselves from the blocking elements stack. However, that callback
+        // happens on a delay, and when we are closing due to a disconnect we
+        // need to remove ourselves before the blocking element polyfill's
+        // mutation observer notices and logs a warning, since it's not valid to
+        // be in the blocking elements stack while disconnected.
+
+        blockingElements.remove(this);
+      }
+    }
+
+    forceLayout() {
+      this.mdcFoundation.layout();
+    }
+
+    focus() {
+      const initialFocusEl = this.getInitialFocusEl();
+      initialFocusEl && initialFocusEl.focus();
+    }
+
+    blur() {
+      if (!this.shadowRoot) {
+        return;
+      }
+
+      const activeEl = this.shadowRoot.activeElement;
+
+      if (activeEl) {
+        if (activeEl instanceof HTMLElement) {
+          activeEl.blur();
+        }
+      } else {
+        const root = this.getRootNode();
+        const activeEl = root instanceof Document ? root.activeElement : null;
+
+        if (activeEl instanceof HTMLElement) {
+          activeEl.blur();
+        }
+      }
+    }
+
+    setEventListeners() {
+      this.boundHandleClick = this.mdcFoundation.handleClick.bind(this.mdcFoundation);
+
+      this.boundLayout = () => {
+        if (this.open) {
+          this.mdcFoundation.layout.bind(this.mdcFoundation);
+        }
+      };
+
+      this.boundHandleKeydown = this.mdcFoundation.handleKeydown.bind(this.mdcFoundation);
+      this.boundHandleDocumentKeydown = this.mdcFoundation.handleDocumentKeydown.bind(this.mdcFoundation);
+      this.mdcRoot.addEventListener('click', this.boundHandleClick);
+      window.addEventListener('resize', this.boundLayout, applyPassive());
+      window.addEventListener('orientationchange', this.boundLayout, applyPassive());
+      this.addEventListener('keydown', this.boundHandleKeydown, applyPassive());
+      document.addEventListener('keydown', this.boundHandleDocumentKeydown, applyPassive());
+    }
+
+    removeEventListeners() {
+      if (this.boundHandleClick) {
+        this.mdcRoot.removeEventListener('click', this.boundHandleClick);
+      }
+
+      if (this.boundLayout) {
+        window.removeEventListener('resize', this.boundLayout);
+        window.removeEventListener('orientationchange', this.boundLayout);
+      }
+
+      if (this.boundHandleKeydown) {
+        this.mdcRoot.removeEventListener('keydown', this.boundHandleKeydown);
+      }
+
+      if (this.boundHandleDocumentKeydown) {
+        this.mdcRoot.removeEventListener('keydown', this.boundHandleDocumentKeydown);
+      }
+    }
+
+    close() {
+      this.open = false;
+    }
+
+    show() {
+      this.open = true;
+    }
+
+  }
+
+  __decorate([query('.mdc-dialog')], DialogBase.prototype, "mdcRoot", void 0);
+
+  __decorate([query('slot[name="primaryAction"]')], DialogBase.prototype, "primarySlot", void 0);
+
+  __decorate([query('slot[name="secondaryAction"]')], DialogBase.prototype, "secondarySlot", void 0);
+
+  __decorate([query('#contentSlot')], DialogBase.prototype, "contentSlot", void 0);
+
+  __decorate([query('.mdc-dialog__content')], DialogBase.prototype, "contentElement", void 0);
+
+  __decorate([query('.mdc-container')], DialogBase.prototype, "conatinerElement", void 0);
+
+  __decorate([property({
+    type: Boolean
+  })], DialogBase.prototype, "hideActions", void 0);
+
+  __decorate([property({
+    type: Boolean
+  }), observer(function () {
+    this.forceLayout();
+  })], DialogBase.prototype, "stacked", void 0);
+
+  __decorate([property({
+    type: String
+  })], DialogBase.prototype, "heading", void 0);
+
+  __decorate([property({
+    type: String
+  }), observer(function (newAction) {
+    this.mdcFoundation.setScrimClickAction(newAction);
+  })], DialogBase.prototype, "scrimClickAction", void 0);
+
+  __decorate([property({
+    type: String
+  }), observer(function (newAction) {
+    this.mdcFoundation.setEscapeKeyAction(newAction);
+  })], DialogBase.prototype, "escapeKeyAction", void 0);
+
+  __decorate([property({
+    type: Boolean,
+    reflect: true
+  }), observer(function (isOpen) {
+    // Check isConnected because we could have been disconnected before first
+    // update. If we're now closed, then we shouldn't start the MDC foundation
+    // opening animation. If we're now closed, then we've already closed the
+    // foundation in disconnectedCallback.
+    if (this.mdcFoundation && this.isConnected) {
+      if (isOpen) {
+        this.setEventListeners();
+        this.mdcFoundation.open();
+      } else {
+        this.removeEventListeners();
+        this.mdcFoundation.close(this.currentAction || this.defaultAction);
+        this.currentAction = undefined;
+      }
+    }
+  })], DialogBase.prototype, "open", void 0);
+
+  __decorate([property()], DialogBase.prototype, "defaultAction", void 0);
+
+  __decorate([property()], DialogBase.prototype, "actionAttribute", void 0);
+
+  __decorate([property()], DialogBase.prototype, "initialFocusAttribute", void 0);
+
+  /**
+  @license
+  Copyright 2018 Google Inc. All Rights Reserved.
+
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+      http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+  */
+  const style$3 = css`.mdc-elevation-overlay{position:absolute;border-radius:inherit;opacity:0;pointer-events:none;transition:opacity 280ms cubic-bezier(0.4, 0, 0.2, 1);background-color:#fff}.mdc-dialog,.mdc-dialog__scrim{position:fixed;top:0;left:0;align-items:center;justify-content:center;box-sizing:border-box;width:100%;height:100%}.mdc-dialog{display:none;z-index:7}.mdc-dialog .mdc-dialog__surface{background-color:#fff;background-color:var(--mdc-theme-surface, #fff)}.mdc-dialog .mdc-dialog__scrim{background-color:rgba(0,0,0,.32)}.mdc-dialog .mdc-dialog__title{color:rgba(0,0,0,.87)}.mdc-dialog .mdc-dialog__content{color:rgba(0,0,0,.6)}.mdc-dialog.mdc-dialog--scrollable .mdc-dialog__title,.mdc-dialog.mdc-dialog--scrollable .mdc-dialog__actions{border-color:rgba(0,0,0,.12)}.mdc-dialog .mdc-dialog__surface{min-width:280px}@media(max-width: 592px){.mdc-dialog .mdc-dialog__surface{max-width:calc(100vw - 32px)}}@media(min-width: 592px){.mdc-dialog .mdc-dialog__surface{max-width:560px}}.mdc-dialog .mdc-dialog__surface{max-height:calc(100% - 32px)}.mdc-dialog .mdc-dialog__surface{border-radius:4px}.mdc-dialog__scrim{opacity:0;z-index:-1}.mdc-dialog__container{display:flex;flex-direction:row;align-items:center;justify-content:space-around;box-sizing:border-box;height:100%;transform:scale(0.8);opacity:0;pointer-events:none}.mdc-dialog__surface{position:relative;box-shadow:0px 11px 15px -7px rgba(0, 0, 0, 0.2),0px 24px 38px 3px rgba(0, 0, 0, 0.14),0px 9px 46px 8px rgba(0,0,0,.12);display:flex;flex-direction:column;flex-grow:0;flex-shrink:0;box-sizing:border-box;max-width:100%;max-height:100%;pointer-events:auto;overflow-y:auto}.mdc-dialog__surface .mdc-elevation-overlay{width:100%;height:100%;top:0;left:0}.mdc-dialog[dir=rtl] .mdc-dialog__surface,[dir=rtl] .mdc-dialog .mdc-dialog__surface{text-align:right}.mdc-dialog__title{display:block;margin-top:0;line-height:normal;font-family:Roboto, sans-serif;-moz-osx-font-smoothing:grayscale;-webkit-font-smoothing:antialiased;font-size:1.25rem;line-height:2rem;font-weight:500;letter-spacing:.0125em;text-decoration:inherit;text-transform:inherit;display:block;position:relative;flex-shrink:0;box-sizing:border-box;margin:0;padding:0 24px 9px;border-bottom:1px solid transparent}.mdc-dialog__title::before{display:inline-block;width:0;height:40px;content:"";vertical-align:0}.mdc-dialog[dir=rtl] .mdc-dialog__title,[dir=rtl] .mdc-dialog .mdc-dialog__title{text-align:right}.mdc-dialog--scrollable .mdc-dialog__title{padding-bottom:15px}.mdc-dialog__content{font-family:Roboto, sans-serif;-moz-osx-font-smoothing:grayscale;-webkit-font-smoothing:antialiased;font-size:1rem;line-height:1.5rem;font-weight:400;letter-spacing:.03125em;text-decoration:inherit;text-transform:inherit;flex-grow:1;box-sizing:border-box;margin:0;padding:20px 24px;overflow:auto;-webkit-overflow-scrolling:touch}.mdc-dialog__content>:first-child{margin-top:0}.mdc-dialog__content>:last-child{margin-bottom:0}.mdc-dialog__title+.mdc-dialog__content{padding-top:0}.mdc-dialog--scrollable .mdc-dialog__content{padding-top:8px;padding-bottom:8px}.mdc-dialog__content .mdc-list:first-child:last-child{padding:6px 0 0}.mdc-dialog--scrollable .mdc-dialog__content .mdc-list:first-child:last-child{padding:0}.mdc-dialog__actions{display:flex;position:relative;flex-shrink:0;flex-wrap:wrap;align-items:center;justify-content:flex-end;box-sizing:border-box;min-height:52px;margin:0;padding:8px;border-top:1px solid transparent}.mdc-dialog--stacked .mdc-dialog__actions{flex-direction:column;align-items:flex-end}.mdc-dialog__button{margin-left:8px;margin-right:0;max-width:100%;text-align:right}[dir=rtl] .mdc-dialog__button,.mdc-dialog__button[dir=rtl]{margin-left:0;margin-right:8px}.mdc-dialog__button:first-child{margin-left:0;margin-right:0}[dir=rtl] .mdc-dialog__button:first-child,.mdc-dialog__button:first-child[dir=rtl]{margin-left:0;margin-right:0}.mdc-dialog[dir=rtl] .mdc-dialog__button,[dir=rtl] .mdc-dialog .mdc-dialog__button{text-align:left}.mdc-dialog--stacked .mdc-dialog__button:not(:first-child){margin-top:12px}.mdc-dialog--open,.mdc-dialog--opening,.mdc-dialog--closing{display:flex}.mdc-dialog--opening .mdc-dialog__scrim{transition:opacity 150ms linear}.mdc-dialog--opening .mdc-dialog__container{transition:opacity 75ms linear,transform 150ms 0ms cubic-bezier(0, 0, 0.2, 1)}.mdc-dialog--closing .mdc-dialog__scrim,.mdc-dialog--closing .mdc-dialog__container{transition:opacity 75ms linear}.mdc-dialog--closing .mdc-dialog__container{transform:scale(1)}.mdc-dialog--open .mdc-dialog__scrim{opacity:1}.mdc-dialog--open .mdc-dialog__container{transform:scale(1);opacity:1}.mdc-dialog-scroll-lock{overflow:hidden}#actions:not(.mdc-dialog__actions){display:none}@media(min-width: 560px){.mdc-dialog .mdc-dialog__surface{max-width:560px;max-width:var(--mdc-dialog-max-width, 560px)}}.mdc-dialog .mdc-dialog__scrim{background-color:rgba(0,0,0,.32);background-color:var(--mdc-dialog-scrim-color, rgba(0, 0, 0, 0.32))}.mdc-dialog .mdc-dialog__title{color:rgba(0,0,0,.87);color:var(--mdc-dialog-heading-ink-color, rgba(0, 0, 0, 0.87))}.mdc-dialog .mdc-dialog__content{color:rgba(0,0,0,.6);color:var(--mdc-dialog-content-ink-color, rgba(0, 0, 0, 0.6))}.mdc-dialog.mdc-dialog--scrollable .mdc-dialog__title,.mdc-dialog.mdc-dialog--scrollable .mdc-dialog__actions{border-color:rgba(0,0,0,.12);border-color:var(--mdc-dialog-scroll-divider-color, rgba(0, 0, 0, 0.12))}.mdc-dialog .mdc-dialog__surface{min-width:280px;min-width:var(--mdc-dialog-min-width, 280px)}.mdc-dialog .mdc-dialog__surface{max-height:var(--mdc-dialog-max-height, calc(100% - 32px));border-radius:4px;border-radius:var(--mdc-dialog-shape-radius, 4px)}#actions ::slotted(*){margin-left:8px;margin-right:0;max-width:100%;text-align:right}[dir=rtl] #actions ::slotted(*),#actions ::slotted(*)[dir=rtl]{margin-left:0;margin-right:8px}.mdc-dialog[dir=rtl] #actions ::slotted(*),[dir=rtl] .mdc-dialog #actions ::slotted(*){text-align:left}.mdc-dialog--stacked #actions{flex-direction:column-reverse}.mdc-dialog--stacked #actions *:not(:last-child) ::slotted(*){flex-basis:1e-9px;margin-top:12px}`;
+
+  let Dialog = class Dialog extends DialogBase {};
+  Dialog.styles = style$3;
+  Dialog = __decorate([customElement('mwc-dialog')], Dialog);
 
   /**
   @license
@@ -6709,7 +10350,7 @@
    * @return {boolean} True if `path` is equal to `base`
    */
 
-  function matches(base, path) {
+  function matches$2(base, path) {
     return base === path || isAncestor(base, path) || isDescendant(base, path);
   }
   /**
@@ -14548,7 +18189,7 @@
   const DIR_INSTANCES = [];
   /** @type {?MutationObserver} */
 
-  let observer = null;
+  let observer$1 = null;
   let documentDir = '';
 
   function getRTL() {
@@ -14578,7 +18219,7 @@
   }
 
   function takeRecords() {
-    if (observer && observer.takeRecords().length) {
+    if (observer$1 && observer$1.takeRecords().length) {
       updateDirection();
     }
   }
@@ -14612,10 +18253,10 @@
 
   const DirMixin = dedupingMixin(base => {
     if (!SHIM_SHADOW) {
-      if (!observer) {
+      if (!observer$1) {
         getRTL();
-        observer = new MutationObserver(updateDirection);
-        observer.observe(document.documentElement, {
+        observer$1 = new MutationObserver(updateDirection);
+        observer$1.observe(document.documentElement, {
           attributes: true,
           attributeFilter: ['dir']
         });
@@ -19531,7 +23172,7 @@
            * @param {*} value Value to notify
            */
           notifyInstanceProp: function (inst, prop, value) {
-            if (matches(this.as, prop)) {
+            if (matches$2(this.as, prop)) {
               let idx = inst[this.itemsIndexAs];
 
               if (prop == this.as) {
@@ -35340,6 +38981,9 @@
         },
         balance: {
           type: Number
+        },
+        selectedTransaction: {
+          type: Object
         }
       };
     }
@@ -35412,6 +39056,41 @@
                 height:100vh;
                 background: #fff;
             }
+            span {
+                font-size: 18px;
+                word-break: break-all;
+            }
+            .title {
+                font-weight:600;
+                font-size:12px;
+                line-height: 32px;
+                opacity: 0.66;
+            }
+            #transactionList {
+                padding:0;
+            }
+            #transactionList > * {
+                /* padding-left:24px;
+                padding-right:24px; */
+            }
+            .color-in {
+                color: #02977e;
+                background-color: rgba(0,201,167,.2);
+                font-weight: 700;
+                font-size: .60938rem;
+                border-radius: .25rem!important;
+                padding: .2rem .5rem;
+                margin-left: 4px;
+            }
+            .color-out {
+                color: #b47d00;
+                background-color: rgba(219,154,4,.2);
+                font-weight: 700;
+                font-size: .60938rem;
+                border-radius: .25rem!important;
+                padding: .2rem .5rem;
+                margin-left: 4px;
+            }
         `;
     }
 
@@ -35437,14 +39116,15 @@
       this.addressesUnconfirmedTransactions = {};
       this.addressInfoStreams = {};
       this.unconfirmedTransactionStreams = {};
+      this.selectedTransaction = {};
     }
     /*
     <time-ago .datetime=${new Date(transaction.transaction.timestamp).toISOString()}>
-                                                      </time-ago>
+                                                     </time-ago>
                                                     */
 
     /*
-                          <div>
+                         <div>
                             <span class="mono weight-100" style="font-size: 70px;">${this.floor(this.selectedAddressInfo.nativeBalance.total[1])}<span
                                     style="font-size:24px; vertical-align: top; line-height:60px;">.${this.decimals(this.selectedAddressInfo.nativeBalance.total[1])}
                                     KEX</span></span>
@@ -35494,12 +39174,19 @@
                                 by claiming KEX from the airdrop. -->
                             </div>
 
-                            <vaadin-grid id="gransactionsGrid" style="height:auto;" ?hidden="${this.isEmptyArray(this.transactions)}" aria-label="Peers" .items="${this.transactions}" height-by-rows>
-                                <vaadin-grid-column path="type"></vaadin-grid-column>
-                                <vaadin-grid-column path="recipient"></vaadin-grid-column>
-                                <vaadin-grid-column path="fee"></vaadin-grid-column>
-                                <vaadin-grid-column path="amount"></vaadin-grid-column>
-                                <vaadin-grid-column header="Time" .renderer=${(root, column, data) => {
+                            <vaadin-grid id="transactionsGrid" style="height:auto;" ?hidden="${this.isEmptyArray(this.transactions)}" aria-label="Peers" .items="${this.transactions}" height-by-rows>
+                                <vaadin-grid-column width="6.4rem" header="Type" .renderer=${(root, column, data) => {
+      render(html`
+                                ${data.item.type} 
+                                    ${data.item.creatorAddress === this.selectedAddress.address ? html`<span class="color-out">OUT</span>` : html`<span class="color-in">IN</span>`}
+
+                `, root);
+    }}>
+                                </vaadin-grid-column>
+                                <vaadin-grid-column width="10rem" path="recipient"></vaadin-grid-column>
+                                <vaadin-grid-column width="2rem" path="fee"></vaadin-grid-column>
+                                <vaadin-grid-column width="2rem" path="amount"></vaadin-grid-column>
+                                <vaadin-grid-column width="2rem" header="Time" .renderer=${(root, column, data) => {
       // console.log(data.item.timestamp)
       // console.log(root)
       const time = new Date(data.item.timestamp);
@@ -35512,12 +39199,67 @@
                                 </vaadin-grid-column>
                             </vaadin-grid>
                     </div>
+
+                    <div>
+                        <mwc-dialog id="showTransactionDetailsDialog" scrimClickAction="${this.showTransactionDetailsLoading ? '' : 'close'}">
+                            <div style="text-align:center">
+                            <h1>Transaction Details</h1>
+                            <hr>
+                            </div>
+
+                            <div id="transactionList">
+                            <span class="title"> Transaction Type </span>
+                            <br>
+                            <div><span class="">${this.selectedTransaction.type}</span>
+                                    ${this.selectedTransaction.txnFlow === "OUT" ? html`<span class="color-out">OUT</span>` : html`<span class="color-in">IN</span>`}
+                            </div>
+
+                            <span class="title">Receiver</span>
+                            <br>
+                            <div><span class="">${this.selectedTransaction.recipient}</span></div>
+
+                            ${!this.selectedTransaction.amount ? '' : html`
+                                    <span class="title">Amount</span>
+                                    <br>
+                                    <div><span class="">${this.selectedTransaction.amount} QORT</span></div>
+                                `}
+
+                            <span class="title"> Transaction Fee </span>
+                            <br>
+                            <div><span class="">${this.selectedTransaction.fee}</span></div>
+
+                            <span class="title">Block</span>
+                            <br>
+                            <div><span class="">${this.selectedTransaction.blockHeight}</span></div>
+
+                            <span class="title">Time</span>
+                            <br>
+                            <div><span class="">${new Date(this.selectedTransaction.timestamp).toString()}</span></div>
+
+                            <span class="title"> Transaction Signature </span>
+                            <br>
+                            <div><span class="">${this.selectedTransaction.signature}</span></div>
+                            </div>
+
+                        </mwc-dialog>
+                    </div>
                 </div>
             </div>
         `;
     }
 
+    getGridTransaction() {
+      const myGrid = this.shadowRoot.querySelector('#transactionsGrid');
+      myGrid.addEventListener('click', e => {
+        let myItem = myGrid.getEventContext(e).item;
+        console.log(myItem);
+        this.showTransactionDetails(myItem, this.transactions);
+      });
+    }
+
     firstUpdated() {
+      // Calls the getGridTransaction func..
+      this.getGridTransaction();
       let configLoaded = false;
       parentEpml.ready().then(() => {
         parentEpml.subscribe('config', c => {
@@ -35569,10 +39311,12 @@
     updateAccountTransactions() {
       clearTimeout(this.updateAccountTransactionTimeout);
       parentEpml.request('apiCall', {
-        url: `/transactions/search?address=${this.selectedAddress.address}&confirmationStatus=BOTH&limit=20`
+        url: `/transactions/search?address=${this.selectedAddress.address}&confirmationStatus=BOTH&limit=20&reverse=true`
       }).then(res => {
-        // console.log(res)
-        this.transactions = res; // console.log(this.config.user.nodeSettings.pingInterval)
+        // console.log(res.rev)
+        this.transactions = res; // I made the API call return a reversed result so I can reduce complexity... 
+        // this.transactions.reverse() // Not needed
+        // console.log(this.config.user.nodeSettings.pingInterval)
 
         this.updateAccountTransactionTimeout = setTimeout(() => this.updateAccountTransactions(), this.config.user.nodeSettings.pingInterval ? this.config.user.nodeSettings.pingInterval : 4000);
       });
@@ -35599,6 +39343,24 @@
         this.balance = res; // console.log(this.config.user.nodeSettings.pingInterval)
 
         this.updateAccountBalanceTimeout = setTimeout(() => this.updateAccountBalance(), this.config.user.nodeSettings.pingInterval ? this.config.user.nodeSettings.pingInterval : 4000);
+      });
+    }
+
+    showTransactionDetails(myTransaction, allTransactions) {
+      allTransactions.forEach(transaction => {
+        if (myTransaction.signature === transaction.signature) {
+          // Do something...
+          let txnFlow = myTransaction.creatorAddress === this.selectedAddress.address ? "OUT" : "IN";
+          this.selectedTransaction = { ...transaction,
+            txnFlow
+          };
+
+          if (this.selectedTransaction.signature.length != 0) {
+            this.shadowRoot.querySelector('#showTransactionDetailsDialog').show();
+          }
+
+          console.log("Transaction The Same");
+        }
       });
     }
 

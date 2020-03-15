@@ -292,22 +292,28 @@ class SendMoneyPage extends LitElement {
         const getTxnRequestResponse = (txnResponse) => {
             // const responseData = JSON.parse(txnResponse) // FIX: This is not necessary. GIVES error because response is not a JSON object...
             console.log(txnResponse)
-            if (txnResponse.success === false) {
+            if (txnResponse.success === false && txnResponse.message) {
                 this.errorMessage = txnResponse.message
                 throw new Error(txnResponse)
-            } else {
+            } else if (txnResponse.success === true && !txnResponse.data.error) {
                 this.errorMessage = ''
                 this.recipient = ''
                 this.amount = 0
                 this.successMessage = 'Transaction Successful!'
+            } else {
+                this.errorMessage = txnResponse.data.message
+                throw new Error(txnResponse)
             }
         }
 
-
         // Call validateReceiver
-        setTimeout(() => {
-            validateReceiver(recipient)
-        }, 1000);
+        // setTimeout(() => {
+        //     validateReceiver(recipient)
+        // }, 1000);
+
+        // Calling validateReceiver without timeout
+        validateReceiver(recipient)
+
 
         this.sendMoneyLoading = false
     }
