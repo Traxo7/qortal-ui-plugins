@@ -41422,7 +41422,7 @@
                 </vaadin-grid>
 
                 <mwc-dialog id="createRewardShareDialog" scrimClickAction="${this.createRewardShareLoading ? '' : 'close'}">
-                    <div>You must be level 5 or above to create a rewardshare!</div>
+                    <div>Level 1 - 4 can create a Self Share and Level 5 or above can create a Reward Share!</div>
                     <br>
                     <mwc-textfield style="width:100%;" ?disabled="${this.createRewardShareLoading}" label="Recipient public key" id="recipientPublicKey"></mwc-textfield>
                     <p style="margin-bottom:0;">
