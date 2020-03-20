@@ -1,9 +1,9 @@
 {
-  "name": "@frag-crypto/frag-default-plugins",
-  "version": "0.0.2",
+  "name": "qortal-ui-plugins",
+  "version": "1.0.0",
   "main": "default-plugins.js",
-  "repository": "https://github.com/frag-crypto/frag-default-plugins.git",
-  "author": "irontiga <irontiga@gmail.com>",
+  "repository": "https://github.com/QORT/qortal-ui-plugins.git",
+  "author": "QORTAL <admin@qortal.org>",
   "license": "MIT",
   "dependencies": {
     "@babel/core": "^7.7.7",
