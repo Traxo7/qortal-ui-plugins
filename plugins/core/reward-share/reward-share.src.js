@@ -242,7 +242,7 @@ class RewardShare extends LitElement {
         }
 
         // Validate Reward Share by Level
-        const validateReceiver = async recipient => {
+        const validateReceiver = async () => {
             let accountDetails = await getAccountDetails();
             let lastRef = await getLastRef();
 
@@ -328,7 +328,7 @@ class RewardShare extends LitElement {
             }
         }
 
-        validateReceiver(recipient)
+        validateReceiver()
 
         this.createRewardShareLoading = false
     }
