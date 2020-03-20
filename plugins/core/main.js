@@ -1,7 +1,7 @@
 (function (factory) {
     typeof define === 'function' && define.amd ? define(factory) :
     factory();
-}(function () { 'use strict';
+}((function () { 'use strict';
 
     const parentEpml = new Epml({
       type: 'WINDOW',
@@ -303,4 +303,4 @@
     });
     setInterval(pingAirdropServer, DHCP_PING_INTERVAL);
 
-}));
+})));

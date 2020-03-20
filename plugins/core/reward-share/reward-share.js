@@ -1,7 +1,7 @@
 (function (factory) {
   typeof define === 'function' && define.amd ? define(factory) :
   factory();
-}(function () { 'use strict';
+}((function () { 'use strict';
 
   /**
    * @license
@@ -230,75 +230,11 @@
    * subject to an additional IP rights grant found at
    * http://polymer.github.io/PATENTS.txt
    */
-  const directives = new WeakMap();
-  /**
-   * Brands a function as a directive factory function so that lit-html will call
-   * the function during template rendering, rather than passing as a value.
-   *
-   * A _directive_ is a function that takes a Part as an argument. It has the
-   * signature: `(part: Part) => void`.
-   *
-   * A directive _factory_ is a function that takes arguments for data and
-   * configuration and returns a directive. Users of directive usually refer to
-   * the directive factory as the directive. For example, "The repeat directive".
-   *
-   * Usually a template author will invoke a directive factory in their template
-   * with relevant arguments, which will then return a directive function.
-   *
-   * Here's an example of using the `repeat()` directive factory that takes an
-   * array and a function to render an item:
-   *
-   * ```js
-   * html`<ul><${repeat(items, (item) => html`<li>${item}</li>`)}</ul>`
-   * ```
-   *
-   * When `repeat` is invoked, it returns a directive function that closes over
-   * `items` and the template function. When the outer template is rendered, the
-   * return directive function is called with the Part for the expression.
-   * `repeat` then performs it's custom logic to render multiple items.
-   *
-   * @param f The directive factory function. Must be a function that returns a
-   * function of the signature `(part: Part) => void`. The returned function will
-   * be called with the part object.
-   *
-   * @example
-   *
-   * import {directive, html} from 'lit-html';
-   *
-   * const immutable = directive((v) => (part) => {
-   *   if (part.value !== v) {
-   *     part.setValue(v)
-   *   }
-   * });
-   */
-
-  const directive = f => (...args) => {
-    const d = f(...args);
-    directives.set(d, true);
-    return d;
-  };
-  const isDirective = o => {
-    return typeof o === 'function' && directives.has(o);
-  };
-
-  /**
-   * @license
-   * Copyright (c) 2017 The Polymer Project Authors. All rights reserved.
-   * This code may only be used under the BSD style license found at
-   * http://polymer.github.io/LICENSE.txt
-   * The complete set of authors may be found at
-   * http://polymer.github.io/AUTHORS.txt
-   * The complete set of contributors may be found at
-   * http://polymer.github.io/CONTRIBUTORS.txt
-   * Code distributed by Google as part of the polymer project is also
-   * subject to an additional IP rights grant found at
-   * http://polymer.github.io/PATENTS.txt
-   */
 
   /**
    * True if the custom elements polyfill is in use.
    */
-  const isCEPolyfill = window.customElements !== undefined && window.customElements.polyfillWrapFlushCallback !== undefined;
+  const isCEPolyfill = typeof window !== 'undefined' && window.customElements != null && window.customElements.polyfillWrapFlushCallback !== undefined;
   /**
    * Removes nodes, starting from `start` (inclusive) to `end` (exclusive), from
    * `container`.
@@ -311,31 +247,6 @@
       start = n;
     }
   };
-
-  /**
-   * @license
-   * Copyright (c) 2018 The Polymer Project Authors. All rights reserved.
-   * This code may only be used under the BSD style license found at
-   * http://polymer.github.io/LICENSE.txt
-   * The complete set of authors may be found at
-   * http://polymer.github.io/AUTHORS.txt
-   * The complete set of contributors may be found at
-   * http://polymer.github.io/CONTRIBUTORS.txt
-   * Code distributed by Google as part of the polymer project is also
-   * subject to an additional IP rights grant found at
-   * http://polymer.github.io/PATENTS.txt
-   */
-
-  /**
-   * A sentinel value that signals that a value was handled by a directive and
-   * should not be written to the DOM.
-   */
-  const noChange = {};
-  /**
-   * A sentinel value that signals a NodePart to fully clear its content.
-   */
-
-  const nothing = {};
 
   /**
    * @license
@@ -369,7 +280,7 @@
 
   const boundAttributeSuffix = '$lit$';
   /**
-   * An updateable Template that tracks the location of dynamic parts.
+   * An updatable Template that tracks the location of dynamic parts.
    */
 
   class Template {
@@ -596,7 +507,255 @@
    *    * (') then any non-(')
    */
 
-  const lastAttributeNameRegex = /([ \x09\x0a\x0c\x0d])([^\0-\x1F\x7F-\x9F "'>=/]+)([ \x09\x0a\x0c\x0d]*=[ \x09\x0a\x0c\x0d]*(?:[^ \x09\x0a\x0c\x0d"'`<>=]*|"[^"]*|'[^']*))$/;
+  const lastAttributeNameRegex = // eslint-disable-next-line no-control-regex
+  /([ \x09\x0a\x0c\x0d])([^\0-\x1F\x7F-\x9F "'>=/]+)([ \x09\x0a\x0c\x0d]*=[ \x09\x0a\x0c\x0d]*(?:[^ \x09\x0a\x0c\x0d"'`<>=]*|"[^"]*|'[^']*))$/;
+
+  /**
+   * @license
+   * Copyright (c) 2017 The Polymer Project Authors. All rights reserved.
+   * This code may only be used under the BSD style license found at
+   * http://polymer.github.io/LICENSE.txt
+   * The complete set of authors may be found at
+   * http://polymer.github.io/AUTHORS.txt
+   * The complete set of contributors may be found at
+   * http://polymer.github.io/CONTRIBUTORS.txt
+   * Code distributed by Google as part of the polymer project is also
+   * subject to an additional IP rights grant found at
+   * http://polymer.github.io/PATENTS.txt
+   */
+  const walkerNodeFilter = 133
+  /* NodeFilter.SHOW_{ELEMENT|COMMENT|TEXT} */
+  ;
+  /**
+   * Removes the list of nodes from a Template safely. In addition to removing
+   * nodes from the Template, the Template part indices are updated to match
+   * the mutated Template DOM.
+   *
+   * As the template is walked the removal state is tracked and
+   * part indices are adjusted as needed.
+   *
+   * div
+   *   div#1 (remove) <-- start removing (removing node is div#1)
+   *     div
+   *       div#2 (remove)  <-- continue removing (removing node is still div#1)
+   *         div
+   * div <-- stop removing since previous sibling is the removing node (div#1,
+   * removed 4 nodes)
+   */
+
+  function removeNodesFromTemplate(template, nodesToRemove) {
+    const {
+      element: {
+        content
+      },
+      parts
+    } = template;
+    const walker = document.createTreeWalker(content, walkerNodeFilter, null, false);
+    let partIndex = nextActiveIndexInTemplateParts(parts);
+    let part = parts[partIndex];
+    let nodeIndex = -1;
+    let removeCount = 0;
+    const nodesToRemoveInTemplate = [];
+    let currentRemovingNode = null;
+
+    while (walker.nextNode()) {
+      nodeIndex++;
+      const node = walker.currentNode; // End removal if stepped past the removing node
+
+      if (node.previousSibling === currentRemovingNode) {
+        currentRemovingNode = null;
+      } // A node to remove was found in the template
+
+
+      if (nodesToRemove.has(node)) {
+        nodesToRemoveInTemplate.push(node); // Track node we're removing
+
+        if (currentRemovingNode === null) {
+          currentRemovingNode = node;
+        }
+      } // When removing, increment count by which to adjust subsequent part indices
+
+
+      if (currentRemovingNode !== null) {
+        removeCount++;
+      }
+
+      while (part !== undefined && part.index === nodeIndex) {
+        // If part is in a removed node deactivate it by setting index to -1 or
+        // adjust the index as needed.
+        part.index = currentRemovingNode !== null ? -1 : part.index - removeCount; // go to the next active part.
+
+        partIndex = nextActiveIndexInTemplateParts(parts, partIndex);
+        part = parts[partIndex];
+      }
+    }
+
+    nodesToRemoveInTemplate.forEach(n => n.parentNode.removeChild(n));
+  }
+
+  const countNodes = node => {
+    let count = node.nodeType === 11
+    /* Node.DOCUMENT_FRAGMENT_NODE */
+    ? 0 : 1;
+    const walker = document.createTreeWalker(node, walkerNodeFilter, null, false);
+
+    while (walker.nextNode()) {
+      count++;
+    }
+
+    return count;
+  };
+
+  const nextActiveIndexInTemplateParts = (parts, startIndex = -1) => {
+    for (let i = startIndex + 1; i < parts.length; i++) {
+      const part = parts[i];
+
+      if (isTemplatePartActive(part)) {
+        return i;
+      }
+    }
+
+    return -1;
+  };
+  /**
+   * Inserts the given node into the Template, optionally before the given
+   * refNode. In addition to inserting the node into the Template, the Template
+   * part indices are updated to match the mutated Template DOM.
+   */
+
+
+  function insertNodeIntoTemplate(template, node, refNode = null) {
+    const {
+      element: {
+        content
+      },
+      parts
+    } = template; // If there's no refNode, then put node at end of template.
+    // No part indices need to be shifted in this case.
+
+    if (refNode === null || refNode === undefined) {
+      content.appendChild(node);
+      return;
+    }
+
+    const walker = document.createTreeWalker(content, walkerNodeFilter, null, false);
+    let partIndex = nextActiveIndexInTemplateParts(parts);
+    let insertCount = 0;
+    let walkerIndex = -1;
+
+    while (walker.nextNode()) {
+      walkerIndex++;
+      const walkerNode = walker.currentNode;
+
+      if (walkerNode === refNode) {
+        insertCount = countNodes(node);
+        refNode.parentNode.insertBefore(node, refNode);
+      }
+
+      while (partIndex !== -1 && parts[partIndex].index === walkerIndex) {
+        // If we've inserted the node, simply adjust all subsequent parts
+        if (insertCount > 0) {
+          while (partIndex !== -1) {
+            parts[partIndex].index += insertCount;
+            partIndex = nextActiveIndexInTemplateParts(parts, partIndex);
+          }
+
+          return;
+        }
+
+        partIndex = nextActiveIndexInTemplateParts(parts, partIndex);
+      }
+    }
+  }
+
+  /**
+   * @license
+   * Copyright (c) 2017 The Polymer Project Authors. All rights reserved.
+   * This code may only be used under the BSD style license found at
+   * http://polymer.github.io/LICENSE.txt
+   * The complete set of authors may be found at
+   * http://polymer.github.io/AUTHORS.txt
+   * The complete set of contributors may be found at
+   * http://polymer.github.io/CONTRIBUTORS.txt
+   * Code distributed by Google as part of the polymer project is also
+   * subject to an additional IP rights grant found at
+   * http://polymer.github.io/PATENTS.txt
+   */
+  const directives = new WeakMap();
+  /**
+   * Brands a function as a directive factory function so that lit-html will call
+   * the function during template rendering, rather than passing as a value.
+   *
+   * A _directive_ is a function that takes a Part as an argument. It has the
+   * signature: `(part: Part) => void`.
+   *
+   * A directive _factory_ is a function that takes arguments for data and
+   * configuration and returns a directive. Users of directive usually refer to
+   * the directive factory as the directive. For example, "The repeat directive".
+   *
+   * Usually a template author will invoke a directive factory in their template
+   * with relevant arguments, which will then return a directive function.
+   *
+   * Here's an example of using the `repeat()` directive factory that takes an
+   * array and a function to render an item:
+   *
+   * ```js
+   * html`<ul><${repeat(items, (item) => html`<li>${item}</li>`)}</ul>`
+   * ```
+   *
+   * When `repeat` is invoked, it returns a directive function that closes over
+   * `items` and the template function. When the outer template is rendered, the
+   * return directive function is called with the Part for the expression.
+   * `repeat` then performs it's custom logic to render multiple items.
+   *
+   * @param f The directive factory function. Must be a function that returns a
+   * function of the signature `(part: Part) => void`. The returned function will
+   * be called with the part object.
+   *
+   * @example
+   *
+   * import {directive, html} from 'lit-html';
+   *
+   * const immutable = directive((v) => (part) => {
+   *   if (part.value !== v) {
+   *     part.setValue(v)
+   *   }
+   * });
+   */
+
+  const directive = f => (...args) => {
+    const d = f(...args);
+    directives.set(d, true);
+    return d;
+  };
+  const isDirective = o => {
+    return typeof o === 'function' && directives.has(o);
+  };
+
+  /**
+   * @license
+   * Copyright (c) 2018 The Polymer Project Authors. All rights reserved.
+   * This code may only be used under the BSD style license found at
+   * http://polymer.github.io/LICENSE.txt
+   * The complete set of authors may be found at
+   * http://polymer.github.io/AUTHORS.txt
+   * The complete set of contributors may be found at
+   * http://polymer.github.io/CONTRIBUTORS.txt
+   * Code distributed by Google as part of the polymer project is also
+   * subject to an additional IP rights grant found at
+   * http://polymer.github.io/PATENTS.txt
+   */
+
+  /**
+   * A sentinel value that signals that a value was handled by a directive and
+   * should not be written to the DOM.
+   */
+  const noChange = {};
+  /**
+   * A sentinel value that signals a NodePart to fully clear its content.
+   */
+
+  const nothing = {};
 
   /**
    * @license
@@ -663,7 +822,7 @@
       // Given these constraints, with full custom elements support we would
       // prefer the order: Clone, Process, Adopt, Upgrade, Update, Connect
       //
-      // But Safari dooes not implement CustomElementRegistry#upgrade, so we
+      // But Safari does not implement CustomElementRegistry#upgrade, so we
       // can not implement that order and still have upgrade-before-update and
       // upgrade disconnected fragments. So we instead sacrifice the
       // process-before-upgrade constraint, since in Custom Elements v1 elements
@@ -786,7 +945,7 @@
         const s = this.strings[i]; // For each binding we want to determine the kind of marker to insert
         // into the template source before it's parsed by the browser's HTML
         // parser. The marker type is based on whether the expression is in an
-        // attribute, text, or comment poisition.
+        // attribute, text, or comment position.
         //   * For node-position bindings we insert a comment with the marker
         //     sentinel as its text content, like <!--{{lit-guid}}-->.
         //   * For attribute bindings we insert just the marker sentinel for the
@@ -805,7 +964,7 @@
         // comment close. Because <-- can appear in an attribute value there can
         // be false positives.
 
-        isCommentBinding = (commentOpen > -1 || isCommentBinding) && s.indexOf('-->', commentOpen + 1) === -1; // Check to see if we have an attribute-like sequence preceeding the
+        isCommentBinding = (commentOpen > -1 || isCommentBinding) && s.indexOf('-->', commentOpen + 1) === -1; // Check to see if we have an attribute-like sequence preceding the
         // expression. This can match "name=value" like structures in text,
         // comments, and attribute values, so there can be false-positives.
 
@@ -813,7 +972,7 @@
 
         if (attributeMatch === null) {
           // We're only in this branch if we don't have a attribute-like
-          // preceeding sequence. For comments, this guards against unusual
+          // preceding sequence. For comments, this guards against unusual
           // attribute values like <div foo="<!--${'bar'}">. Cases like
           // <!-- foo=${'bar'}--> are handled correctly in the attribute branch
           // below.
@@ -855,12 +1014,12 @@
     return value === null || !(typeof value === 'object' || typeof value === 'function');
   };
   const isIterable = value => {
-    return Array.isArray(value) || // tslint:disable-next-line:no-any
+    return Array.isArray(value) || // eslint-disable-next-line @typescript-eslint/no-explicit-any
     !!(value && value[Symbol.iterator]);
   };
   /**
    * Writes attribute values to the DOM for a group of AttributeParts bound to a
-   * single attibute. The value is only set once even if there are multiple parts
+   * single attribute. The value is only set once even if there are multiple parts
    * for an attribute.
    */
 
@@ -1026,6 +1185,10 @@
     }
 
     commit() {
+      if (this.startNode.parentNode === null) {
+        return;
+      }
+
       while (isDirective(this.__pendingValue)) {
         const directive = this.__pendingValue;
         this.__pendingValue = noChange;
@@ -1252,7 +1415,7 @@
 
     commit() {
       if (this.dirty) {
-        this.dirty = false; // tslint:disable-next-line:no-any
+        this.dirty = false; // eslint-disable-next-line @typescript-eslint/no-explicit-any
 
         this.element[this.name] = this._getValue();
       }
@@ -1260,25 +1423,29 @@
 
   }
   class PropertyPart extends AttributePart {} // Detect event listener options support. If the `capture` property is read
-  // from the options object, then options are supported. If not, then the thrid
+  // from the options object, then options are supported. If not, then the third
   // argument to add/removeEventListener is interpreted as the boolean capture
   // value so we should only pass the `capture` property.
 
-  let eventOptionsSupported = false;
+  let eventOptionsSupported = false; // Wrap into an IIFE because MS Edge <= v41 does not support having try/catch
+  // blocks right into the body of a module
 
-  try {
-    const options = {
-      get capture() {
-        eventOptionsSupported = true;
-        return false;
-      }
+  (() => {
+    try {
+      const options = {
+        get capture() {
+          eventOptionsSupported = true;
+          return false;
+        }
 
-    }; // tslint:disable-next-line:no-any
+      }; // eslint-disable-next-line @typescript-eslint/no-explicit-any
 
-    window.addEventListener('test', options, options); // tslint:disable-next-line:no-any
+      window.addEventListener('test', options, options); // eslint-disable-next-line @typescript-eslint/no-explicit-any
 
-    window.removeEventListener('test', options, options);
-  } catch (_e) {}
+      window.removeEventListener('test', options, options);
+    } catch (_e) {// event options not supported
+    }
+  })();
 
   class EventPart {
     constructor(element, eventName, eventContext) {
@@ -1341,65 +1508,6 @@
     passive: o.passive,
     once: o.once
   } : o.capture);
-
-  /**
-   * @license
-   * Copyright (c) 2017 The Polymer Project Authors. All rights reserved.
-   * This code may only be used under the BSD style license found at
-   * http://polymer.github.io/LICENSE.txt
-   * The complete set of authors may be found at
-   * http://polymer.github.io/AUTHORS.txt
-   * The complete set of contributors may be found at
-   * http://polymer.github.io/CONTRIBUTORS.txt
-   * Code distributed by Google as part of the polymer project is also
-   * subject to an additional IP rights grant found at
-   * http://polymer.github.io/PATENTS.txt
-   */
-  /**
-   * Creates Parts when a template is instantiated.
-   */
-
-  class DefaultTemplateProcessor {
-    /**
-     * Create parts for an attribute-position binding, given the event, attribute
-     * name, and string literals.
-     *
-     * @param element The element containing the binding
-     * @param name  The attribute name
-     * @param strings The string literals. There are always at least two strings,
-     *   event for fully-controlled bindings with a single expression.
-     */
-    handleAttributeExpressions(element, name, strings, options) {
-      const prefix = name[0];
-
-      if (prefix === '.') {
-        const committer = new PropertyCommitter(element, name.slice(1), strings);
-        return committer.parts;
-      }
-
-      if (prefix === '@') {
-        return [new EventPart(element, name.slice(1), options.eventContext)];
-      }
-
-      if (prefix === '?') {
-        return [new BooleanAttributePart(element, name.slice(1), strings)];
-      }
-
-      const committer = new AttributeCommitter(element, name, strings);
-      return committer.parts;
-    }
-    /**
-     * Create parts for a text-position binding.
-     * @param templateFactory
-     */
-
-
-    handleTextExpression(options) {
-      return new NodePart(options);
-    }
-
-  }
-  const defaultTemplateProcessor = new DefaultTemplateProcessor();
 
   /**
    * @license
@@ -1513,16 +1621,51 @@
    * subject to an additional IP rights grant found at
    * http://polymer.github.io/PATENTS.txt
    */
-  // This line will be used in regexes to search for lit-html usage.
-  // TODO(justinfagnani): inject version number at build time
-
-  (window['litHtmlVersions'] || (window['litHtmlVersions'] = [])).push('1.1.2');
   /**
-   * Interprets a template literal as an HTML template that can efficiently
-   * render to and update a container.
+   * Creates Parts when a template is instantiated.
    */
 
-  const html = (strings, ...values) => new TemplateResult(strings, values, 'html', defaultTemplateProcessor);
+  class DefaultTemplateProcessor {
+    /**
+     * Create parts for an attribute-position binding, given the event, attribute
+     * name, and string literals.
+     *
+     * @param element The element containing the binding
+     * @param name  The attribute name
+     * @param strings The string literals. There are always at least two strings,
+     *   event for fully-controlled bindings with a single expression.
+     */
+    handleAttributeExpressions(element, name, strings, options) {
+      const prefix = name[0];
+
+      if (prefix === '.') {
+        const committer = new PropertyCommitter(element, name.slice(1), strings);
+        return committer.parts;
+      }
+
+      if (prefix === '@') {
+        return [new EventPart(element, name.slice(1), options.eventContext)];
+      }
+
+      if (prefix === '?') {
+        return [new BooleanAttributePart(element, name.slice(1), strings)];
+      }
+
+      const committer = new AttributeCommitter(element, name, strings);
+      return committer.parts;
+    }
+    /**
+     * Create parts for a text-position binding.
+     * @param templateFactory
+     */
+
+
+    handleTextExpression(options) {
+      return new NodePart(options);
+    }
+
+  }
+  const defaultTemplateProcessor = new DefaultTemplateProcessor();
 
   /**
    * @license
@@ -1537,150 +1680,19 @@
    * subject to an additional IP rights grant found at
    * http://polymer.github.io/PATENTS.txt
    */
-  const walkerNodeFilter = 133
-  /* NodeFilter.SHOW_{ELEMENT|COMMENT|TEXT} */
-  ;
-  /**
-   * Removes the list of nodes from a Template safely. In addition to removing
-   * nodes from the Template, the Template part indices are updated to match
-   * the mutated Template DOM.
-   *
-   * As the template is walked the removal state is tracked and
-   * part indices are adjusted as needed.
-   *
-   * div
-   *   div#1 (remove) <-- start removing (removing node is div#1)
-   *     div
-   *       div#2 (remove)  <-- continue removing (removing node is still div#1)
-   *         div
-   * div <-- stop removing since previous sibling is the removing node (div#1,
-   * removed 4 nodes)
-   */
+  // This line will be used in regexes to search for lit-html usage.
+  // TODO(justinfagnani): inject version number at build time
 
-  function removeNodesFromTemplate(template, nodesToRemove) {
-    const {
-      element: {
-        content
-      },
-      parts
-    } = template;
-    const walker = document.createTreeWalker(content, walkerNodeFilter, null, false);
-    let partIndex = nextActiveIndexInTemplateParts(parts);
-    let part = parts[partIndex];
-    let nodeIndex = -1;
-    let removeCount = 0;
-    const nodesToRemoveInTemplate = [];
-    let currentRemovingNode = null;
-
-    while (walker.nextNode()) {
-      nodeIndex++;
-      const node = walker.currentNode; // End removal if stepped past the removing node
-
-      if (node.previousSibling === currentRemovingNode) {
-        currentRemovingNode = null;
-      } // A node to remove was found in the template
-
-
-      if (nodesToRemove.has(node)) {
-        nodesToRemoveInTemplate.push(node); // Track node we're removing
-
-        if (currentRemovingNode === null) {
-          currentRemovingNode = node;
-        }
-      } // When removing, increment count by which to adjust subsequent part indices
-
-
-      if (currentRemovingNode !== null) {
-        removeCount++;
-      }
-
-      while (part !== undefined && part.index === nodeIndex) {
-        // If part is in a removed node deactivate it by setting index to -1 or
-        // adjust the index as needed.
-        part.index = currentRemovingNode !== null ? -1 : part.index - removeCount; // go to the next active part.
-
-        partIndex = nextActiveIndexInTemplateParts(parts, partIndex);
-        part = parts[partIndex];
-      }
-    }
-
-    nodesToRemoveInTemplate.forEach(n => n.parentNode.removeChild(n));
+  if (typeof window !== 'undefined') {
+    (window['litHtmlVersions'] || (window['litHtmlVersions'] = [])).push('1.2.1');
   }
-
-  const countNodes = node => {
-    let count = node.nodeType === 11
-    /* Node.DOCUMENT_FRAGMENT_NODE */
-    ? 0 : 1;
-    const walker = document.createTreeWalker(node, walkerNodeFilter, null, false);
-
-    while (walker.nextNode()) {
-      count++;
-    }
-
-    return count;
-  };
-
-  const nextActiveIndexInTemplateParts = (parts, startIndex = -1) => {
-    for (let i = startIndex + 1; i < parts.length; i++) {
-      const part = parts[i];
-
-      if (isTemplatePartActive(part)) {
-        return i;
-      }
-    }
-
-    return -1;
-  };
   /**
-   * Inserts the given node into the Template, optionally before the given
-   * refNode. In addition to inserting the node into the Template, the Template
-   * part indices are updated to match the mutated Template DOM.
+   * Interprets a template literal as an HTML template that can efficiently
+   * render to and update a container.
    */
 
 
-  function insertNodeIntoTemplate(template, node, refNode = null) {
-    const {
-      element: {
-        content
-      },
-      parts
-    } = template; // If there's no refNode, then put node at end of template.
-    // No part indices need to be shifted in this case.
-
-    if (refNode === null || refNode === undefined) {
-      content.appendChild(node);
-      return;
-    }
-
-    const walker = document.createTreeWalker(content, walkerNodeFilter, null, false);
-    let partIndex = nextActiveIndexInTemplateParts(parts);
-    let insertCount = 0;
-    let walkerIndex = -1;
-
-    while (walker.nextNode()) {
-      walkerIndex++;
-      const walkerNode = walker.currentNode;
-
-      if (walkerNode === refNode) {
-        insertCount = countNodes(node);
-        refNode.parentNode.insertBefore(node, refNode);
-      }
-
-      while (partIndex !== -1 && parts[partIndex].index === walkerIndex) {
-        // If we've inserted the node, simply adjust all subsequent parts
-        if (insertCount > 0) {
-          while (partIndex !== -1) {
-            parts[partIndex].index += insertCount;
-            partIndex = nextActiveIndexInTemplateParts(parts, partIndex);
-          }
-
-          return;
-        }
-
-        partIndex = nextActiveIndexInTemplateParts(parts, partIndex);
-      }
-    }
-  }
+  const html = (strings, ...values) => new TemplateResult(strings, values, 'html', defaultTemplateProcessor);
 
   /**
    * @license
@@ -2051,12 +2063,10 @@
     reflect: false,
     hasChanged: notEqual
   };
-  const microtaskPromise = Promise.resolve(true);
   const STATE_HAS_UPDATED = 1;
   const STATE_UPDATE_REQUESTED = 1 << 2;
   const STATE_IS_REFLECTING_TO_ATTRIBUTE = 1 << 3;
   const STATE_IS_REFLECTING_TO_PROPERTY = 1 << 4;
-  const STATE_HAS_CONNECTED = 1 << 5;
   /**
    * The Closure JS Compiler doesn't currently have good support for static
    * property semantics where "this" is dynamic (e.g.
@@ -2075,9 +2085,10 @@
     constructor() {
       super();
       this._updateState = 0;
-      this._instanceProperties = undefined;
-      this._updatePromise = microtaskPromise;
-      this._hasConnectedResolver = undefined;
+      this._instanceProperties = undefined; // Initialize to an unresolved Promise so we can make sure the element has
+      // connected before first update.
+
+      this._updatePromise = new Promise(res => this._enableUpdatingResolver = res);
       /**
        * Map with keys for any properties that have changed since the last
        * update cycle with previous values.
@@ -2137,10 +2148,25 @@
       }
     }
     /**
-     * Creates a property accessor on the element prototype if one does not exist.
+     * Creates a property accessor on the element prototype if one does not exist
+     * and stores a PropertyDeclaration for the property with the given options.
      * The property setter calls the property's `hasChanged` property option
      * or uses a strict identity check to determine whether or not to request
      * an update.
+     *
+     * This method may be overridden to customize properties; however,
+     * when doing so, it's important to call `super.createProperty` to ensure
+     * the property is setup correctly. This method calls
+     * `getPropertyDescriptor` internally to get a descriptor to install.
+     * To customize what properties do when they are get or set, override
+     * `getPropertyDescriptor`. To customize the options for a property,
+     * implement `createProperty` like this:
+     *
+     * static createProperty(name, options) {
+     *   options = Object.assign(options, {myOption: true});
+     *   super.createProperty(name, options);
+     * }
+     *
      * @nocollapse
      */
 
@@ -2163,7 +2189,40 @@
       }
 
       const key = typeof name === 'symbol' ? Symbol() : `__${name}`;
-      Object.defineProperty(this.prototype, name, {
+      const descriptor = this.getPropertyDescriptor(name, key, options);
+
+      if (descriptor !== undefined) {
+        Object.defineProperty(this.prototype, name, descriptor);
+      }
+    }
+    /**
+     * Returns a property descriptor to be defined on the given named property.
+     * If no descriptor is returned, the property will not become an accessor.
+     * For example,
+     *
+     *   class MyElement extends LitElement {
+     *     static getPropertyDescriptor(name, key, options) {
+     *       const defaultDescriptor =
+     *           super.getPropertyDescriptor(name, key, options);
+     *       const setter = defaultDescriptor.set;
+     *       return {
+     *         get: defaultDescriptor.get,
+     *         set(value) {
+     *           setter.call(this, value);
+     *           // custom action.
+     *         },
+     *         configurable: true,
+     *         enumerable: true
+     *       }
+     *     }
+     *   }
+     *
+     * @nocollapse
+     */
+
+
+    static getPropertyDescriptor(name, key, _options) {
+      return {
         // tslint:disable-next-line:no-any no symbol in index
         get() {
           return this[key];
@@ -2178,7 +2237,24 @@
 
         configurable: true,
         enumerable: true
-      });
+      };
+    }
+    /**
+     * Returns the property options associated with the given property.
+     * These options are defined with a PropertyDeclaration via the `properties`
+     * object or the `@property` decorator and are registered in
+     * `createProperty(...)`.
+     *
+     * Note, this method should be considered "final" and not overridden. To
+     * customize the options for a given property, override `createProperty`.
+     *
+     * @nocollapse
+     * @final
+     */
+
+
+    static getPropertyOptions(name) {
+      return this._classProperties && this._classProperties.get(name) || defaultPropertyDeclaration;
     }
     /**
      * Creates property accessors for registered properties and ensures
@@ -2331,15 +2407,16 @@
     }
 
     connectedCallback() {
-      this._updateState = this._updateState | STATE_HAS_CONNECTED; // Ensure first connection completes an update. Updates cannot complete
-      // before connection and if one is pending connection the
-      // `_hasConnectionResolver` will exist. If so, resolve it to complete the
-      // update, otherwise requestUpdate.
+      // Ensure first connection completes an update. Updates cannot complete
+      // before connection.
+      this.enableUpdating();
+    }
 
-      if (this._hasConnectedResolver) {
-        this._hasConnectedResolver();
+    enableUpdating() {
+      if (this._enableUpdatingResolver !== undefined) {
+        this._enableUpdatingResolver();
 
-        this._hasConnectedResolver = undefined;
+        this._enableUpdatingResolver = undefined;
       }
     }
     /**
@@ -2402,12 +2479,14 @@
         return;
       }
 
-      const ctor = this.constructor;
+      const ctor = this.constructor; // Note, hint this as an `AttributeMap` so closure clearly understands
+      // the type; it has issues with tracking types through statics
+      // tslint:disable-next-line:no-unnecessary-type-assertion
 
       const propName = ctor._attributeToPropertyMap.get(name);
 
       if (propName !== undefined) {
-        const options = ctor._classProperties.get(propName) || defaultPropertyDeclaration; // mark state reflecting
+        const options = ctor.getPropertyOptions(propName); // mark state reflecting
 
         this._updateState = this._updateState | STATE_IS_REFLECTING_TO_PROPERTY;
         this[propName] = // tslint:disable-next-line:no-any
@@ -2428,7 +2507,7 @@
 
       if (name !== undefined) {
         const ctor = this.constructor;
-        const options = ctor._classProperties.get(name) || defaultPropertyDeclaration;
+        const options = ctor.getPropertyOptions(name);
 
         if (ctor._valueHasChanged(this[name], oldValue, options.hasChanged)) {
           if (!this._changedProperties.has(name)) {
@@ -2453,7 +2532,7 @@
       }
 
       if (!this._hasRequestedUpdate && shouldRequestUpdate) {
-        this._enqueueUpdate();
+        this._updatePromise = this._enqueueUpdate();
       }
     }
     /**
@@ -2482,46 +2561,25 @@
 
 
     async _enqueueUpdate() {
-      // Mark state updating...
       this._updateState = this._updateState | STATE_UPDATE_REQUESTED;
-      let resolve;
-      let reject;
-      const previousUpdatePromise = this._updatePromise;
-      this._updatePromise = new Promise((res, rej) => {
-        resolve = res;
-        reject = rej;
-      });
 
       try {
         // Ensure any previous update has resolved before updating.
         // This `await` also ensures that property changes are batched.
-        await previousUpdatePromise;
-      } catch (e) {} // Ignore any previous errors. We only care that the previous cycle is
-      // done. Any error should have been handled in the previous update.
-      // Make sure the element has connected before updating.
-
-
-      if (!this._hasConnected) {
-        await new Promise(res => this._hasConnectedResolver = res);
+        await this._updatePromise;
+      } catch (e) {// Ignore any previous errors. We only care that the previous cycle is
+        // done. Any error should have been handled in the previous update.
       }
 
-      try {
-        const result = this.performUpdate(); // If `performUpdate` returns a Promise, we await it. This is done to
-        // enable coordinating updates with a scheduler. Note, the result is
-        // checked to avoid delaying an additional microtask unless we need to.
+      const result = this.performUpdate(); // If `performUpdate` returns a Promise, we await it. This is done to
+      // enable coordinating updates with a scheduler. Note, the result is
+      // checked to avoid delaying an additional microtask unless we need to.
 
-        if (result != null) {
-          await result;
-        }
-      } catch (e) {
-        reject(e);
+      if (result != null) {
+        await result;
       }
 
-      resolve(!this._hasRequestedUpdate);
-    }
-
-    get _hasConnected() {
-      return this._updateState & STATE_HAS_CONNECTED;
+      return !this._hasRequestedUpdate;
     }
 
     get _hasRequestedUpdate() {
@@ -2563,15 +2621,17 @@
 
         if (shouldUpdate) {
           this.update(changedProperties);
+        } else {
+          this._markUpdated();
         }
       } catch (e) {
         // Prevent `firstUpdated` and `updated` from running when there's an
         // update exception.
-        shouldUpdate = false;
-        throw e;
-      } finally {
-        // Ensure element can accept additional updates after an exception.
+        shouldUpdate = false; // Ensure element can accept additional updates after an exception.
+
         this._markUpdated();
+
+        throw e;
       }
 
       if (shouldUpdate) {
@@ -2634,7 +2694,7 @@
      * an update. By default, this method always returns `true`, but this can be
      * customized to control when to update.
      *
-     * * @param _changedProperties Map of changed properties with old values
+     * @param _changedProperties Map of changed properties with old values
      */
 
 
@@ -2647,7 +2707,7 @@
      * Setting properties inside this method will *not* trigger
      * another update.
      *
-     * * @param _changedProperties Map of changed properties with old values
+     * @param _changedProperties Map of changed properties with old values
      */
 
 
@@ -2659,6 +2719,8 @@
 
         this._reflectingProperties = undefined;
       }
+
+      this._markUpdated();
     }
     /**
      * Invoked whenever the element is updated. Implement to perform
@@ -2667,7 +2729,7 @@
      * Setting properties inside this method will trigger the element to update
      * again after this update cycle completes.
      *
-     * * @param _changedProperties Map of changed properties with old values
+     * @param _changedProperties Map of changed properties with old values
      */
 
 
@@ -2679,7 +2741,7 @@
      * Setting properties inside this method will trigger the element to update
      * again after this update cycle completes.
      *
-     * * @param _changedProperties Map of changed properties with old values
+     * @param _changedProperties Map of changed properties with old values
      */
 
 
@@ -2736,7 +2798,16 @@
   /**
    * Class decorator factory that defines the decorated class as a custom element.
    *
-   * @param tagName the name of the custom element to define
+   * ```
+   * @customElement('my-element')
+   * class MyElement {
+   *   render() {
+   *     return html``;
+   *   }
+   * }
+   * ```
+   *
+   * @param tagName The name of the custom element to define.
    */
 
 
@@ -2747,7 +2818,7 @@
     // Note, the `hasOwnProperty` check in `createProperty` ensures we don't
     // stomp over the user's accessor.
     if (element.kind === 'method' && element.descriptor && !('value' in element.descriptor)) {
-      return Object.assign({}, element, {
+      return Object.assign(Object.assign({}, element), {
         finisher(clazz) {
           clazz.createProperty(element.key, options);
         }
@@ -2794,6 +2865,16 @@
    * corresponding attribute value. A `PropertyDeclaration` may optionally be
    * supplied to configure property features.
    *
+   * This decorator should only be used for public fields. Private or protected
+   * fields should use the internalProperty decorator.
+   *
+   * @example
+   *
+   *     class MyElement {
+   *       @property({ type: Boolean })
+   *       clicked = false;
+   *     }
+   *
    * @ExportDecoratedItems
    */
 
@@ -2806,7 +2887,24 @@
    * A property decorator that converts a class property into a getter that
    * executes a querySelector on the element's renderRoot.
    *
-   * @ExportDecoratedItems
+   * @param selector A DOMString containing one or more selectors to match.
+   *
+   * See: https://developer.mozilla.org/en-US/docs/Web/API/Document/querySelector
+   *
+   * @example
+   *
+   *     class MyElement {
+   *       @query('#first')
+   *       first;
+   *
+   *       render() {
+   *         return html`
+   *           <div id="first"></div>
+   *           <div id="second"></div>
+   *         `;
+   *       }
+   *     }
+   *
    */
 
   function query(selector) {
@@ -2822,7 +2920,7 @@
       };
       return name !== undefined ? legacyQuery(descriptor, protoOrDescriptor, name) : standardQuery(descriptor, protoOrDescriptor);
     };
-  }
+  } // Note, in the future, we may extend this decorator to support the use case
 
   const legacyQuery = (descriptor, proto, name) => {
     Object.defineProperty(proto, name, descriptor);
@@ -2836,7 +2934,7 @@
   });
 
   const standardEventOptions = (options, element) => {
-    return Object.assign({}, element, {
+    return Object.assign(Object.assign({}, element), {
       finisher(clazz) {
         Object.assign(clazz.prototype[element.key], options);
       }
@@ -2852,7 +2950,7 @@
    * Adds event listener options to a method used as an event listener in a
    * lit-html template.
    *
-   * @param options An object that specifis event listener options as accepted by
+   * @param options An object that specifies event listener options as accepted by
    * `EventTarget#addEventListener` and `EventTarget#removeEventListener`.
    *
    * Current browsers support the `capture`, `passive`, and `once` options. See:
@@ -2861,11 +2959,14 @@
    * @example
    *
    *     class MyElement {
-   *
    *       clicked = false;
    *
    *       render() {
-   *         return html`<div @click=${this._onClick}`><button></button></div>`;
+   *         return html`
+   *           <div @click=${this._onClick}`>
+   *             <button></button>
+   *           </div>
+   *         `;
    *       }
    *
    *       @eventOptions({capture: true})
@@ -2876,12 +2977,14 @@
    */
 
 
-  const eventOptions = options => // Return value typed as any to prevent TypeScript from complaining that
-  // standard decorator function signature does not match TypeScript decorator
-  // signature
-  // TODO(kschaaf): unclear why it was only failing on this decorator and not
-  // the others
-  (protoOrDescriptor, name) => name !== undefined ? legacyEventOptions(options, protoOrDescriptor, name) : standardEventOptions(options, protoOrDescriptor);
+  function eventOptions(options) {
+    // Return value typed as any to prevent TypeScript from complaining that
+    // standard decorator function signature does not match TypeScript decorator
+    // signature
+    // TODO(kschaaf): unclear why it was only failing on this decorator and not
+    // the others
+    return (protoOrDescriptor, name) => name !== undefined ? legacyEventOptions(options, protoOrDescriptor, name) : standardEventOptions(options, protoOrDescriptor);
+  }
 
   /**
   @license
@@ -2967,73 +3070,61 @@
   // This line will be used in regexes to search for LitElement usage.
   // TODO(justinfagnani): inject version number at build time
 
-  (window['litElementVersions'] || (window['litElementVersions'] = [])).push('2.2.1');
+  (window['litElementVersions'] || (window['litElementVersions'] = [])).push('2.3.1');
   /**
-   * Minimal implementation of Array.prototype.flat
-   * @param arr the array to flatten
-   * @param result the accumlated result
+   * Sentinal value used to avoid calling lit-html's render function when
+   * subclasses do not implement `render`
    */
 
-  function arrayFlat(styles, result = []) {
-    for (let i = 0, length = styles.length; i < length; i++) {
-      const value = styles[i];
-
-      if (Array.isArray(value)) {
-        arrayFlat(value, result);
-      } else {
-        result.push(value);
-      }
-    }
-
-    return result;
-  }
-  /** Deeply flattens styles array. Uses native flat if available. */
-
-
-  const flattenStyles = styles => styles.flat ? styles.flat(Infinity) : arrayFlat(styles);
-
+  const renderNotImplemented = {};
   class LitElement extends UpdatingElement {
-    /** @nocollapse */
-    static finalize() {
-      // The Closure JS Compiler does not always preserve the correct "this"
-      // when calling static super methods (b/137460243), so explicitly bind.
-      super.finalize.call(this); // Prepare styling that is stamped at first render time. Styling
-      // is built from user provided `styles` or is inherited from the superclass.
-
-      this._styles = this.hasOwnProperty(JSCompiler_renameProperty('styles', this)) ? this._getUniqueStyles() : this._styles || [];
+    /**
+     * Return the array of styles to apply to the element.
+     * Override this method to integrate into a style management system.
+     *
+     * @nocollapse
+     */
+    static getStyles() {
+      return this.styles;
     }
     /** @nocollapse */
 
 
     static _getUniqueStyles() {
-      // Take care not to call `this.styles` multiple times since this generates
-      // new CSSResults each time.
+      // Only gather styles once per class
+      if (this.hasOwnProperty(JSCompiler_renameProperty('_styles', this))) {
+        return;
+      } // Take care not to call `this.getStyles()` multiple times since this
+      // generates new CSSResults each time.
       // TODO(sorvell): Since we do not cache CSSResults by input, any
       // shared styles will generate new stylesheet objects, which is wasteful.
       // This should be addressed when a browser ships constructable
       // stylesheets.
-      const userStyles = this.styles;
-      const styles = [];
 
-      if (Array.isArray(userStyles)) {
-        const flatStyles = flattenStyles(userStyles); // As a performance optimization to avoid duplicated styling that can
-        // occur especially when composing via subclassing, de-duplicate styles
-        // preserving the last item in the list. The last item is kept to
-        // try to preserve cascade order with the assumption that it's most
-        // important that last added styles override previous styles.
 
-        const styleSet = flatStyles.reduceRight((set, s) => {
-          set.add(s); // on IE set.add does not return the set.
+      const userStyles = this.getStyles();
 
-          return set;
-        }, new Set()); // Array.from does not work on Set in IE
+      if (userStyles === undefined) {
+        this._styles = [];
+      } else if (Array.isArray(userStyles)) {
+        // De-duplicate styles preserving the _last_ instance in the set.
+        // This is a performance optimization to avoid duplicated styles that can
+        // occur especially when composing via subclassing.
+        // The last item is kept to try to preserve the cascade order with the
+        // assumption that it's most important that last added styles override
+        // previous styles.
+        const addStyles = (styles, set) => styles.reduceRight((set, s) => // Note: On IE set.add() does not return the set
+        Array.isArray(s) ? addStyles(s, set) : (set.add(s), set), set); // Array.from does not work on Set in IE, otherwise return
+        // Array.from(addStyles(userStyles, new Set<CSSResult>())).reverse()
 
-        styleSet.forEach(v => styles.unshift(v));
-      } else if (userStyles) {
-        styles.push(userStyles);
+
+        const set = addStyles(userStyles, new Set());
+        const styles = [];
+        set.forEach(v => styles.unshift(v));
+        this._styles = styles;
+      } else {
+        this._styles = [userStyles];
       }
-
-      return styles;
     }
     /**
      * Performs element initialization. By default this calls `createRenderRoot`
@@ -3044,6 +3135,9 @@
 
     initialize() {
       super.initialize();
+
+      this.constructor._getUniqueStyles();
+
       this.renderRoot = this.createRenderRoot(); // Note, if renderRoot is not a shadowRoot, styles would/could apply to the
       // element's getRootNode(). While this could be done, we're choosing not to
       // support this now since it would require different logic around de-duping.
@@ -3112,15 +3206,18 @@
      * Updates the element. This method reflects property values to attributes
      * and calls `render` to render DOM via lit-html. Setting properties inside
      * this method will *not* trigger another update.
-     * * @param _changedProperties Map of changed properties with old values
+     * @param _changedProperties Map of changed properties with old values
      */
 
 
     update(changedProperties) {
-      super.update(changedProperties);
+      // Setting properties in `render` should not trigger an update. Since
+      // updates are allowed after super.update, it's important to call `render`
+      // before that.
       const templateResult = this.render();
+      super.update(changedProperties); // If render is not implemented by the component, don't call lit-html render
 
-      if (templateResult instanceof TemplateResult) {
+      if (templateResult !== renderNotImplemented) {
         this.constructor.render(templateResult, this.renderRoot, {
           scopeName: this.localName,
           eventContext: this
@@ -3141,13 +3238,16 @@
       }
     }
     /**
-     * Invoked on each update to perform rendering tasks. This method must return
-     * a lit-html TemplateResult. Setting properties inside this method will *not*
-     * trigger the element to update.
+     * Invoked on each update to perform rendering tasks. This method may return
+     * any value renderable by lit-html's NodePart - typically a TemplateResult.
+     * Setting properties inside this method will *not* trigger the element to
+     * update.
      */
 
 
-    render() {}
+    render() {
+      return renderNotImplemented;
+    }
 
   }
   /**
@@ -3160,11 +3260,10 @@
 
   LitElement['finalized'] = true;
   /**
-   * Render method used to render the lit-html TemplateResult to the element's
-   * DOM.
-   * @param {TemplateResult} Template to render.
-   * @param {Element|DocumentFragment} Node into which to render.
-   * @param {String} Element name.
+   * Render method used to render the value to the element's DOM.
+   * @param result The value to render.
+   * @param container Node into which to render.
+   * @param options Element name.
    * @nocollapse
    */
 
@@ -3813,6 +3912,11 @@
     }
 
     static get sources() {
+
+      for (const [proxySource, valueMap] of proxySources) {
+        for (const [target] of valueMap) {
+        }
+      }
 
       Array.from(proxySources.entries()).map((sourceProxy, valueMap) => {
         return {
@@ -5285,19 +5389,51 @@
    * subject to an additional IP rights grant found at
    * http://polymer.github.io/PATENTS.txt
    */
+
+  class ClassList {
+    constructor(element) {
+      this.classes = new Set();
+      this.changed = false;
+      this.element = element;
+      const classList = (element.getAttribute('class') || '').split(/\s+/);
+
+      for (const cls of classList) {
+        this.classes.add(cls);
+      }
+    }
+
+    add(cls) {
+      this.classes.add(cls);
+      this.changed = true;
+    }
+
+    remove(cls) {
+      this.classes.delete(cls);
+      this.changed = true;
+    }
+
+    commit() {
+      if (this.changed) {
+        let classString = '';
+        this.classes.forEach(cls => classString += cls + ' ');
+        this.element.setAttribute('class', classString);
+      }
+    }
+
+  }
   /**
    * Stores the ClassInfo object applied to a given AttributePart.
    * Used to unset existing values when a new ClassInfo object is applied.
    */
 
-  const classMapCache = new WeakMap();
+
+  const previousClassesCache = new WeakMap();
   /**
    * A directive that applies CSS classes. This must be used in the `class`
    * attribute and must be the only part used in the attribute. It takes each
    * property in the `classInfo` argument and adds the property name to the
-   * element's `classList` if the property value is truthy; if the property value
-   * is falsey, the property name is removed from the element's `classList`. For
-   * example
+   * element's `class` if the property value is truthy; if the property value is
+   * falsey, the property name is removed from the element's `class`. For example
    * `{foo: bar}` applies the class `foo` if the value of `bar` is truthy.
    * @param classInfo {ClassInfo}
    */
@@ -5312,37 +5448,46 @@
     } = part;
     const {
       element
-    } = committer; // handle static classes
+    } = committer;
+    let previousClasses = previousClassesCache.get(part);
 
-    if (!classMapCache.has(part)) {
-      element.className = committer.strings.join(' ');
+    if (previousClasses === undefined) {
+      // Write static classes once
+      // Use setAttribute() because className isn't a string on SVG elements
+      element.setAttribute('class', committer.strings.join(' '));
+      previousClassesCache.set(part, previousClasses = new Set());
     }
 
-    const {
-      classList
-    } = element; // remove old classes that no longer apply
+    const classList = element.classList || new ClassList(element); // Remove old classes that no longer apply
+    // We use forEach() instead of for-of so that re don't require down-level
+    // iteration.
 
-    const oldInfo = classMapCache.get(part);
-
-    for (const name in oldInfo) {
+    previousClasses.forEach(name => {
       if (!(name in classInfo)) {
         classList.remove(name);
+        previousClasses.delete(name);
       }
-    } // add new classes
-
+    }); // Add or remove classes based on their classMap value
 
     for (const name in classInfo) {
       const value = classInfo[name];
 
-      if (!oldInfo || value !== oldInfo[name]) {
-        // We explicitly want a loose truthy check here because
-        // it seems more convenient that '' and 0 are skipped.
-        const method = value ? 'add' : 'remove';
-        classList[method](name);
+      if (value != previousClasses.has(name)) {
+        // We explicitly want a loose truthy check of `value` because it seems
+        // more convenient that '' and 0 are skipped.
+        if (value) {
+          classList.add(name);
+          previousClasses.add(name);
+        } else {
+          classList.remove(name);
+          previousClasses.delete(name);
+        }
       }
     }
 
-    classMapCache.set(part, classInfo);
+    if (typeof classList.commit === 'function') {
+      classList.commit();
+    }
   });
 
   class ButtonBase extends LitElement {
@@ -6881,6 +7026,7 @@
    * subject to an additional IP rights grant found at
    * http://polymer.github.io/PATENTS.txt
    */
+  const previousValues = new WeakMap();
   /**
    * For AttributeParts, sets the attribute if the value is defined and removes
    * the attribute if the value is undefined.
@@ -6889,14 +7035,20 @@
    */
 
   const ifDefined = directive(value => part => {
+    const previousValue = previousValues.get(part);
+
     if (value === undefined && part instanceof AttributePart) {
-      if (value !== part.value) {
+      // If the value is undefined, remove the attribute, but only if the value
+      // was previously defined.
+      if (previousValue !== undefined || !previousValues.has(part)) {
         const name = part.committer.name;
         part.committer.element.removeAttribute(name);
       }
-    } else {
+    } else if (value !== previousValue) {
       part.setValue(value);
     }
+
+    previousValues.set(part, value);
   });
 
   /**
@@ -8055,7 +8207,7 @@
   const matches$1 = Element.prototype.matches || Element.prototype.msMatchesSelector;
   /** @type {string} */
 
-  const _focusableElementsString = ['a[href]', 'area[href]', 'input:not([disabled])', 'select:not([disabled])', 'textarea:not([disabled])', 'button:not([disabled])', 'iframe', 'object', 'embed', '[contenteditable]'].join(',');
+  const _focusableElementsString = ['a[href]', 'area[href]', 'input:not([disabled])', 'select:not([disabled])', 'textarea:not([disabled])', 'button:not([disabled])', 'details', 'summary', 'iframe', 'object', 'embed', '[contenteditable]'].join(',');
   /**
    * `InertRoot` manages a single inert subtree, i.e. a DOM subtree whose root element has an `inert`
    * attribute.
@@ -8713,7 +8865,7 @@
         this.setInert(inertElement, true);
       }, this); // Comment this out to use programmatic API only.
 
-      this._observer.observe(this._document.body, {
+      this._observer.observe(this._document.body || this._document.documentElement, {
         attributes: true,
         subtree: true,
         childList: true
@@ -9750,7 +9902,7 @@
       var _a = cssPropertyNameMap[cssProperty],
           standard = _a.standard,
           prefixed = _a.prefixed;
-      var isStandard = standard in el.style;
+      var isStandard = (standard in el.style);
       return isStandard ? standard : prefixed;
     }
 
@@ -9763,7 +9915,7 @@
           standard = _a.standard,
           prefixed = _a.prefixed,
           cssProperty = _a.cssProperty;
-      var isStandard = cssProperty in el.style;
+      var isStandard = (cssProperty in el.style);
       return isStandard ? standard : prefixed;
     }
 
@@ -10499,13 +10651,13 @@
    * Used to unset existing values when a new StyleInfo object is applied.
    */
 
-  const styleMapCache = new WeakMap();
+  const previousStylePropertyCache = new WeakMap();
   /**
    * A directive that applies CSS properties to an element.
    *
    * `styleMap` can only be used in the `style` attribute and must be the only
    * expression in the attribute. It takes the property names in the `styleInfo`
-   * object and adds the property values as CSS propertes. Property names with
+   * object and adds the property values as CSS properties. Property names with
    * dashes (`-`) are assumed to be valid CSS property names and set on the
    * element's style object using `setProperty()`. Names without dashes are
    * assumed to be camelCased JavaScript property names and set on the element's
@@ -10528,37 +10680,41 @@
     } = part;
     const {
       style
-    } = committer.element; // Handle static styles the first time we see a Part
+    } = committer.element;
+    let previousStyleProperties = previousStylePropertyCache.get(part);
 
-    if (!styleMapCache.has(part)) {
+    if (previousStyleProperties === undefined) {
+      // Write static styles once
       style.cssText = committer.strings.join(' ');
+      previousStylePropertyCache.set(part, previousStyleProperties = new Set());
     } // Remove old properties that no longer exist in styleInfo
+    // We use forEach() instead of for-of so that re don't require down-level
+    // iteration.
 
 
-    const oldInfo = styleMapCache.get(part);
-
-    for (const name in oldInfo) {
+    previousStyleProperties.forEach(name => {
       if (!(name in styleInfo)) {
+        previousStyleProperties.delete(name);
+
         if (name.indexOf('-') === -1) {
-          // tslint:disable-next-line:no-any
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           style[name] = null;
         } else {
           style.removeProperty(name);
         }
       }
-    } // Add or update properties
-
+    }); // Add or update properties
 
     for (const name in styleInfo) {
+      previousStyleProperties.add(name);
+
       if (name.indexOf('-') === -1) {
-        // tslint:disable-next-line:no-any
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         style[name] = styleInfo[name];
       } else {
         style.setProperty(name, styleInfo[name]);
       }
     }
-
-    styleMapCache.set(part, styleInfo);
   });
 
   const INPUT_EVENT = 'input';
@@ -10986,7 +11142,7 @@
 
   /**
    * @param {string} text
-   * @return {StyleNode}
+   * @return {!StyleNode}
    */
 
 
@@ -11021,7 +11177,7 @@
   /**
    * @param {StyleNode} node
    * @param {string} text
-   * @return {StyleNode}
+   * @return {!StyleNode}
    */
 
 
@@ -11231,7 +11387,9 @@
 
     if (!styleTextSet.has(text)) {
       styleTextSet.add(text);
-      const newStyle = style.cloneNode(true);
+      const newStyle = document.createElement('style');
+      newStyle.setAttribute('shady-unscoped', '');
+      newStyle.textContent = text;
       document.head.appendChild(newStyle);
     }
   }
@@ -12857,7 +13015,6 @@
   */
   const useShadow = !window.ShadyDOM;
   const useNativeCSSProperties = Boolean(!window.ShadyCSS || window.ShadyCSS.nativeCss);
-  const useNativeCustomElements = !window.customElements.polyfillWrapFlushCallback;
   /**
    * Globally settable property that is automatically assigned to
    * `ElementMixin` instances, useful for binding in templates to
@@ -12901,36 +13058,6 @@
    */
 
   let strictTemplatePolicy = false;
-  /**
-   * Setting to enable dom-module lookup from Polymer.Element.  By default,
-   * templates must be defined in script using the `static get template()`
-   * getter and the `html` tag function.  To enable legacy loading of templates
-   * via dom-module, set this flag to true.
-   */
-
-  let allowTemplateFromDomModule = false;
-  /**
-   * Setting to skip processing style includes and re-writing urls in css styles.
-   * Normally "included" styles are pulled into the element and all urls in styles
-   * are re-written to be relative to the containing script url.
-   * If no includes or relative urls are used in styles, these steps can be
-   * skipped as an optimization.
-   */
-
-  let legacyOptimizations = false;
-  /**
-   * Setting to perform initial rendering synchronously when running under ShadyDOM.
-   * This matches the behavior of Polymer 1.
-   */
-
-  let syncInitialRender = false;
-  /**
-   * Setting to cancel synthetic click events fired by older mobile browsers. Modern browsers
-   * no longer fire synthetic click events, and the cancellation behavior can interfere
-   * when programmatically clicking on elements.
-   */
-
-  let cancelSyntheticClickEvents = true;
 
   /**
   @license
@@ -13164,12 +13291,6 @@
       id = id || this.id;
 
       if (id) {
-        // Under strictTemplatePolicy, reject and null out any re-registered
-        // dom-module since it is ambiguous whether first-in or last-in is trusted
-        if (strictTemplatePolicy && findModule(id) !== undefined) {
-          setModule(id, null);
-          throw new Error(`strictTemplatePolicy: dom-module ${id} re-registered`);
-        }
 
         this.id = id;
         setModule(id, this);
@@ -19403,15 +19524,10 @@
       let template = null; // Under strictTemplatePolicy in 3.x+, dom-module lookup is only allowed
       // when opted-in via allowTemplateFromDomModule
 
-      if (is && (!strictTemplatePolicy || allowTemplateFromDomModule)) {
+      if (is && (!strictTemplatePolicy )) {
         template =
         /** @type {?HTMLTemplateElement} */
         DomModule.import(is, 'template'); // Under strictTemplatePolicy, require any element with an `is`
-        // specified to have a dom-module
-
-        if (strictTemplatePolicy && !template) {
-          throw new Error(`strictTemplatePolicy: expecting dom-module or null template for ${is}`);
-        }
       }
 
       return template;
@@ -19470,7 +19586,7 @@
           if (typeof template === 'string') {
             console.error('template getter must return HTMLTemplateElement');
             template = null;
-          } else if (!legacyOptimizations) {
+          } else {
             template = template.cloneNode(true);
           }
         }
@@ -19841,10 +19957,6 @@
               n.shadowRoot.appendChild(dom);
             }
 
-            if (syncInitialRender && window.ShadyDOM) {
-              window.ShadyDOM.flushInitial(n.shadowRoot);
-            }
-
             return n.shadowRoot;
           }
 
@@ -19946,17 +20058,6 @@
 
 
       static _addTemplatePropertyEffect(templateInfo, prop, effect) {
-        // Warn if properties are used in template without being declared.
-        // Properties must be listed in `properties` to be included in
-        // `observedAttributes` since CE V1 reads that at registration time, and
-        // since we want to keep template parsing lazy, we can't automatically
-        // add undeclared properties used in templates to `observedAttributes`.
-        // The warning is only enabled in `legacyOptimizations` mode, since
-        // we don't want to spam existing users who might have adopted the
-        // shorthand when attribute deserialization is not important.
-        if (legacyOptimizations && !(prop in this._properties)) {
-          console.warn(`Property '${prop}' used in template but not declared in 'properties'; ` + `attribute will not be observed.`);
-        } // TODO(https://github.com/google/closure-compiler/issues/3240):
         //     Change back to just super.methodCall()
 
 
@@ -20388,9 +20489,6 @@
   }
 
   function ignoreMouse(e) {
-    if (!cancelSyntheticClickEvents) {
-      return;
-    }
 
     if (!POINTERSTATE.mouse.mouseIgnoreJob) {
       setupTeardownMouseCanceller(true);
@@ -20514,7 +20612,7 @@
     stateObj.upfn = null;
   }
 
-  if (cancelSyntheticClickEvents) {
+  {
     // use a document-wide touchend listener to start the ghost-click prevention mechanism
     // Use passive event listeners, if supported, to not affect scrolling performance
     document.addEventListener('touchend', ignoreMouse, supportsPassive ? {
@@ -24553,11 +24651,6 @@
           generatedProto.__hasRegisterFinished = true; // ensure superclass is registered first.
 
           super._registered(); // copy properties onto the generated class lazily if we're optimizing,
-
-
-          if (legacyOptimizations) {
-            copyPropertiesToProto(generatedProto);
-          } // make sure legacy lifecycle is called on the *element*'s prototype
           // and not the generated class prototype; if the element has been
           // extended, these are *not* the same.
 
@@ -24718,7 +24811,7 @@
     }; // copy properties if we're not optimizing
 
 
-    if (!legacyOptimizations) {
+    {
       copyPropertiesToProto(PolymerGenerated.prototype);
     }
 
@@ -25607,12 +25700,6 @@
 
 
   function templatize(template, owner, options) {
-    // Under strictTemplatePolicy, the templatized element must be owned
-    // by a (trusted) Polymer element, indicated by existence of _methodHost;
-    // e.g. for dom-if & dom-repeat in main document, _methodHost is null
-    if (strictTemplatePolicy && !findMethodHost(template)) {
-      throw new Error('strictTemplatePolicy: template owner not trusted');
-    }
 
     options =
     /** @type {!TemplatizeOptions} */
@@ -25724,22 +25811,11 @@
   Code distributed by Google as part of the polymer project is also
   subject to an additional IP rights grant found at http://polymer.github.io/PATENTS.txt
   */
-  let elementsHidden = false;
   /**
    * @return {boolean} True if elements will be hidden globally
    */
 
   function hideElementsGlobally() {
-    if (legacyOptimizations && !useShadow) {
-      if (!elementsHidden) {
-        elementsHidden = true;
-        const style = document.createElement('style');
-        style.textContent = 'dom-bind,dom-if,dom-repeat{display:none;}';
-        document.head.appendChild(style);
-      }
-
-      return true;
-    }
 
     return false;
   }
@@ -25790,10 +25866,6 @@
 
     constructor() {
       super();
-
-      if (strictTemplatePolicy) {
-        throw new Error(`strictTemplatePolicy: dom-bind not allowed`);
-      }
 
       this.root = null;
       this.$ = null;
@@ -28632,7 +28704,7 @@
 
   class Lumo extends HTMLElement {
     static get version() {
-      return '1.5.0';
+      return '1.6.0';
     }
 
   }
@@ -29097,6 +29169,14 @@
       strong {
         font-weight: 600;
       }
+
+      /* RTL specific styles */
+
+      blockquote[dir="rtl"] {
+        border-left: none;
+        border-right: 2px solid var(--lumo-contrast-30pct);
+      }
+
     </style>
   </template>
 </dom-module>`;
@@ -29693,6 +29773,106 @@
 
   };
 
+  /**
+   * Array of Vaadin custom element classes that have been subscribed to the dir changes.
+   */
+  const directionSubscribers = [];
+
+  const directionUpdater = function () {
+    const documentDir = getDocumentDir();
+    directionSubscribers.forEach(element => {
+      alignDirs(element, documentDir);
+    });
+  };
+
+  const directionObserver = new MutationObserver(directionUpdater);
+  directionObserver.observe(document.documentElement, {
+    attributes: true,
+    attributeFilter: ['dir']
+  });
+
+  const alignDirs = function (element, documentDir) {
+    if (documentDir) {
+      element.setAttribute('dir', documentDir);
+    } else {
+      element.removeAttribute('dir');
+    }
+  };
+
+  const getDocumentDir = function () {
+    return document.documentElement.getAttribute('dir');
+  };
+  /**
+   * @polymerMixin
+   */
+
+
+  const DirMixin$1 = superClass => class VaadinDirMixin extends superClass {
+    static get properties() {
+      return {
+        /**
+         * @protected
+         */
+        dir: {
+          type: String,
+          readOnly: true
+        }
+      };
+    }
+
+    connectedCallback() {
+      super.connectedCallback();
+
+      if (!this.hasAttribute('dir')) {
+        this.__subscribe();
+
+        alignDirs(this, getDocumentDir());
+      }
+    }
+    /** @protected */
+
+
+    attributeChangedCallback(name, oldValue, newValue) {
+      super.attributeChangedCallback(name, oldValue, newValue);
+
+      if (name !== 'dir') {
+        return;
+      } // New value equals to the document direction and the element is not subscribed to the changes
+
+
+      const newValueEqlDocDir = newValue === getDocumentDir() && directionSubscribers.indexOf(this) === -1; // Value was emptied and the element is not subscribed to the changes
+
+      const newValueEmptied = !newValue && oldValue && directionSubscribers.indexOf(this) === -1; // New value is different and the old equals to document direction and the element is not subscribed to the changes
+
+      const newDiffValue = newValue !== getDocumentDir() && oldValue === getDocumentDir();
+
+      if (newValueEqlDocDir || newValueEmptied) {
+        this.__subscribe();
+
+        alignDirs(this, getDocumentDir());
+      } else if (newDiffValue) {
+        this.__subscribe(false);
+      }
+    }
+
+    disconnectedCallback() {
+      super.disconnectedCallback();
+
+      this.__subscribe(false);
+
+      this.removeAttribute('dir');
+    }
+
+    __subscribe(push = true) {
+      if (push) {
+        directionSubscribers.indexOf(this) === -1 && directionSubscribers.push(this);
+      } else {
+        directionSubscribers.indexOf(this) > -1 && directionSubscribers.splice(directionSubscribers.indexOf(this), 1);
+      }
+    }
+
+  };
+
   const DEV_MODE_CODE_REGEXP = /\/\*\*\s+vaadin-dev-mode:start([\s\S]*)vaadin-dev-mode:end\s+\*\*\//i;
   const FlowClients = window.Vaadin && window.Vaadin.Flow && window.Vaadin.Flow.clients;
 
@@ -30269,7 +30449,7 @@
    * @polymerMixin
    */
 
-  const ElementMixin$1 = superClass => class VaadinElementMixin extends superClass {
+  const ElementMixin$1 = superClass => class VaadinElementMixin extends DirMixin$1(superClass) {
     /** @protected */
     static finalize() {
       super.finalize();
@@ -30320,8 +30500,8 @@
    *
    * Part name         | Description
    * ------------------|----------------
-   * `checkbox`        | The checkbox element
-   * `label`           | The label content element
+   * `checkbox`        | The wrapper element for the native <input type="checkbox">
+   * `label`           | The wrapper element in which the component's children, namely the label, is slotted
    *
    * The following state attributes are available for styling:
    *
@@ -30402,7 +30582,7 @@
     }
 
     static get version() {
-      return '2.2.10';
+      return '2.2.12';
     }
 
     static get properties() {
@@ -33192,12 +33372,26 @@
 
         if (e.detail.state === 'end') {
           this._toggleAttribute('column-resizing', false, this.$.scroller);
+
+          this.dispatchEvent(new CustomEvent('column-resize', {
+            detail: {
+              resizedColumn: column
+            }
+          }));
         } // Notify resize
 
 
         this._resizeHandler();
       }
     }
+    /**
+    * Fired when a column in the grid is resized by the user.
+    *
+    * @event column-resize
+    * @param {Object} detail
+    * @param {Object} detail.resizedColumn the column that was resized
+    */
+
 
   };
 
@@ -33356,7 +33550,7 @@
     }
 
     static get observers() {
-      return ['_sizeChanged(size)', '_expandedItemsChanged(expandedItems.*)'];
+      return ['_sizeChanged(size)', '_itemIdPathChanged(itemIdPath)', '_expandedItemsChanged(expandedItems.*)'];
     }
 
     _sizeChanged(size) {
@@ -33438,15 +33632,30 @@
     }
 
     _isExpanded(item) {
-      return this.expandedItems && this._getItemIndexInArray(item, this.expandedItems) > -1;
+      return this.__expandedKeys.has(this.getItemId(item));
     }
 
     _expandedItemsChanged(e) {
+      this.__cacheExpandedKeys();
+
       this._cache.updateSize();
 
       this._effectiveSize = this._cache.effectiveSize;
 
       this._assignModels();
+    }
+
+    _itemIdPathChanged(e) {
+      this.__cacheExpandedKeys();
+    }
+
+    __cacheExpandedKeys() {
+      if (this.expandedItems) {
+        this.__expandedKeys = new Set();
+        this.expandedItems.forEach(item => {
+          this.__expandedKeys.add(this.getItemId(item));
+        });
+      }
     }
     /**
      * Expands the given item tree.
@@ -33508,14 +33717,15 @@
             if (params.parentItem) {
               cache.size = items.length;
             }
-          } // Populate the cache with new items
+          }
 
+          const currentItems = Array.from(this.$.items.children).map(row => row._item); // Populate the cache with new items
 
           items.forEach((item, itemsIndex) => {
             const itemIndex = page * this.pageSize + itemsIndex;
             cache.items[itemIndex] = item;
 
-            if (this._isExpanded(item)) {
+            if (this._isExpanded(item) && currentItems.indexOf(item) > -1) {
               // Force synchronous data request for expanded item sub-cache
               cache.ensureSubCacheForScaledIndex(itemIndex);
             }
@@ -33523,27 +33733,24 @@
           this._hasData = true;
           delete cache.pendingRequests[page];
 
-          if (!this._cache.isLoading()) {
-            // All active requests have finished, update the effective size and rows
-            this._setLoading(false);
+          this._setLoading(false);
 
-            this._cache.updateSize();
+          this._cache.updateSize();
 
-            this._effectiveSize = this._cache.effectiveSize;
-            Array.from(this.$.items.children).filter(row => !row.hidden).forEach(row => {
-              const cachedItem = this._cache.getItemForIndex(row.index);
+          this._effectiveSize = this._cache.effectiveSize;
+          Array.from(this.$.items.children).filter(row => !row.hidden).forEach(row => {
+            const cachedItem = this._cache.getItemForIndex(row.index);
 
-              if (cachedItem) {
-                this._toggleAttribute('loading', false, row);
+            if (cachedItem) {
+              this._toggleAttribute('loading', false, row);
 
-                this._updateItem(row, cachedItem);
-              }
-            });
+              this._updateItem(row, cachedItem);
+            }
+          });
 
-            this._increasePoolIfNeeded(0);
-          }
+          this._increasePoolIfNeeded(0);
 
-          this.__setInitialColumnWidths();
+          this.__itemsReceived();
         });
       }
     }
@@ -34346,6 +34553,18 @@
         this._rowWithFocusedElement = e.composedPath()[itemsIndex - 1];
       });
       this.$.items.addEventListener('focusout', () => this._rowWithFocusedElement = undefined);
+    }
+    /**
+     * Scroll to a specific row index in the virtual list. Note that the row index is
+     * not always the same for any particular item. For example, sorting/filtering/expanding
+     * or collapsing hierarchical items can affect the row index related to an item.
+     *
+     * @param {number} index Row index to scroll to
+     */
+
+
+    scrollToIndex(index) {
+      this._accessIronListAPI(() => super.scrollToIndex(index));
     }
 
     _onWheel(e) {
@@ -36152,8 +36371,10 @@
     _updateOrders(columnTree, splices) {
       if (columnTree === undefined || splices === undefined) {
         return;
-      } // Set order numbers to top-level columns
+      } // Reset all column orders
 
+
+      columnTree[0].forEach((column, index) => column._order = 0); // Set order numbers to top-level columns
 
       columnTree[0].forEach((column, index) => column._order = (index + 1) * this._orderBaseScope);
     }
@@ -37499,7 +37720,7 @@
     }
 
     static get version() {
-      return '5.4.12';
+      return '5.5.2';
     }
 
     static get observers() {
@@ -37551,6 +37772,10 @@
           value: false,
           reflectToAttribute: true,
           observer: '_heightByRowsChanged'
+        },
+        _recalculateColumnWidthOnceLoadingFinished: {
+          type: Boolean,
+          value: true
         }
       };
     }
@@ -37564,9 +37789,9 @@
       return !!Array.from(this.$.items.children).filter(row => row.clientHeight).length;
     }
 
-    __setInitialColumnWidths() {
-      if (!this._initialColumnWidthsSet && this.__hasRowsWithClientHeight()) {
-        this._initialColumnWidthsSet = true;
+    __itemsReceived() {
+      if (this._recalculateColumnWidthOnceLoadingFinished && !this._cache.isLoading() && this.__hasRowsWithClientHeight()) {
+        this._recalculateColumnWidthOnceLoadingFinished = false;
         this.recalculateColumnWidths();
       }
     }
@@ -37612,9 +37837,13 @@
         return; // No columns
       }
 
-      const cols = this._getColumns().filter(col => !col.hidden && col.autoWidth);
+      if (this._cache.isLoading()) {
+        this._recalculateColumnWidthOnceLoadingFinished = true;
+      } else {
+        const cols = this._getColumns().filter(col => !col.hidden && col.autoWidth);
 
-      this._recalculateColumnWidths(cols);
+        this._recalculateColumnWidths(cols);
+      }
     }
 
     _createScrollerRows(count) {
@@ -37959,7 +38188,7 @@
         e.stopPropagation();
         this.notifyResize();
 
-        this.__setInitialColumnWidths();
+        this.__itemsReceived();
       }
     }
 
@@ -38142,21 +38371,27 @@
     }
 
     _groupOrderChanged(order, rootColumns) {
-      if (order && rootColumns) {
-        // The parent column order number cascades downwards to it's children
+      if (rootColumns) {
+        const _rootColumns = rootColumns.slice(0);
+
+        if (!order) {
+          _rootColumns.forEach(column => column._order = 0);
+
+          return;
+        } // The parent column order number cascades downwards to it's children
         // so that the resulting order numbering constructs as follows:
         // [             1000              ]
         // [     1100    ] | [     1200    ]
         // [1110] | [1120] | [1210] | [1220]
         // Trailing zeros are counted so we know the level on which we're working on.
+
+
         const trailingZeros = /(0+)$/.exec(order).pop().length; // In an unlikely situation where a group has more than 9 child columns,
         // the child scope must have 1 digit less...
 
         const childCountDigits = ~~(Math.log(rootColumns.length) / Math.log(Math.LN10)) + 1; // Final scope for the child columns needs to mind both factors.
 
         const scope = Math.pow(10, trailingZeros - childCountDigits);
-
-        const _rootColumns = rootColumns.slice(0);
 
         if (_rootColumns[0] && _rootColumns[0]._order) {
           _rootColumns.sort((a, b) => a._order - b._order);
@@ -38284,7 +38519,7 @@
 
   class Material extends HTMLElement {
     static get version() {
-      return '1.2.3';
+      return '1.3.2';
     }
 
   }
@@ -38470,15 +38705,9 @@
 </custom-style>`;
   document.head.appendChild($_documentContainer$9.content);
 
-  const font = 'https://fonts.googleapis.com/css?family=Roboto+Mono:400,700|Roboto:400,300,300italic,400italic,500,500italic,700,700italic';
-  const link = document.createElement('link');
-  link.rel = 'stylesheet';
-  link.type = 'text/css';
-  link.crossOrigin = 'anonymous';
-  link.href = font;
-  document.head.appendChild(link);
-
-  const $_documentContainer$a = html$1`<custom-style>
+  /* Import Roboto from Google Fonts */
+  const $_documentContainer$a = document.createElement('template');
+  $_documentContainer$a.innerHTML = `<custom-style>
   <style>
     html {
       /* Font family */
@@ -38579,6 +38808,16 @@
 </dom-module>`;
   document.head.appendChild($_documentContainer$a.content);
 
+  if (!window.polymerSkipLoadingFontRoboto) {
+    const font = 'https://fonts.googleapis.com/css?family=Roboto+Mono:400,700|Roboto:400,300,300italic,400italic,500,500italic,700,700italic';
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.type = 'text/css';
+    link.crossOrigin = 'anonymous';
+    link.href = font;
+    document.head.appendChild(link);
+  }
+
   const $_documentContainer$b = document.createElement('template');
   $_documentContainer$b.innerHTML = `<dom-module id="material-required-field">
   <template>
@@ -38635,6 +38874,12 @@
         0% {
           opacity: 0;
         }
+      }
+
+      /* RTL specific styles */
+
+      :host([dir="rtl"]) [part="label"] {
+        transform-origin: 100% 75%;
       }
     </style>
   </template>
@@ -39460,7 +39705,9 @@
 
 
     checkValidity() {
-      if (this.required || this.pattern || this.maxlength || this.minlength) {
+      // Note (Yuriy): `__forceCheckValidity` is used in containing components (i.e. `vaadin-date-picker`) in order
+      // to force the checkValidity instead of returning the previous invalid state.
+      if (this.required || this.pattern || this.maxlength || this.minlength || this.__forceCheckValidity) {
         return this.inputElement.checkValidity();
       } else {
         return !this.invalid;
@@ -39857,7 +40104,7 @@
     }
 
     static get version() {
-      return '2.5.3';
+      return '2.5.4';
     }
 
     static get properties() {
@@ -41566,7 +41813,7 @@
       }; // Validate Reward Share by Level
 
 
-      const validateReceiver = async recipient => {
+      const validateReceiver = async () => {
         let accountDetails = await getAccountDetails();
         let lastRef = await getLastRef(); // Check for creating self share at different levels
 
@@ -41664,4 +41911,4 @@
 
   window.customElements.define('reward-share', RewardShare);
 
-}));
+})));
