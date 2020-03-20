@@ -41479,11 +41479,10 @@
 
     firstUpdated() {
       const updateRewardshares = () => {
-        // console.log('=========================================')
+        console.log('=========================================');
         parentEpml.request('apiCall', {
           url: `/addresses/rewardshares?involving=${this.selectedAddress.address}`
         }).then(res => {
-          // console.log(res)
           this.rewardShares = [];
           setTimeout(() => {
             this.rewardShares = res;
@@ -41497,8 +41496,7 @@
         // Guess this is our version of state management...should make a plugin for it...proxied redux or whatever lol
         parentEpml.subscribe('selected_address', async selectedAddress => {
           this.selectedAddress = {};
-          selectedAddress = JSON.parse(selectedAddress); // console.log('==========================SELECTED ADDRESS',selectedAddress)
-
+          selectedAddress = JSON.parse(selectedAddress);
           if (!selectedAddress || Object.entries(selectedAddress).length === 0) return; // Not ready yet ofc
 
           this.selectedAddress = selectedAddress;
@@ -41523,7 +41521,16 @@
       // var fee = this.fee
       // Check for valid...^
 
-      this.createRewardShareLoading = true; // Get Last Ref
+      this.createRewardShareLoading = true;
+
+      const publicKeyToAddress = async pubKey => {
+        let yourAddr = await parentEpml.request('apiCall', {
+          type: 'api',
+          url: `/addresses/convert/${pubKey}`
+        });
+        return yourAddr;
+      }; // Get Last Ref
+
 
       const getLastRef = async () => {
         let myRef = await parentEpml.request('apiCall', {
@@ -41540,42 +41547,71 @@
           url: `/addresses/${this.selectedAddress.address}`
         });
         return myAccountDetails;
+      }; // Get Reward Relationship if it already exists
+
+
+      const getRewardShareRelationship = async (minterAddr, recipientPubKey) => {
+        let yourAddr = await publicKeyToAddress(recipientPubKey);
+        let isRewardShareExisting = false;
+        let myRewardShareArray = await parentEpml.request('apiCall', {
+          type: 'api',
+          url: `/addresses/rewardshares?minters=${minterAddr}&recipients=${yourAddr}`
+        });
+        isRewardShareExisting = myRewardShareArray.length !== 0 ? true : false;
+        return isRewardShareExisting; // THOUGHTS: At this point, I think I dont wanna further do any check...
+        // myRewardShareArray.forEach(rewsh => {
+        //     if (rewsh.mintingAccount) {
+        //     }
+        // })
       }; // Validate Reward Share by Level
 
 
       const validateReceiver = async recipient => {
         let accountDetails = await getAccountDetails();
-        console.log(accountDetails);
-        let lastRef = await getLastRef();
-        console.log(lastRef); // Check for creating self share at different levels
+        let lastRef = await getLastRef(); // Check for creating self share at different levels
 
         if (accountDetails.publicKey === recipientPublicKey) {
-          if (accountDetails.level === 0) {
-            this.error = true;
-            this.message = `CANNOT CREATE SELF SHARE! at level ${accountDetails.level}`;
-            console.log("Cannot Create Reward Share");
-          } else {
+          if (accountDetails.flags === 1 || accountDetails.level >= 1) {
             this.error = false;
             this.message = '';
             let myTransaction = await makeTransactionRequest(lastRef);
-            getTxnRequestResponse(myTransaction);
+            let isExisting = await getRewardShareRelationship(this.selectedAddress.address, recipientPublicKey);
+
+            if (isExisting === true) {
+              this.error = true;
+              this.message = `Cannot Create Multiple Reward Shares!`;
+              console.log("Cannot create REWARD SHARE Transaction");
+            } else {
+              // Send the transaction for confirmation by the user
+              this.error = false;
+              this.message = '';
+              getTxnRequestResponse(myTransaction);
+            }
+          } else {
+            this.error = true;
+            this.message = `CANNOT CREATE SELF SHARE! at level ${accountDetails.level}`;
           }
         } else {
           //Check for creating reward shares
-          if (accountDetails.level === 0) {
-            this.error = true;
-            this.message = `CANNOT CREATE REWARD SHARE! at level ${accountDetails.level}`;
-            console.log("Cannot Create Reward Share");
-          } else if (accountDetails.level === 1 || accountDetails.level <= 4) {
-            this.error = true;
-            this.message = `CANNOT CREATE REWARD SHARE! at level ${accountDetails.level}`;
-            console.log("Only Self Share");
-          } else {
+          if (accountDetails.flags === 1 || accountDetails.level >= 5) {
             this.error = false;
             this.message = '';
             let myTransaction = await makeTransactionRequest(lastRef);
-            getTxnRequestResponse(myTransaction);
-            console.log("BOTH self share and reward");
+            let isExisting = await getRewardShareRelationship(this.selectedAddress.address, recipientPublicKey);
+
+            if (isExisting === true) {
+              this.error = true;
+              this.message = `Cannot Create Multiple Reward Shares!`;
+              console.log("Cannot create REWARD SHARE Transaction");
+            } else {
+              // Send the transaction for confirmation by the user
+              this.error = false;
+              this.message = '';
+              getTxnRequestResponse(myTransaction);
+            }
+          } else {
+            this.error = true;
+            this.message = `CANNOT CREATE REWARD SHARE! at level ${accountDetails.level}`;
           }
         }
       }; // Make Transaction Request
@@ -41598,8 +41634,6 @@
 
 
       const getTxnRequestResponse = txnResponse => {
-        console.log(txnResponse);
-
         if (txnResponse.success === false && txnResponse.message) {
           this.error = true;
           this.message = txnResponse.message;
@@ -41612,47 +41646,9 @@
           this.message = txnResponse.data.message;
           throw new Error(txnResponse);
         }
-      }; // Call validateReceiver
-      // setTimeout(() => {
-      //     validateReceiver(recipient)
-      // }, 1000);
+      };
 
-
-      validateReceiver(); // try {
-      //     const lastReference = await parentEpml.request('apiCall', {
-      //         type: 'api',
-      //         url: `/addresses/lastreference/${this.selectedAddress.address}`
-      //     })
-      //     // console.log(lastReference)
-      //     const txRequestResponse = await parentEpml.request('transaction', {
-      //         type: 38,
-      //         nonce: this.selectedAddress.nonce,
-      //         params: {
-      //             recipientPublicKey,
-      //             percentageShare,
-      //             lastReference
-      //             // ,
-      //             // fee
-      //         }
-      //     })
-      //     // const responseData = JSON.parse(txRequestResponse) // JSON.parse(txRequestResponse)
-      //     // console.log(txRequestResponse)
-      //     if (txRequestResponse.data !== true) {
-      //         if (txRequestResponse.success === false) {
-      //             throw new Error(txRequestResponse.message)
-      //         }
-      //         // ${ERROR_CODES[responseData]}
-      //         // if (ERROR_CODES[responseData]) throw new Error(`Error!. Code ${responseData}: ${ERROR_CODES[responseData]}`)
-      //         throw new Error(`Error code: ${txRequestResponse.data.error},  ${txRequestResponse.data.message}`)
-      //         // throw new Error(`Error!. ${ ERROR_CODES[responseData]}`)
-      //     }
-      //     this.message = 'Success!'
-      //     this.error = false
-      // } catch (e) {
-      //     this.error = true
-      //     this.message = e.message
-      // }
-
+      validateReceiver();
       this.createRewardShareLoading = false;
     }
 

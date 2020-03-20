@@ -40181,6 +40181,9 @@
         addMintingAccountLoading: {
           type: Boolean
         },
+        removeMintingAccountLoading: {
+          type: Boolean
+        },
         addPeerLoading: {
           type: Boolean
         },
@@ -40188,6 +40191,9 @@
           type: Boolean
         },
         addMintingAccountKey: {
+          type: String
+        },
+        removeMintingAccountKey: {
           type: String
         },
         addPeerMessage: {
@@ -40198,6 +40204,12 @@
         },
         addMintingAccountMessage: {
           type: String
+        },
+        removeMintingAccountMessage: {
+          type: String
+        },
+        tempMintingAccount: {
+          type: Object
         }
       };
     }
@@ -40275,10 +40287,14 @@
       this.addPeerLoading = false;
       this.confPeerLoading = false;
       this.addMintingAccountLoading = false;
+      this.removeMintingAccountLoading = false;
       this.addMintingAccountKey = '';
+      this.removeMintingAccountKey = '';
       this.addPeerMessage = '';
       this.confPeerMessage = '';
       this.addMintingAccountMessage = '';
+      this.removeMintingAccountMessage = '';
+      this.tempMintingAccount = {};
       this.config = {
         user: {
           node: {}
@@ -40301,6 +40317,7 @@
                             <mwc-button style="float:right;" @click=${() => this.shadowRoot.querySelector('#addMintingAccountDialog').show()}><mwc-icon>add</mwc-icon>Add minting account</mwc-button>
                         </div>
 
+                        <!-- Add Minting Account Dialog -->
                         <mwc-dialog id="addMintingAccountDialog" scrimClickAction="${this.addMintingAccountLoading ? '' : 'close'}">
                             <div>If you would like to mint with your own account you will need to create a rewardshare transaction to yourself (with rewardshare percent set to 0), and then mint with the rewardshare key it gives you.</div>
                             <br>
@@ -40328,6 +40345,43 @@
                             </mwc-button>
                             <mwc-button
                                 ?disabled="${this.addMintingAccountLoading}"
+                                slot="secondaryAction"
+                                dialogAction="cancel"
+                                class="red">
+                                Close
+                            </mwc-button>
+                        </mwc-dialog>
+
+                        <!-- Remove Minting Account Dialog -->
+                        <mwc-dialog id="removeMintingAccountDialog" scrimClickAction="${this.removeMintingAccountLoading ? '' : 'close'}">
+                            <div>Type the Reward Share Key for this minting account below to remove the minting account from this Node.</div>
+                            <br>
+                            <mwc-textfield ?disabled="${this.removeMintingAccountLoading}" label="Rewardshare key" id="removeMintingAccountKey"></mwc-textfield>
+                            <div style="text-align:right; height:36px;" ?hidden=${this.removeMintingAccountMessage === ''}>
+                                <span ?hidden="${this.removeMintingAccountLoading}">
+                                    ${this.removeMintingAccountMessage} &nbsp;
+                                </span>
+                                <span ?hidden="${!this.removeMintingAccountLoading}">
+                                    <!-- loading message -->
+                                    Loading... &nbsp;
+                                    <paper-spinner-lite
+                                        style="margin-top:12px;"
+                                        ?active="${this.removeMintingAccountLoading}"
+                                        alt="Removing minting account"></paper-spinner-lite>
+                                </span>
+                            </div>
+                            <mwc-button
+                                ?disabled="${this.removeMintingAccountLoading}"
+                                slot="primaryAction"
+                                @click=${() => {
+      this.removeMintingAccount();
+    }}
+                                >
+                                <!--dialogAction="add"-->
+                                Remove
+                            </mwc-button>
+                            <mwc-button
+                                ?disabled="${this.removeMintingAccountLoading}"
                                 slot="secondaryAction"
                                 dialogAction="cancel"
                                 class="red">
@@ -40388,7 +40442,20 @@
                             <vaadin-grid-column path="address"></vaadin-grid-column>
                             <vaadin-grid-column path="lastHeight"></vaadin-grid-column>
                             <vaadin-grid-column path="version" header="Build Version"></vaadin-grid-column>
-                            <!-- <vaadin-grid-column id="details"></vaadin-grid-column> -->
+                            <!-- <vaadin-grid-column header="Sync Peer" auto-width .renderer=${(root, column, data) => {
+      render(html`
+                                <mwc-button ?disabled="${this.confPeerLoading}"  @click=${() => {
+        this.syncPeer(data.item.address);
+      }} slot="primaryAction">&nbsp; Sync Peer </mwc-button>
+                `, root);
+    }}></vaadin-grid-column>
+            <vaadin-grid-column header="Remove Peer" auto-width .renderer=${(root, column, data) => {
+      render(html`
+                                <mwc-button class="red" @click=${() => {
+        this.removePeer(data.item.address);
+      }} slot="primaryAction">&nbsp; Remove Peer </mwc-button>
+                `, root);
+    }}></vaadin-grid-column> -->
                         </vaadin-grid>
 
                         ${this.isEmptyArray(this.peers) ? html`
@@ -40400,41 +40467,15 @@
                 </div>
             </div>
         `;
-    } // getPeersGrid() {
-    //     const myGrid = this.shadowRoot.querySelector('#peersGrid')
-    //     myGrid.rowDetailsRenderer = (root, myGrid, rowData) => {
-    //         if (!root.firstElementChild) {
-    //             render(html`
-    //                 <div class="details">
-    //                     <p><span>Peer Address: ${rowData.item.address}</span><br>
-    //                     ${!rowData.item.lastHeight ? "" : html`<small>${rowData.item.lastHeight}</small>`}
-    //                     </p><br>
-    //                     <span ?hidden="${this.confPeerLoading}">
-    //                         ${this.confPeerMessage} &nbsp;
-    //                     </span> <br>
-    //                     <mwc-button slot="primaryAction" @click=${() => this.syncPeer(rowData.item.address)}>Sync To Peer</mwc-button>
-    //                     <mwc-button slot="secondaryAction" @click=${() => this.removePeer(rowData.item.address)} class="red-button"><mwc-icon style="width:16px;">highlight_off</mwc-icon>&nbsp; Remove Peer</mwc-button>
-    //                 </div>`, root)
-    //         }
-    //         root.firstElementChild.querySelector('small').textContent = 'Last Height: ' + rowData.item.lastHeight;
-    //     }
-    //     const detailsToggleColumn = this.shadowRoot.querySelector('#details');
-    //     detailsToggleColumn.renderer = function (root, column, rowData) {
-    //         if (!root.firstElementChild) {
-    //             root.innerHTML = '<vaadin-checkbox>Show Actions</vaadin-checkbox>';
-    //             root.firstElementChild.addEventListener('checked-changed', function (e) {
-    //                 if (e.detail.value) {
-    //                     myGrid.openItemDetails(root.item);
-    //                 } else {
-    //                     myGrid.closeItemDetails(root.item);
-    //                 }
-    //             });
-    //         }
-    //         root.item = rowData.item;
-    //         root.firstElementChild.checked = myGrid.detailsOpenedItems.indexOf(root.item) > -1;
-    //     };
-    // }
+    }
 
+    getMintingAccountGrid() {
+      const myGrid = this.shadowRoot.querySelector('#mintingAccountsGrid');
+      myGrid.addEventListener('click', e => {
+        this.tempMintingAccount = myGrid.getEventContext(e).item;
+        this.shadowRoot.querySelector('#removeMintingAccountDialog').show();
+      });
+    }
 
     addPeer(e) {
       this.addPeerLoading = true;
@@ -40445,36 +40486,46 @@
         body: addPeerAddress
       }).then(res => {
         this.addPeerMessage = res.message;
-        console.log(res);
         this.addPeerLoading = false;
       });
-    } // removePeer(peerAddress) {
-    //     this.confPeerLoading = true
-    //     parentEpml.request('apiCall', {
-    //         url: `/peers`,
-    //         method: 'DELETE',
-    //         body: peerAddress
-    //     }).then(res => {
-    //         if (res === true) {
-    //             this.confPeerMessage = `Successfully removed peer: ${peerAddress}`
-    //             console.log(res)
-    //             this.confPeerLoading = false
-    //         } else {
-    //             this.confPeerMessage = `Failed to remove peer: ${peerAddress}`
-    //             console.log(res)
-    //             this.confPeerLoading = false
-    //         }
-    //     })
+    } // THOUGHTS: I dont think this functionality is needed (same with sync peer)
+    // Sync peer takes time and can be a bad experience to users..
+    // removePeer(peerAddress) {
+    //     // this.confPeerLoading = true
+    //     // parentEpml.request('apiCall', {
+    //     //     url: `/peers`,
+    //     //     method: 'DELETE',
+    //     //     body: peerAddress
+    //     // }).then(res => {
+    //     //     if (res === true) {
+    //     //         this.confPeerMessage = `Successfully removed peer: ${peerAddress}`
+    //     //         console.log(res)
+    //     //         this.confPeerLoading = false
+    //     //     } else {
+    //     //         this.confPeerMessage = `Failed to remove peer: ${peerAddress}`
+    //     //         console.log(res)
+    //     //         this.confPeerLoading = false
+    //     //     }
+    //     // })
     // }
     // syncPeer(peerAddress) {
     //     this.confPeerLoading = true
+    //     console.log(peerAddress);
     //     parentEpml.request('apiCall', {
-    //         url: `/admin/forcesync`,
+    //         url: `/peers`,
     //         method: 'POST',
     //         body: peerAddress
     //     }).then(res => {
-    //         this.confPeerLoading = false
-    //         this.confPeerMessage = res
+    //         if (res === true) {
+    //             parentEpml.request('apiCall', {
+    //                 url: `/admin/forcesync`,
+    //                 method: 'POST',
+    //                 body: peerAddress
+    //             }).then(res => {
+    //                 this.confPeerLoading = false
+    //                 this.confPeerMessage = res
+    //             })
+    //         }
     //         // if (res === true) {
     //         //     this.confPeerLoading = false
     //         //     this.confPeerMessage = `Successfully Synced To Peer: ${peerAddress}`
@@ -40495,23 +40546,70 @@
 
     addMintingAccount(e) {
       this.addMintingAccountLoading = true;
-      this.addMintingAccountMessage = "Doing something delicious";
-      const addMintingAccountKey = this.shadowRoot.querySelector('#addMintingAccountKey').value;
+      this.addMintingAccountMessage = "Loading...";
+      this.addMintingAccountKey = this.shadowRoot.querySelector('#addMintingAccountKey').value;
       parentEpml.request('apiCall', {
         url: `/admin/mintingaccounts`,
         method: 'POST',
-        body: addMintingAccountKey
+        body: this.addMintingAccountKey
       }).then(res => {
-        this.addMintingAccountMessage = res.message.includes(' ') === true ? res.message.split(' ').join('_').toLocaleUpperCase() : res.message;
-        this.addMintingAccountLoading = false;
-        if (res === 'true') this.addMintingAccountMessage = 'Minting Node Added Successfully!';
-      }); // this.addMintingAccountLoading = false
+        if (res === true) {
+          this.updateMintingAccounts();
+          this.addMintingAccountKey = '';
+          this.addMintingAccountMessage = 'Minting Node Added Successfully!';
+          this.addMintingAccountLoading = false;
+        } else {
+          this.addMintingAccountKey = '';
+          this.addMintingAccountMessage = 'Failed to Add Minting Node!'; // Corrected an error here thanks to crow (-_-)
+
+          this.addMintingAccountLoading = false;
+        }
+      });
+    }
+
+    updateMintingAccounts() {
+      parentEpml.request('apiCall', {
+        url: `/admin/mintingaccounts`
+      }).then(res => {
+        this.mintingAccounts = [];
+        setTimeout(() => {
+          this.mintingAccounts = res;
+        }, 1);
+      }); // setTimeout(updateMintingAccounts, this.config.user.nodeSettings.pingInterval) // Perhaps should be slower...?
+    }
+
+    removeMintingAccount(e) {
+      this.removeMintingAccountLoading = true;
+      this.removeMintingAccountMessage = "Loading...";
+      this.removeMintingAccountKey = this.shadowRoot.querySelector('#removeMintingAccountKey').value;
+      this.mintingAccounts.forEach(mintingAccount => {
+        if (this.tempMintingAccount.recipientAccount === mintingAccount.recipientAccount) {
+          parentEpml.request('apiCall', {
+            url: `/admin/mintingaccounts`,
+            method: 'DELETE',
+            body: this.removeMintingAccountKey
+          }).then(res => {
+            if (res === true) {
+              this.updateMintingAccounts();
+              this.removeMintingAccountKey = '';
+              this.removeMintingAccountMessage = 'Minting Node Removed Successfully!';
+              this.removeMintingAccountLoading = false;
+            } else {
+              this.removeMintingAccountKey = '';
+              this.removeMintingAccountMessage = 'Failed to Remove Minting Node!';
+              this.removeMintingAccountLoading = false;
+            }
+          });
+        }
+      });
     }
 
     firstUpdated() {
-      // Calls the getPeersGrid func..
-      // this.getPeersGrid()
-      // Calculate HH MM SS from Milliseconds...
+      // Call getMintingAccountGrid
+      this.getMintingAccountGrid(); // Call updateMintingAccounts
+
+      this.updateMintingAccounts(); // Calculate HH MM SS from Milliseconds...
+
       const convertMsToTime = milliseconds => {
         let day, hour, minute, seconds;
         seconds = Math.floor(milliseconds / 1000);
@@ -40529,27 +40627,12 @@
         parentEpml.request("apiCall", {
           url: `/admin/uptime`
         }).then(res => {
-          // console.log(res);
           this.upTime = "";
           setTimeout(() => {
             this.upTime = convertMsToTime(res);
           }, 1);
         });
         setTimeout(getNodeUpTime, this.config.user.nodeSettings.pingInterval);
-      };
-
-      const updateMintingAccounts = () => {
-        // console.log('=========================================')
-        parentEpml.request('apiCall', {
-          url: `/admin/mintingaccounts`
-        }).then(res => {
-          console.log(res);
-          this.mintingAccounts = [];
-          setTimeout(() => {
-            this.mintingAccounts = res;
-          }, 1);
-        });
-        setTimeout(updateMintingAccounts, this.config.user.nodeSettings.pingInterval); // Perhaps should be slower...?
       };
 
       const updatePeers = () => {
@@ -40570,7 +40653,7 @@
           if (!configLoaded) {
             setTimeout(getNodeUpTime, 1);
             setTimeout(updatePeers, 1);
-            setTimeout(updateMintingAccounts, 1);
+            setTimeout(this.updateMintingAccounts, 1);
             configLoaded = true;
           }
 

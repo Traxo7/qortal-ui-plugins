@@ -39117,6 +39117,17 @@
       this.addressInfoStreams = {};
       this.unconfirmedTransactionStreams = {};
       this.selectedTransaction = {};
+      parentEpml.ready().then(() => {
+        parentEpml.subscribe('selected_address', async selectedAddress => {
+          this.selectedAddress = {};
+          selectedAddress = JSON.parse(selectedAddress);
+          if (!selectedAddress || Object.entries(selectedAddress).length === 0) return; // Not ready yet ofc
+
+          this.selectedAddress = selectedAddress;
+          this.updateAccountTransactions();
+          this.updateAccountBalance();
+        });
+      });
     }
     /*
     <time-ago .datetime=${new Date(transaction.transaction.timestamp).toISOString()}>
@@ -39186,9 +39197,7 @@
                                 <vaadin-grid-column width="10rem" path="recipient"></vaadin-grid-column>
                                 <vaadin-grid-column width="2rem" path="fee"></vaadin-grid-column>
                                 <vaadin-grid-column width="2rem" path="amount"></vaadin-grid-column>
-                                <vaadin-grid-column width="2rem" header="Time" .renderer=${(root, column, data) => {
-      // console.log(data.item.timestamp)
-      // console.log(root)
+                                <vaadin-grid-column width="2rem" header="Timestamp" .renderer=${(root, column, data) => {
       const time = new Date(data.item.timestamp);
       render(html`
                                         <time-ago datetime=${time.toISOString()}>
@@ -39252,7 +39261,6 @@
       const myGrid = this.shadowRoot.querySelector('#transactionsGrid');
       myGrid.addEventListener('click', e => {
         let myItem = myGrid.getEventContext(e).item;
-        console.log(myItem);
         this.showTransactionDetails(myItem, this.transactions);
       });
     }
@@ -39260,52 +39268,6 @@
     firstUpdated() {
       // Calls the getGridTransaction func..
       this.getGridTransaction();
-      let configLoaded = false;
-      parentEpml.ready().then(() => {
-        parentEpml.subscribe('config', c => {
-          if (!configLoaded) {
-            setTimeout(() => this.updateAccountTransactions(), 1);
-            configLoaded = true;
-          }
-
-          this.config = JSON.parse(c);
-        }); // Guess this is our version of state management...should make a plugin for it...proxied redux or whatever lol
-
-        parentEpml.subscribe('selected_address', async selectedAddress => {
-          this.selectedAddress = {};
-          selectedAddress = JSON.parse(selectedAddress);
-          if (!selectedAddress || Object.entries(selectedAddress).length === 0) return; // Not ready yet ofc
-
-          this.selectedAddress = selectedAddress;
-          const addr = selectedAddress.address;
-          this.updateAccountTransactions();
-          this.updateAccountBalance(); // if (!this.addressInfoStreams[addr]) {
-          //     console.log('AND DIDN\'T FIND AN EXISTING ADDRESS STREAM')
-          //     this.addressInfoStreams[addr] = coreEpml.subscribe(`address/${addr}`, addrInfo => {
-          //         addrInfo = JSON.parse(addrInfo)
-          //         console.log('FINALLY RECEIVE ADDR INFO DUMB', addrInfo)
-          //         this.loading = false
-          //         addrInfo.nativeBalance = addrInfo.nativeBalance || { total: {} }
-          //         // console.log('NATIVE',addrInfo)
-          //         // addrInfo.nativeBalance.total['0'] = addrInfo.nativeBalance.total['0'] || 0
-          //         // addrInfo.nativeBalance.total['1'] = addrInfo.nativeBalance.total['1'] || 0
-          //         console.log(addrInfo.nativeBalance)
-          //         this.addressesInfo = {
-          //             ...this.addressesInfo,
-          //             [addr]: addrInfo
-          //         }
-          //         this.selectedAddressInfo = this.addressesInfo[this.selectedAddress.address]
-          //         // console.log(this.addressesInfo)
-          //         console.log(this.selectedAddressInfo)
-          //         // const addressesInfoStore = this.addressesInfo
-          //         // this.addressesInfo = {}
-          //         // this.addressesInfo = addressesInfoStore
-          //     })
-          // }
-        });
-      });
-      parentEpml.imReady();
-      coreEpml.imReady();
     }
 
     updateAccountTransactions() {
@@ -39313,12 +39275,10 @@
       parentEpml.request('apiCall', {
         url: `/transactions/search?address=${this.selectedAddress.address}&confirmationStatus=BOTH&limit=20&reverse=true`
       }).then(res => {
-        // console.log(res.rev)
         this.transactions = res; // I made the API call return a reversed result so I can reduce complexity... 
         // this.transactions.reverse() // Not needed
-        // console.log(this.config.user.nodeSettings.pingInterval)
 
-        this.updateAccountTransactionTimeout = setTimeout(() => this.updateAccountTransactions(), this.config.user.nodeSettings.pingInterval ? this.config.user.nodeSettings.pingInterval : 4000);
+        this.updateAccountTransactionTimeout = setTimeout(() => this.updateAccountTransactions(), 2000);
       });
     }
 
@@ -39327,10 +39287,8 @@
       parentEpml.request('apiCall', {
         url: `/addresses/${this.selectedAddress.address}`
       }).then(res => {
-        // console.log(res)
-        this.addressInfo = res; // console.log(this.config.user.nodeSettings.pingInterval)
-
-        this.updateAccountInfoTimeout = setTimeout(() => this.updateAccountInfo(), this.config.user.nodeSettings.pingInterval ? this.config.user.nodeSettings.pingInterval : 4000);
+        this.addressInfo = res;
+        this.updateAccountInfoTimeout = setTimeout(() => this.updateAccountInfo(), 4000);
       });
     }
 
@@ -39339,10 +39297,8 @@
       parentEpml.request('apiCall', {
         url: `/addresses/balance/${this.selectedAddress.address}`
       }).then(res => {
-        // console.log(res)
-        this.balance = res; // console.log(this.config.user.nodeSettings.pingInterval)
-
-        this.updateAccountBalanceTimeout = setTimeout(() => this.updateAccountBalance(), this.config.user.nodeSettings.pingInterval ? this.config.user.nodeSettings.pingInterval : 4000);
+        this.balance = res;
+        this.updateAccountBalanceTimeout = setTimeout(() => this.updateAccountBalance(), 2000);
       });
     }
 
@@ -39358,8 +39314,6 @@
           if (this.selectedTransaction.signature.length != 0) {
             this.shadowRoot.querySelector('#showTransactionDetailsDialog').show();
           }
-
-          console.log("Transaction The Same");
         }
       });
     }
@@ -39423,127 +39377,5 @@
   }
 
   window.customElements.define('wallet-app', WalletApp);
-  /*
-
-  OLD GRID(s)
-
-  <div id="tableContainer" style="max-width:100vw; overflow-x: auto;" ?hidden=${this.selectedAddressInfo.transactions.length < 1}>
-                                      <h3 style="padding-left:12px;" class="mono weight-100">Recent transactions</h3>
-                                      <table cellspacing="0" cellpadding="0">
-                                          <tr>
-                                              <th>Time</th>
-                                              <th>Type</th>
-                                              <th>Amount</th>
-                                              <th>Confirmations</th>
-                                              <th>Sender/Recipient</th>
-                                          </tr>
-                                          ${this.selectedAddressInfo.transactions.map(transaction => html`
-                                              <tr>
-                                                  <td>
-
-                                                       ${transaction.transaction.dateTime}
-                                                  </td>
-                                                  <td>
-                                                      <span class="${this._unconfirmedClass(transaction.transaction.unconfirmed)}}">
-                                                          ${this.getTxType(transaction.transaction.type)}
-                                                      </span>
-                                                  </td>
-                                                  <td style="min-width:60px;">
-                                                      <span class="mono ${this.txColor(transaction.transaction)} ${this._unconfirmedClass(transaction.transaction.unconfirmed)}}">
-                                                          <!-- Ugly to avoid the space -->
-                                                          <mwc-icon style="height:16px; font-size:16px;">${this.sendOrRecieve(transaction.transaction) ? 'add_circle' : 'remove_circle'}</mwc-icon>
-                                                          <span>${this.floor(transaction.transaction.amount)}</span>
-                                                          <span style="font-size:12px; vertical-align:top; line-height:16px;">${this.decimals(transaction.transaction.amount)}</span>
-                                                      </span>
-                                                  </td>
-                                                  <td>
-                                                      <span class="${this._unconfirmedClass(transaction.transaction.unconfirmed)}}">
-                                                      <!-- this.lastBlock.height -->
-                                                          ${!transaction.unconfirmed ? this.getConfirmations(transaction.transaction.blockHeight, this.selectedAddressInfo.lastBlock.height) : '0'}
-                                                      </span>
-                                                  </td>
-                                                  <td>
-                                                      <span class="${this._unconfirmedClass(transaction.unconfirmed)}">${this.senderOrRecipient(transaction.transaction)}</span>
-                                                  </td>
-                                              </tr>
-                                          `)}
-                                      </table>
-                                  </div>
-
-                              </paper-card>
-
-                                  <vaadin-grid ?hidden="${this.isEmptyArray(this.selectedAddressTransactions)}" height-by-rows style="height:auto;"
-                                      aria-label="Transactions" items="${this.selectedAddressTransactions}">
-
-                                      <vaadin-grid-column flex-grow="x">
-                                          <template class="header">
-                                              <iron-icon style="height:16px" icon="device:access-time"></iron-icon>
-                                          </template>
-                                          <template>
-                                              <span class$="{{_unconfirmedClass(item.unconfirmed)}}">
-                                                  <time-ago datetime$="{(new Date(this.item.transaction.timestamp).toISOString())}">
-                                                      {{item.transaction.dateTime}}
-                                                  </time-ago>
-                                              </span>
-                                          </template>
-                                      </vaadin-grid-column>
-
-                                      <vaadin-grid-column>
-                                          <template class="header">
-                                              Type
-                                          </template>
-                                          <template>
-                                              <span class$="{{_unconfirmedClass(item.unconfirmed)}}">
-                                                  {{getTxType(item.transaction.type)}}
-                                              </span>
-                                          </template>
-                                      </vaadin-grid-column>
-
-                                      <vaadin-grid-column>
-                                          <template class="header">
-                                              Amount
-                                              <!-- + fee -->
-                                          </template>
-                                          <template>
-                                              <span class$="mono {{txColor(item.transaction)}} {{_unconfirmedClass(item.unconfirmed)}}">
-                                                  <!-- Ugly to avoid the space -->
-                                                  <iron-icon hidden$="{{sendOrRecieve(item.transaction)}}" icon="icons:add-circle" style="height:16px;"></iron-icon>
-                                                  <iron-icon hidden$="{{!sendOrRecieve(item.transaction)}}" icon="icons:remove-circle"
-                                                      style="height:16px; font-size:16px;"></iron-icon><span>[[floor(item.transaction.amount)]]</span><span
-                                                      style="font-size:12px; vertical-align:top; line-height:16px;">[[decimals(item.transaction.amount)]]</span>
-                                                  <!-- +
-                                                                              <span>[[floor(item.transaction.fee)]]</span
-                                                                                  ><span style="font-size:8px; vertical-align:top; line-height:16px;">[[decimals(item.transaction.fee)]]</span> -->
-                                              </span>
-                                          </template>
-                                      </vaadin-grid-column>
-
-                                      <vaadin-grid-column flex-grow="4">
-                                          <template class="header">
-                                              Sender/Recipient
-                                          </template>
-                                          <template>
-                                              <span class$="{{_unconfirmedClass(item.unconfirmed)}}">{{senderOrRecipient(item.transaction)}}</span>
-                                          </template>
-                                      </vaadin-grid-column>
-
-                                      <vaadin-grid-column>
-                                          <template class="header">
-                                              Confirmations
-                                          </template>
-                                          <template>
-                                              <span class$="{{_unconfirmedClass(item.unconfirmed)}}">
-                                                  <template is="dom-if" if="{{!item.unconfirmed}}">
-                                                      {{getConfirmations(item.transaction.blockHeight, lastBlock.height)}}
-                                                  </template>
-                                                  <template is="dom-if" if="{{item.unconfirmed}}">
-                                                      0
-                                                  </template>
-                                              </span>
-                                          </template>
-                                      </vaadin-grid-column>
-
-                                  </vaadin-grid>
-                                  */
 
 }));

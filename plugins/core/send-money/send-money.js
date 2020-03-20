@@ -26933,6 +26933,9 @@
         sendMoneyLoading: {
           type: Boolean
         },
+        btnDisable: {
+          type: Boolean
+        },
         data: {
           type: Object
         },
@@ -26960,7 +26963,7 @@
         recipient: {
           type: String
         },
-        validAmount: {
+        isValidAmount: {
           type: Boolean
         },
         balance: {
@@ -27069,14 +27072,12 @@
                         required
                         label="Amount (qort)"
                         @input=${() => {
-      // console.log('changed')
       this._checkAmount();
     }}
-                        type="number"
+                        type="number" 
                         auto-validate="false"
-                        invalid=${this.validAmount}
-                        value="${this.amount}"
-                        error-message="Insufficient funds"></paper-input>
+                        value="${this.amount}">
+                        </paper-input>
                     <paper-input label="To (address or name)" id="recipient" type="text" value="${this.recipient}"></paper-input>
                     <!-- <paper-input label="Fee" type="text" value="{{fee}}"></paper-input> -->
                     
@@ -27090,7 +27091,7 @@
 
                     <div class="buttons" >
                         <div>
-                            <mwc-button ?disabled=${this.sendMoneyLoading} style="width:100%;" raised autofocus @click=${e => this._sendMoney(e)}>Send &nbsp;
+                            <mwc-button ?disabled=${this.btnDisable} style="width:100%;" raised autofocus @click=${e => this._sendMoney(e)}>Send &nbsp;
                                 <iron-icon icon="send"></iron-icon>
                             </mwc-button>
                         </div>
@@ -27106,11 +27107,48 @@
       return Math.floor(num);
     }
 
-    _checkAmount() {
-      const amount = this.shadowRoot.getElementById('amountInput').value;
-      const balance = this.balance; // console.log(parseFloat(amount), parseFloat(balance))
+    _checkAmount(e) {
+      this.amount = this.shadowRoot.getElementById('amountInput').value;
+      console.log(this.amount); // const balance = this.balance
+      // console.log(parseFloat(amount), parseFloat(balance))
 
-      this.validAmount = parseFloat(amount) <= parseFloat(balance); // console.log(this.validAmount)
+      if (this.amount.toString()[0] === '-') {
+        this.isValidAmount = false;
+        this.btnDisable = true;
+        this.shadowRoot.getElementById('amountInput').invalid = true;
+        this.shadowRoot.getElementById('amountInput').errorMessage = "Cannot Send Negative Amount!";
+      } else if (this.amount.toString() === '-') {
+        this.isValidAmount = false;
+        this.btnDisable = true;
+        this.shadowRoot.getElementById('amountInput').invalid = true;
+        this.shadowRoot.getElementById('amountInput').errorMessage = "Invalid Amount!";
+      } else if (this.amount.toString().includes('.') === true) {
+        let myAmount = this.amount.toString().split('.');
+
+        if (myAmount[1].length <= 8) {
+          this.isValidAmount = true;
+          this.btnDisable = false;
+          this.shadowRoot.getElementById('amountInput').invalid = false;
+          this.shadowRoot.getElementById('amountInput').errorMessage = "";
+        } else {
+          this.isValidAmount = false;
+          this.btnDisable = true;
+          this.shadowRoot.getElementById('amountInput').invalid = true;
+          this.shadowRoot.getElementById('amountInput').errorMessage = "Invalid Amount!";
+        }
+      } else if (parseFloat(this.amount) + parseFloat(0.001) > parseFloat(this.balance)) {
+        this.isValidAmount = false;
+        this.btnDisable = true;
+        this.shadowRoot.getElementById('amountInput').invalid = true;
+        this.shadowRoot.getElementById('amountInput').errorMessage = "Insufficient Funds!";
+      } else {
+        this.isValidAmount = true;
+        this.btnDisable = false;
+        this.shadowRoot.getElementById('amountInput').invalid = false;
+        this.shadowRoot.getElementById('amountInput').errorMessage = "";
+      } // this.isValidAmount = parseFloat(this.amount) <= parseFloat(balance)
+      // console.log(this.isValidAmount)
+
     }
 
     textColor(color) {
@@ -27124,6 +27162,7 @@
       // Check for valid...^
 
       this.sendMoneyLoading = true;
+      this.btnDisable = true;
       console.log(this.selectedAddress); // Get Last Ref...
       // Might want to call it with the sender's address or just pick it from the func..
 
@@ -27234,6 +27273,7 @@
 
       validateReceiver(recipient);
       this.sendMoneyLoading = false;
+      this.btnDisable = false;
     }
 
     updateAccountBalance() {
@@ -27241,7 +27281,7 @@
       parentEpml.request('apiCall', {
         url: `/addresses/balance/${this.selectedAddress.address}`
       }).then(res => {
-        console.log(res);
+        // console.log(res)
         this.balance = res; // console.log(this.config.user.nodeSettings.pingInterval) // FIX: config not defined, so causing error...
 
         this.updateAccountBalanceTimeout = setTimeout(() => this.updateAccountBalance(), 4000);
@@ -27254,6 +27294,7 @@
       this.addresses = [];
       this.errorMessage = '';
       this.sendMoneyLoading = false;
+      this.btnDisable = false;
       this.data = {};
       this.addressesInfo = {};
       this.selectedAddress = {};
@@ -27268,7 +27309,7 @@
       this.unconfirmedTransactionStreams = {};
       this.maxWidth = '600';
       this.amount = 0;
-      this.validAmount = true;
+      this.isValidAmount = false;
       parentEpml.ready().then(() => {
         parentEpml.subscribe('selected_address', async selectedAddress => {
           this.selectedAddress = {};
