@@ -246,17 +246,32 @@ class RewardShare extends LitElement {
             let accountDetails = await getAccountDetails();
             let lastRef = await getLastRef();
 
-            // Check for creating self share at different levels
-            if (accountDetails.publicKey === recipientPublicKey) {
-                if (accountDetails.flags === 1 || accountDetails.level >= 1) {
+            // Check for creating self share at different levels (also adding check for flags...)
+            if (accountDetails.flags === 1) {
+                this.error = false
+                this.message = ''
+                let myTransaction = await makeTransactionRequest(lastRef)
+                let isExisting = await getRewardShareRelationship(this.selectedAddress.address, recipientPublicKey)
+                if (isExisting === true) {
+                    this.error = true
+                    this.message = `Cannot Create Multiple Reward Shares!`
+                    console.log("Cannot create REWARD SHARE Transaction");
+                } else {
+                    // Send the transaction for confirmation by the user
+                    this.error = false
+                    this.message = ''
+                    getTxnRequestResponse(myTransaction)
+                }
+            } else if (accountDetails.publicKey === recipientPublicKey) {
+                if (accountDetails.level = 1 || accountDetails.level <= 4) {
                     this.error = false
                     this.message = ''
                     let myTransaction = await makeTransactionRequest(lastRef)
                     let isExisting = await getRewardShareRelationship(this.selectedAddress.address, recipientPublicKey)
                     if (isExisting === true) {
                         this.error = true
-                        this.message = `Cannot Create Multiple Reward Shares!`
-                        console.log("Cannot create REWARD SHARE Transaction");
+                        this.message = `Cannot Create Multiple Self Shares!`
+                        console.log("Cannot create SELF SHARE Transaction");
                     } else {
                         // Send the transaction for confirmation by the user
                         this.error = false
@@ -269,7 +284,7 @@ class RewardShare extends LitElement {
                     this.message = `CANNOT CREATE SELF SHARE! at level ${accountDetails.level}`
                 }
             } else { //Check for creating reward shares
-                if (accountDetails.flags === 1 || accountDetails.level >= 5) {
+                if (accountDetails.level >= 5) {
                     this.error = false
                     this.message = ''
                     let myTransaction = await makeTransactionRequest(lastRef)
