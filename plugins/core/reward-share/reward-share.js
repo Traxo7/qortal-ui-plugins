@@ -41776,8 +41776,9 @@
           url: `/addresses/convert/${pubKey}`
         });
         return yourAddr;
-      }; // Get Last Ref
+      };
 
+      let recipientAddress = await publicKeyToAddress(recipientPublicKey); // Get Last Ref
 
       const getLastRef = async () => {
         let myRef = await parentEpml.request('apiCall', {
@@ -41797,12 +41798,11 @@
       }; // Get Reward Relationship if it already exists
 
 
-      const getRewardShareRelationship = async (minterAddr, recipientPubKey) => {
-        let yourAddr = await publicKeyToAddress(recipientPubKey);
+      const getRewardShareRelationship = async minterAddr => {
         let isRewardShareExisting = false;
         let myRewardShareArray = await parentEpml.request('apiCall', {
           type: 'api',
-          url: `/addresses/rewardshares?minters=${minterAddr}&recipients=${yourAddr}`
+          url: `/addresses/rewardshares?minters=${minterAddr}&recipients=${recipientAddress}`
         });
         isRewardShareExisting = myRewardShareArray.length !== 0 ? true : false;
         return isRewardShareExisting; // THOUGHTS: At this point, I think I dont wanna further do any check...
@@ -41815,13 +41815,15 @@
 
       const validateReceiver = async () => {
         let accountDetails = await getAccountDetails();
-        let lastRef = await getLastRef(); // Check for creating self share at different levels (also adding check for flags...)
+        let lastRef = await getLastRef();
+        console.log(accountDetails);
+        console.log(recipientPublicKey); // Check for creating self share at different levels (also adding check for flags...)
 
         if (accountDetails.flags === 1) {
           this.error = false;
           this.message = '';
           let myTransaction = await makeTransactionRequest(lastRef);
-          let isExisting = await getRewardShareRelationship(this.selectedAddress.address, recipientPublicKey);
+          let isExisting = await getRewardShareRelationship(this.selectedAddress.address);
 
           if (isExisting === true) {
             this.error = true;
@@ -41833,12 +41835,12 @@
             this.message = '';
             getTxnRequestResponse(myTransaction);
           }
-        } else if (accountDetails.publicKey === recipientPublicKey) {
-          if (accountDetails.level = 1 ) {
+        } else if (accountDetails.address === recipientAddress) {
+          if (accountDetails.level >= 1 && accountDetails.level <= 4) {
             this.error = false;
             this.message = '';
             let myTransaction = await makeTransactionRequest(lastRef);
-            let isExisting = await getRewardShareRelationship(this.selectedAddress.address, recipientPublicKey);
+            let isExisting = await getRewardShareRelationship(this.selectedAddress.address);
 
             if (isExisting === true) {
               this.error = true;
@@ -41860,7 +41862,7 @@
             this.error = false;
             this.message = '';
             let myTransaction = await makeTransactionRequest(lastRef);
-            let isExisting = await getRewardShareRelationship(this.selectedAddress.address, recipientPublicKey);
+            let isExisting = await getRewardShareRelationship(this.selectedAddress.address);
 
             if (isExisting === true) {
               this.error = true;
