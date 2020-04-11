@@ -1,31 +1,56 @@
 const babel = require('rollup-plugin-babel')
 // const eslint = require('rollup-plugin-eslint')
 const resolve = require('rollup-plugin-node-resolve')
+const builtins = require('rollup-plugin-node-builtins')
+const globals = require('rollup-plugin-node-globals')
 const uglify = require('rollup-plugin-uglify').uglify
 const commonjs = require('rollup-plugin-commonjs')
 const progress = require('rollup-plugin-progress')
 const path = require('path')
 const alias = require('rollup-plugin-alias')
 
+const aliases = {
+    'qortal-ui-crypto': 'node_modules/qortal-ui-crypto/api.js'
+}
+
 const generateRollupConfig = (inputFile, outputFile) => {
     return {
         inputOptions: {
+            onwarn: (warning, rollupWarn) => {
+                if (warning.code !== 'CIRCULAR_DEPENDENCY') {
+                    rollupWarn(warning)
+                }
+            },
             input: inputFile,
             plugins: [
-                resolve({
-                    // jsnext: true
-                }),
                 alias({
-                    entries: {}
+                    // entries: {}
+                    entries: Object.keys(aliases).map(find => {
+                        return {
+                            find,
+                            replacement: aliases[find]
+                        }
+                    })
                 }),
-                commonjs(),
+                resolve({
+                    preferBuiltins: true,
+                    mainFields: ['module', 'browser']
+                }),
+                commonjs({
+                    // preferBuiltins: false,
+                }),
+                globals(),
+                builtins(),
                 // eslint(),
                 progress(),
                 babel({
                     exclude: 'node_modules/**'
                 })
                 // uglify() // only would work if babel is transpiling to es5
-            ]
+            ],
+            // external: ['qortal-ui-crypto'],
+
+            // context: 'self',
         },
         outputOptions: {
             // name: 'main', // for external calls (need exports)

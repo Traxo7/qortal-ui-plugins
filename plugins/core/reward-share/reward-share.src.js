@@ -3,6 +3,8 @@ import '@webcomponents/webcomponentsjs/webcomponents-loader.js'
 /* Es6 browser but transpi;led code */
 import '@webcomponents/webcomponentsjs/custom-elements-es5-adapter.js'
 
+import CryptoApi from 'qortal-ui-crypto';
+
 import { LitElement, html, css } from 'lit-element'
 // import { Epml } from '../../../src/epml.js'
 import { Epml } from '../../../epml.js'
@@ -29,9 +31,12 @@ class RewardShare extends LitElement {
             recipientPublicKey: { type: String },
             selectedAddress: { type: Object },
             createRewardShareLoading: { type: Boolean },
+            removeRewardShareLoading: { type: Boolean },
             rewardSharePercentage: { type: Number },
             error: { type: Boolean },
-            message: { type: String }
+            message: { type: String },
+            removeError: { type: Boolean },
+            removeMessage: { type: String }
         }
     }
 
@@ -65,17 +70,8 @@ class RewardShare extends LitElement {
         this.recipientPublicKey = ''
         this.rewardSharePercentage = 0
         this.createRewardShareLoading = false
+        this.removeRewardShareLoading = false
     }
-
-    /*
-<h2>Create reward shares</h2>
-                <span><br>Creating a reward share for another account requires an account with level 5 or higher. If you are doing a self share (a reward share to your account) then put 0% for reward share percentage.</span>
-
-                <paper-input label="Recipient public key" id="recipientPublicKey" type="text" value="${this.recipientPublicKey}"></paper-input>
-                <paper-input label="Reward share percentage" id="percentageShare" type="number" value="${this.percentageShare}"></paper-input>
-
-                <mwc-button @click=${this.createRewardShare} style="width:100%;">Create rewardshare key</mwc-button>
-    */
 
     render() {
         return html`
@@ -95,7 +91,7 @@ class RewardShare extends LitElement {
                 <mwc-dialog id="createRewardShareDialog" scrimClickAction="${this.createRewardShareLoading ? '' : 'close'}">
                     <div>Level 1 - 4 can create a Self Share and Level 5 or above can create a Reward Share!</div>
                     <br>
-                    <mwc-textfield style="width:100%;" ?disabled="${this.createRewardShareLoading}" label="Recipient public key" id="recipientPublicKey"></mwc-textfield>
+                    <mwc-textfield style="width:100%;" ?disabled="${this.createRewardShareLoading}" label="Recipient Public Key" id="recipientPublicKey"></mwc-textfield>
                     <p style="margin-bottom:0;">
                         Reward share percentage: ${this.rewardSharePercentage}
                         <!-- <mwc-textfield style="width:36px;" ?disabled="${this.createRewardShareLoading}" id="createRewardShare"></mwc-textfield> -->
@@ -141,6 +137,40 @@ class RewardShare extends LitElement {
                     </mwc-button>
                 </mwc-dialog>
 
+                <!-- Remove Minting Account Dialog -->
+                <mwc-dialog id="removeRewardShareDialog" scrimClickAction="${this.removeRewardShareLoading ? '' : 'close'}">
+                    <div>Type the Recipient Public Key to stop sponsoring this account.</div>
+                    <br>
+                    <mwc-textfield style="width:100%;" ?disabled="${this.removeRewardShareLoading}" label="Recipient Public Key" id="myRecipientPublicKey"></mwc-textfield>
+                    <div style="text-align:right; height:36px;">
+                        <span ?hidden="${!this.removeRewardShareLoading}">
+                            <!-- loading message -->
+                            Removing &nbsp;
+                            <paper-spinner-lite
+                                style="margin-top:12px;"
+                                ?active="${this.removeRewardShareLoading}"
+                                alt="Removing Reward Share"></paper-spinner-lite>
+                        </span>
+                        <span ?hidden=${this.removeMessage === ''} style="${this.removeError ? 'color:red;' : ''}">
+                            ${this.removeMessage}
+                        </span>
+                    </div>
+                    <mwc-button
+                        ?disabled="${this.removeRewardShareLoading}"
+                        slot="primaryAction"
+                        @click=${this.removeRewardShare}
+                        >
+                        Remove
+                    </mwc-button>
+                    <mwc-button
+                        ?disabled="${this.removeRewardShareLoading}"
+                        slot="secondaryAction"
+                        dialogAction="cancel"
+                        class="red">
+                        Close
+                    </mwc-button>
+                </mwc-dialog>
+
                 ${this.isEmptyArray(this.rewardShares) ? html`
                     Account is not involved in any reward shares
                 `: ''}
@@ -148,7 +178,24 @@ class RewardShare extends LitElement {
         `
     }
 
+    getAccountRewardSharesGrid() {
+
+        const myGrid = this.shadowRoot.querySelector('#accountRewardSharesGrid')
+
+        myGrid.addEventListener('click', (e) => {
+            this.tempMintingAccount = myGrid.getEventContext(e).item
+
+            this.shadowRoot.querySelector('#removeRewardShareDialog').show()
+        })
+
+    }
+
+
     firstUpdated() {
+
+        // Call getAccountRewardSharesGrid
+        this.getAccountRewardSharesGrid()
+
         const updateRewardshares = () => {
             console.log('=========================================')
             parentEpml.request('apiCall', {
@@ -194,15 +241,9 @@ class RewardShare extends LitElement {
         // Check for valid...^
         this.createRewardShareLoading = true
 
-        const publicKeyToAddress = async (pubKey) => {
-            let yourAddr = await parentEpml.request('apiCall', {
-                type: 'api',
-                url: `/addresses/convert/${pubKey}`
-            })
-            return yourAddr
-        }
+        let recipientAddress = CryptoApi.base58PublicKeyToAddress(recipientPublicKey)
 
-        let recipientAddress = await publicKeyToAddress(recipientPublicKey)
+        console.log("Recipient Address: " + recipientAddress);
 
         // Get Last Ref
         const getLastRef = async () => {
@@ -246,9 +287,6 @@ class RewardShare extends LitElement {
         const validateReceiver = async () => {
             let accountDetails = await getAccountDetails();
             let lastRef = await getLastRef();
-
-            console.log(accountDetails);
-            console.log(recipientPublicKey);
 
             // Check for creating self share at different levels (also adding check for flags...)
             if (accountDetails.flags === 1) {
@@ -350,6 +388,77 @@ class RewardShare extends LitElement {
         validateReceiver()
 
         this.createRewardShareLoading = false
+    }
+
+    async removeRewardShare(e) {
+        this.removeError = false
+        this.removeMessage = ''
+        const myRecipientPublicKey = this.shadowRoot.getElementById("myRecipientPublicKey").value
+        const myPercentageShare = -1
+
+        // Check for valid...^
+        this.removeRewardShareLoading = true
+
+        // Get Last Ref
+        const getLastRef = async () => {
+            let myRef = await parentEpml.request('apiCall', {
+                type: 'api',
+                url: `/addresses/lastreference/${this.selectedAddress.address}`
+            })
+            return myRef
+        };
+
+        // Remove Reward Share
+        const removeReceiver = async () => {
+            let lastRef = await getLastRef();
+
+            let myTransaction = await makeTransactionRequest(lastRef)
+            this.removeError = false
+            this.removeMessage = ''
+            getTxnRequestResponse(myTransaction)
+
+        }
+
+        // Make Transaction Request
+        const makeTransactionRequest = async (lastRef) => {
+
+            let mylastRef = lastRef
+
+            let myTxnrequest = await parentEpml.request('transaction', {
+                type: 138,
+                nonce: this.selectedAddress.nonce,
+                params: {
+                    recipientPublicKey: myRecipientPublicKey,
+                    percentageShare: myPercentageShare,
+                    lastReference: mylastRef,
+                }
+            })
+
+            return myTxnrequest
+        }
+
+        // FAILED txnResponse = {success: false, message: "User declined transaction"}
+        // SUCCESS txnResponse = { success: true, data: true }
+
+        const getTxnRequestResponse = (txnResponse) => {
+
+            if (txnResponse.success === false && txnResponse.message) {
+                this.removeError = true
+                this.removeMessage = txnResponse.message
+                throw new Error(txnResponse)
+            } else if (txnResponse.success === true && !txnResponse.data.error) {
+                this.removeMessage = 'Reward Share Removed Successfully!'
+                this.removeError = false
+            } else {
+                this.removeError = true
+                this.removeMessage = txnResponse.data.message
+                throw new Error(txnResponse)
+            }
+        }
+
+        removeReceiver()
+
+        this.removeRewardShareLoading = false
     }
 
     isEmptyArray(arr) {
