@@ -180,7 +180,6 @@ class SendMoneyPage extends LitElement {
 
     _checkAmount(e) {
         this.amount = this.shadowRoot.getElementById('amountInput').value
-        console.log(this.amount);
         // const balance = this.balance
         // console.log(parseFloat(amount), parseFloat(balance))
         if (this.amount.toString()[0] === '-') {
@@ -232,14 +231,8 @@ class SendMoneyPage extends LitElement {
         const amount = this.shadowRoot.getElementById('amountInput').value // * Math.pow(10, 8)
         let recipient = this.shadowRoot.getElementById('recipient').value
 
-        // var fee = this.fee
-
-        // Check for valid...^
-
         this.sendMoneyLoading = true
         this.btnDisable = true
-
-        console.log(this.selectedAddress)
 
         // Get Last Ref...
         // Might want to call it with the sender's address or just pick it from the func..
@@ -280,9 +273,7 @@ class SendMoneyPage extends LitElement {
         // Validate Receiver
         const validateReceiver = async recipient => {
             let lastRef = await getLastRef();
-            console.log(lastRef)
             let isAddress = await validateAddress(recipient)
-            console.log(isAddress)
             if (isAddress) {
                 console.log("CALLING TRUE")
                 let myTransaction = await makeTransactionRequest(recipient, lastRef) // THOUGHTS: Might wanna use a setTimeout here...
@@ -297,6 +288,8 @@ class SendMoneyPage extends LitElement {
                     // Return INVALID_RECEIVER
                     console.error("INVALID_RECEIVER") // THOUGHTS: Handle this properly..
                     this.errorMessage = "INVALID_RECEIVER"
+                    this.sendMoneyLoading = false
+                    this.btnDisable = false
 
                 }
             }
@@ -312,7 +305,7 @@ class SendMoneyPage extends LitElement {
                 nonce: this.selectedAddress.nonce,
                 params: {
                     recipient: myReceiver,
-                    amount: amount * Math.pow(10, 8),
+                    amount: amount,
                     lastReference: mylastRef,
                     fee: 0.001
                     // Fees shouldn't be hard-coded in here...
@@ -327,17 +320,23 @@ class SendMoneyPage extends LitElement {
 
         const getTxnRequestResponse = (txnResponse) => {
             // const responseData = JSON.parse(txnResponse) // FIX: This is not necessary. GIVES error because response is not a JSON object...
-            console.log(txnResponse)
+
             if (txnResponse.success === false && txnResponse.message) {
                 this.errorMessage = txnResponse.message
+                this.sendMoneyLoading = false
+                this.btnDisable = false
                 throw new Error(txnResponse)
             } else if (txnResponse.success === true && !txnResponse.data.error) {
                 this.errorMessage = ''
                 this.recipient = ''
                 this.amount = 0
                 this.successMessage = 'Transaction Successful!'
+                this.sendMoneyLoading = false
+                this.btnDisable = false
             } else {
                 this.errorMessage = txnResponse.data.message
+                this.sendMoneyLoading = false
+                this.btnDisable = false
                 throw new Error(txnResponse)
             }
         }
@@ -351,8 +350,8 @@ class SendMoneyPage extends LitElement {
         validateReceiver(recipient)
 
 
-        this.sendMoneyLoading = false
-        this.btnDisable = false
+        // this.sendMoneyLoading = false
+        // this.btnDisable = false
     }
 
     updateAccountBalance() {
@@ -362,8 +361,8 @@ class SendMoneyPage extends LitElement {
         }).then(res => {
             // console.log(res)
             this.balance = res
-            // console.log(this.config.user.nodeSettings.pingInterval) // FIX: config not defined, so causing error...
-            this.updateAccountBalanceTimeout = setTimeout(() => this.updateAccountBalance(), 4000)
+            // console.log(this.config.user.nodeSettings.pingInterval) // FIX: config not defined, so causing error... DONE: config already implemented
+            this.updateAccountBalanceTimeout = setTimeout(() => this.updateAccountBalance(), 4000) // can't use "this.config.user.nodeSettings.pingInterval" (too slow...), balance needs to be updated in real-time..
         })
     }
 
@@ -390,6 +389,8 @@ class SendMoneyPage extends LitElement {
         this.amount = 0
         this.isValidAmount = false
 
+        let configLoaded = false
+
         parentEpml.ready().then(() => {
             parentEpml.subscribe('selected_address', async selectedAddress => {
                 this.selectedAddress = {}
@@ -400,6 +401,13 @@ class SendMoneyPage extends LitElement {
                 const addr = selectedAddress.address
 
                 this.updateAccountBalance()
+            })
+            parentEpml.subscribe('config', c => {
+                if (!configLoaded) {
+                    configLoaded = true
+                }
+                this.config = JSON.parse(c)
+                console.log(this.config);
             })
         })
     }

@@ -30,6 +30,7 @@ class RewardShare extends LitElement {
             rewardShares: { type: Array },
             recipientPublicKey: { type: String },
             selectedAddress: { type: Object },
+            btnDisable: { type: Boolean },
             createRewardShareLoading: { type: Boolean },
             removeRewardShareLoading: { type: Boolean },
             rewardSharePercentage: { type: Number },
@@ -69,6 +70,7 @@ class RewardShare extends LitElement {
         this.rewardShares = []
         this.recipientPublicKey = ''
         this.rewardSharePercentage = 0
+        this.btnDisable = false
         this.createRewardShareLoading = false
         this.removeRewardShareLoading = false
     }
@@ -425,7 +427,7 @@ class RewardShare extends LitElement {
             let mylastRef = lastRef
 
             let myTxnrequest = await parentEpml.request('transaction', {
-                type: 138,
+                type: 38,
                 nonce: this.selectedAddress.nonce,
                 params: {
                     recipientPublicKey: myRecipientPublicKey,

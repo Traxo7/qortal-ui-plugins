@@ -53857,7 +53857,7 @@
       const makeTransactionRequest = async lastRef => {
         let mylastRef = lastRef;
         let myTxnrequest = await parentEpml.request('transaction', {
-          type: 138,
+          type: 38,
           nonce: this.selectedAddress.nonce,
           params: {
             recipientPublicKey: myRecipientPublicKey,
