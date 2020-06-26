@@ -9834,1183 +9834,6 @@
   Dialog = __decorate([customElement('mwc-dialog')], Dialog);
 
   /**
-   * @license
-   * Copyright 2016 Google Inc.
-   *
-   * Permission is hereby granted, free of charge, to any person obtaining a copy
-   * of this software and associated documentation files (the "Software"), to deal
-   * in the Software without restriction, including without limitation the rights
-   * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-   * copies of the Software, and to permit persons to whom the Software is
-   * furnished to do so, subject to the following conditions:
-   *
-   * The above copyright notice and this permission notice shall be included in
-   * all copies or substantial portions of the Software.
-   *
-   * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-   * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-   * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-   * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-   * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-   * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-   * THE SOFTWARE.
-   */
-  var cssPropertyNameMap = {
-    animation: {
-      prefixed: '-webkit-animation',
-      standard: 'animation'
-    },
-    transform: {
-      prefixed: '-webkit-transform',
-      standard: 'transform'
-    },
-    transition: {
-      prefixed: '-webkit-transition',
-      standard: 'transition'
-    }
-  };
-  var jsEventTypeMap = {
-    animationend: {
-      cssProperty: 'animation',
-      prefixed: 'webkitAnimationEnd',
-      standard: 'animationend'
-    },
-    animationiteration: {
-      cssProperty: 'animation',
-      prefixed: 'webkitAnimationIteration',
-      standard: 'animationiteration'
-    },
-    animationstart: {
-      cssProperty: 'animation',
-      prefixed: 'webkitAnimationStart',
-      standard: 'animationstart'
-    },
-    transitionend: {
-      cssProperty: 'transition',
-      prefixed: 'webkitTransitionEnd',
-      standard: 'transitionend'
-    }
-  };
-
-  function isWindow(windowObj) {
-    return Boolean(windowObj.document) && typeof windowObj.document.createElement === 'function';
-  }
-
-  function getCorrectPropertyName(windowObj, cssProperty) {
-    if (isWindow(windowObj) && cssProperty in cssPropertyNameMap) {
-      var el = windowObj.document.createElement('div');
-      var _a = cssPropertyNameMap[cssProperty],
-          standard = _a.standard,
-          prefixed = _a.prefixed;
-      var isStandard = (standard in el.style);
-      return isStandard ? standard : prefixed;
-    }
-
-    return cssProperty;
-  }
-  function getCorrectEventName(windowObj, eventType) {
-    if (isWindow(windowObj) && eventType in jsEventTypeMap) {
-      var el = windowObj.document.createElement('div');
-      var _a = jsEventTypeMap[eventType],
-          standard = _a.standard,
-          prefixed = _a.prefixed,
-          cssProperty = _a.cssProperty;
-      var isStandard = (cssProperty in el.style);
-      return isStandard ? standard : prefixed;
-    }
-
-    return eventType;
-  }
-
-  /**
-   * @license
-   * Copyright 2017 Google Inc.
-   *
-   * Permission is hereby granted, free of charge, to any person obtaining a copy
-   * of this software and associated documentation files (the "Software"), to deal
-   * in the Software without restriction, including without limitation the rights
-   * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-   * copies of the Software, and to permit persons to whom the Software is
-   * furnished to do so, subject to the following conditions:
-   *
-   * The above copyright notice and this permission notice shall be included in
-   * all copies or substantial portions of the Software.
-   *
-   * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-   * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-   * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-   * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-   * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-   * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-   * THE SOFTWARE.
-   */
-  var cssClasses$7 = {
-    ACTIVE: 'mdc-slider--active',
-    DISABLED: 'mdc-slider--disabled',
-    DISCRETE: 'mdc-slider--discrete',
-    FOCUS: 'mdc-slider--focus',
-    HAS_TRACK_MARKER: 'mdc-slider--display-markers',
-    IN_TRANSIT: 'mdc-slider--in-transit',
-    IS_DISCRETE: 'mdc-slider--discrete'
-  };
-  var strings$5 = {
-    ARIA_DISABLED: 'aria-disabled',
-    ARIA_VALUEMAX: 'aria-valuemax',
-    ARIA_VALUEMIN: 'aria-valuemin',
-    ARIA_VALUENOW: 'aria-valuenow',
-    CHANGE_EVENT: 'MDCSlider:change',
-    INPUT_EVENT: 'MDCSlider:input',
-    PIN_VALUE_MARKER_SELECTOR: '.mdc-slider__pin-value-marker',
-    STEP_DATA_ATTR: 'data-step',
-    THUMB_CONTAINER_SELECTOR: '.mdc-slider__thumb-container',
-    TRACK_MARKER_CONTAINER_SELECTOR: '.mdc-slider__track-marker-container',
-    TRACK_SELECTOR: '.mdc-slider__track'
-  };
-  var numbers$4 = {
-    PAGE_FACTOR: 4
-  };
-
-  /**
-   * @license
-   * Copyright 2017 Google Inc.
-   *
-   * Permission is hereby granted, free of charge, to any person obtaining a copy
-   * of this software and associated documentation files (the "Software"), to deal
-   * in the Software without restriction, including without limitation the rights
-   * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-   * copies of the Software, and to permit persons to whom the Software is
-   * furnished to do so, subject to the following conditions:
-   *
-   * The above copyright notice and this permission notice shall be included in
-   * all copies or substantial portions of the Software.
-   *
-   * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-   * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-   * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-   * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-   * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-   * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-   * THE SOFTWARE.
-   */
-  var DOWN_EVENTS = ['mousedown', 'pointerdown', 'touchstart'];
-  var UP_EVENTS = ['mouseup', 'pointerup', 'touchend'];
-  var MOVE_EVENT_MAP = {
-    mousedown: 'mousemove',
-    pointerdown: 'pointermove',
-    touchstart: 'touchmove'
-  };
-  var KEY_IDS = {
-    ARROW_DOWN: 'ArrowDown',
-    ARROW_LEFT: 'ArrowLeft',
-    ARROW_RIGHT: 'ArrowRight',
-    ARROW_UP: 'ArrowUp',
-    END: 'End',
-    HOME: 'Home',
-    PAGE_DOWN: 'PageDown',
-    PAGE_UP: 'PageUp'
-  };
-
-  var MDCSliderFoundation =
-  /** @class */
-  function (_super) {
-    __extends(MDCSliderFoundation, _super);
-
-    function MDCSliderFoundation(adapter) {
-      var _this = _super.call(this, __assign({}, MDCSliderFoundation.defaultAdapter, adapter)) || this;
-      /**
-       * We set this to NaN since we want it to be a number, but we can't use '0' or '-1'
-       * because those could be valid tabindices set by the client code.
-       */
-
-
-      _this.savedTabIndex_ = NaN;
-      _this.active_ = false;
-      _this.inTransit_ = false;
-      _this.isDiscrete_ = false;
-      _this.hasTrackMarker_ = false;
-      _this.handlingThumbTargetEvt_ = false;
-      _this.min_ = 0;
-      _this.max_ = 100;
-      _this.step_ = 0;
-      _this.value_ = 0;
-      _this.disabled_ = false;
-      _this.preventFocusState_ = false;
-
-      _this.thumbContainerPointerHandler_ = function () {
-        return _this.handlingThumbTargetEvt_ = true;
-      };
-
-      _this.interactionStartHandler_ = function (evt) {
-        return _this.handleDown_(evt);
-      };
-
-      _this.keydownHandler_ = function (evt) {
-        return _this.handleKeydown_(evt);
-      };
-
-      _this.focusHandler_ = function () {
-        return _this.handleFocus_();
-      };
-
-      _this.blurHandler_ = function () {
-        return _this.handleBlur_();
-      };
-
-      _this.resizeHandler_ = function () {
-        return _this.layout();
-      };
-
-      return _this;
-    }
-
-    Object.defineProperty(MDCSliderFoundation, "cssClasses", {
-      get: function () {
-        return cssClasses$7;
-      },
-      enumerable: true,
-      configurable: true
-    });
-    Object.defineProperty(MDCSliderFoundation, "strings", {
-      get: function () {
-        return strings$5;
-      },
-      enumerable: true,
-      configurable: true
-    });
-    Object.defineProperty(MDCSliderFoundation, "numbers", {
-      get: function () {
-        return numbers$4;
-      },
-      enumerable: true,
-      configurable: true
-    });
-    Object.defineProperty(MDCSliderFoundation, "defaultAdapter", {
-      get: function () {
-        // tslint:disable:object-literal-sort-keys Methods should be in the same order as the adapter interface.
-        return {
-          hasClass: function () {
-            return false;
-          },
-          addClass: function () {
-            return undefined;
-          },
-          removeClass: function () {
-            return undefined;
-          },
-          getAttribute: function () {
-            return null;
-          },
-          setAttribute: function () {
-            return undefined;
-          },
-          removeAttribute: function () {
-            return undefined;
-          },
-          computeBoundingRect: function () {
-            return {
-              top: 0,
-              right: 0,
-              bottom: 0,
-              left: 0,
-              width: 0,
-              height: 0
-            };
-          },
-          getTabIndex: function () {
-            return 0;
-          },
-          registerInteractionHandler: function () {
-            return undefined;
-          },
-          deregisterInteractionHandler: function () {
-            return undefined;
-          },
-          registerThumbContainerInteractionHandler: function () {
-            return undefined;
-          },
-          deregisterThumbContainerInteractionHandler: function () {
-            return undefined;
-          },
-          registerBodyInteractionHandler: function () {
-            return undefined;
-          },
-          deregisterBodyInteractionHandler: function () {
-            return undefined;
-          },
-          registerResizeHandler: function () {
-            return undefined;
-          },
-          deregisterResizeHandler: function () {
-            return undefined;
-          },
-          notifyInput: function () {
-            return undefined;
-          },
-          notifyChange: function () {
-            return undefined;
-          },
-          setThumbContainerStyleProperty: function () {
-            return undefined;
-          },
-          setTrackStyleProperty: function () {
-            return undefined;
-          },
-          setMarkerValue: function () {
-            return undefined;
-          },
-          setTrackMarkers: function () {
-            return undefined;
-          },
-          isRTL: function () {
-            return false;
-          }
-        }; // tslint:enable:object-literal-sort-keys
-      },
-      enumerable: true,
-      configurable: true
-    });
-
-    MDCSliderFoundation.prototype.init = function () {
-      var _this = this;
-
-      this.isDiscrete_ = this.adapter_.hasClass(cssClasses$7.IS_DISCRETE);
-      this.hasTrackMarker_ = this.adapter_.hasClass(cssClasses$7.HAS_TRACK_MARKER);
-      DOWN_EVENTS.forEach(function (evtName) {
-        _this.adapter_.registerInteractionHandler(evtName, _this.interactionStartHandler_);
-
-        _this.adapter_.registerThumbContainerInteractionHandler(evtName, _this.thumbContainerPointerHandler_);
-      });
-      this.adapter_.registerInteractionHandler('keydown', this.keydownHandler_);
-      this.adapter_.registerInteractionHandler('focus', this.focusHandler_);
-      this.adapter_.registerInteractionHandler('blur', this.blurHandler_);
-      this.adapter_.registerResizeHandler(this.resizeHandler_);
-      this.layout(); // At last step, provide a reasonable default value to discrete slider
-
-      if (this.isDiscrete_ && this.getStep() === 0) {
-        this.step_ = 1;
-      }
-    };
-
-    MDCSliderFoundation.prototype.destroy = function () {
-      var _this = this;
-
-      DOWN_EVENTS.forEach(function (evtName) {
-        _this.adapter_.deregisterInteractionHandler(evtName, _this.interactionStartHandler_);
-
-        _this.adapter_.deregisterThumbContainerInteractionHandler(evtName, _this.thumbContainerPointerHandler_);
-      });
-      this.adapter_.deregisterInteractionHandler('keydown', this.keydownHandler_);
-      this.adapter_.deregisterInteractionHandler('focus', this.focusHandler_);
-      this.adapter_.deregisterInteractionHandler('blur', this.blurHandler_);
-      this.adapter_.deregisterResizeHandler(this.resizeHandler_);
-    };
-
-    MDCSliderFoundation.prototype.setupTrackMarker = function () {
-      if (this.isDiscrete_ && this.hasTrackMarker_ && this.getStep() !== 0) {
-        this.adapter_.setTrackMarkers(this.getStep(), this.getMax(), this.getMin());
-      }
-    };
-
-    MDCSliderFoundation.prototype.layout = function () {
-      this.rect_ = this.adapter_.computeBoundingRect();
-      this.updateUIForCurrentValue_();
-    };
-
-    MDCSliderFoundation.prototype.getValue = function () {
-      return this.value_;
-    };
-
-    MDCSliderFoundation.prototype.setValue = function (value) {
-      this.setValue_(value, false);
-    };
-
-    MDCSliderFoundation.prototype.getMax = function () {
-      return this.max_;
-    };
-
-    MDCSliderFoundation.prototype.setMax = function (max) {
-      if (max < this.min_) {
-        throw new Error('Cannot set max to be less than the slider\'s minimum value');
-      }
-
-      this.max_ = max;
-      this.setValue_(this.value_, false, true);
-      this.adapter_.setAttribute(strings$5.ARIA_VALUEMAX, String(this.max_));
-      this.setupTrackMarker();
-    };
-
-    MDCSliderFoundation.prototype.getMin = function () {
-      return this.min_;
-    };
-
-    MDCSliderFoundation.prototype.setMin = function (min) {
-      if (min > this.max_) {
-        throw new Error('Cannot set min to be greater than the slider\'s maximum value');
-      }
-
-      this.min_ = min;
-      this.setValue_(this.value_, false, true);
-      this.adapter_.setAttribute(strings$5.ARIA_VALUEMIN, String(this.min_));
-      this.setupTrackMarker();
-    };
-
-    MDCSliderFoundation.prototype.getStep = function () {
-      return this.step_;
-    };
-
-    MDCSliderFoundation.prototype.setStep = function (step) {
-      if (step < 0) {
-        throw new Error('Step cannot be set to a negative number');
-      }
-
-      if (this.isDiscrete_ && (typeof step !== 'number' || step < 1)) {
-        step = 1;
-      }
-
-      this.step_ = step;
-      this.setValue_(this.value_, false, true);
-      this.setupTrackMarker();
-    };
-
-    MDCSliderFoundation.prototype.isDisabled = function () {
-      return this.disabled_;
-    };
-
-    MDCSliderFoundation.prototype.setDisabled = function (disabled) {
-      this.disabled_ = disabled;
-      this.toggleClass_(cssClasses$7.DISABLED, this.disabled_);
-
-      if (this.disabled_) {
-        this.savedTabIndex_ = this.adapter_.getTabIndex();
-        this.adapter_.setAttribute(strings$5.ARIA_DISABLED, 'true');
-        this.adapter_.removeAttribute('tabindex');
-      } else {
-        this.adapter_.removeAttribute(strings$5.ARIA_DISABLED);
-
-        if (!isNaN(this.savedTabIndex_)) {
-          this.adapter_.setAttribute('tabindex', String(this.savedTabIndex_));
-        }
-      }
-    };
-    /**
-     * Called when the user starts interacting with the slider
-     */
-
-
-    MDCSliderFoundation.prototype.handleDown_ = function (downEvent) {
-      var _this = this;
-
-      if (this.disabled_) {
-        return;
-      }
-
-      this.preventFocusState_ = true;
-      this.setInTransit_(!this.handlingThumbTargetEvt_);
-      this.handlingThumbTargetEvt_ = false;
-      this.setActive_(true);
-
-      var moveHandler = function (moveEvent) {
-        _this.handleMove_(moveEvent);
-      };
-
-      var moveEventType = MOVE_EVENT_MAP[downEvent.type]; // Note: upHandler is [de]registered on ALL potential pointer-related release event types, since some browsers
-      // do not always fire these consistently in pairs.
-      // (See https://github.com/material-components/material-components-web/issues/1192)
-
-      var upHandler = function () {
-        _this.handleUp_();
-
-        _this.adapter_.deregisterBodyInteractionHandler(moveEventType, moveHandler);
-
-        UP_EVENTS.forEach(function (evtName) {
-          return _this.adapter_.deregisterBodyInteractionHandler(evtName, upHandler);
-        });
-      };
-
-      this.adapter_.registerBodyInteractionHandler(moveEventType, moveHandler);
-      UP_EVENTS.forEach(function (evtName) {
-        return _this.adapter_.registerBodyInteractionHandler(evtName, upHandler);
-      });
-      this.setValueFromEvt_(downEvent);
-    };
-    /**
-     * Called when the user moves the slider
-     */
-
-
-    MDCSliderFoundation.prototype.handleMove_ = function (evt) {
-      evt.preventDefault();
-      this.setValueFromEvt_(evt);
-    };
-    /**
-     * Called when the user's interaction with the slider ends
-     */
-
-
-    MDCSliderFoundation.prototype.handleUp_ = function () {
-      this.setActive_(false);
-      this.adapter_.notifyChange();
-    };
-    /**
-     * Returns the pageX of the event
-     */
-
-
-    MDCSliderFoundation.prototype.getPageX_ = function (evt) {
-      if (evt.targetTouches && evt.targetTouches.length > 0) {
-        return evt.targetTouches[0].pageX;
-      }
-
-      return evt.pageX;
-    };
-    /**
-     * Sets the slider value from an event
-     */
-
-
-    MDCSliderFoundation.prototype.setValueFromEvt_ = function (evt) {
-      var pageX = this.getPageX_(evt);
-      var value = this.computeValueFromPageX_(pageX);
-      this.setValue_(value, true);
-    };
-    /**
-     * Computes the new value from the pageX position
-     */
-
-
-    MDCSliderFoundation.prototype.computeValueFromPageX_ = function (pageX) {
-      var _a = this,
-          max = _a.max_,
-          min = _a.min_;
-
-      var xPos = pageX - this.rect_.left;
-      var pctComplete = xPos / this.rect_.width;
-
-      if (this.adapter_.isRTL()) {
-        pctComplete = 1 - pctComplete;
-      } // Fit the percentage complete between the range [min,max]
-      // by remapping from [0, 1] to [min, min+(max-min)].
-
-
-      return min + pctComplete * (max - min);
-    };
-    /**
-     * Handles keydown events
-     */
-
-
-    MDCSliderFoundation.prototype.handleKeydown_ = function (evt) {
-      var keyId = this.getKeyId_(evt);
-      var value = this.getValueForKeyId_(keyId);
-
-      if (isNaN(value)) {
-        return;
-      } // Prevent page from scrolling due to key presses that would normally scroll the page
-
-
-      evt.preventDefault();
-      this.adapter_.addClass(cssClasses$7.FOCUS);
-      this.setValue_(value, true);
-      this.adapter_.notifyChange();
-    };
-    /**
-     * Returns the computed name of the event
-     */
-
-
-    MDCSliderFoundation.prototype.getKeyId_ = function (kbdEvt) {
-      if (kbdEvt.key === KEY_IDS.ARROW_LEFT || kbdEvt.keyCode === 37) {
-        return KEY_IDS.ARROW_LEFT;
-      }
-
-      if (kbdEvt.key === KEY_IDS.ARROW_RIGHT || kbdEvt.keyCode === 39) {
-        return KEY_IDS.ARROW_RIGHT;
-      }
-
-      if (kbdEvt.key === KEY_IDS.ARROW_UP || kbdEvt.keyCode === 38) {
-        return KEY_IDS.ARROW_UP;
-      }
-
-      if (kbdEvt.key === KEY_IDS.ARROW_DOWN || kbdEvt.keyCode === 40) {
-        return KEY_IDS.ARROW_DOWN;
-      }
-
-      if (kbdEvt.key === KEY_IDS.HOME || kbdEvt.keyCode === 36) {
-        return KEY_IDS.HOME;
-      }
-
-      if (kbdEvt.key === KEY_IDS.END || kbdEvt.keyCode === 35) {
-        return KEY_IDS.END;
-      }
-
-      if (kbdEvt.key === KEY_IDS.PAGE_UP || kbdEvt.keyCode === 33) {
-        return KEY_IDS.PAGE_UP;
-      }
-
-      if (kbdEvt.key === KEY_IDS.PAGE_DOWN || kbdEvt.keyCode === 34) {
-        return KEY_IDS.PAGE_DOWN;
-      }
-
-      return '';
-    };
-    /**
-     * Computes the value given a keyboard key ID
-     */
-
-
-    MDCSliderFoundation.prototype.getValueForKeyId_ = function (keyId) {
-      var _a = this,
-          max = _a.max_,
-          min = _a.min_,
-          step = _a.step_;
-
-      var delta = step || (max - min) / 100;
-      var valueNeedsToBeFlipped = this.adapter_.isRTL() && (keyId === KEY_IDS.ARROW_LEFT || keyId === KEY_IDS.ARROW_RIGHT);
-
-      if (valueNeedsToBeFlipped) {
-        delta = -delta;
-      }
-
-      switch (keyId) {
-        case KEY_IDS.ARROW_LEFT:
-        case KEY_IDS.ARROW_DOWN:
-          return this.value_ - delta;
-
-        case KEY_IDS.ARROW_RIGHT:
-        case KEY_IDS.ARROW_UP:
-          return this.value_ + delta;
-
-        case KEY_IDS.HOME:
-          return this.min_;
-
-        case KEY_IDS.END:
-          return this.max_;
-
-        case KEY_IDS.PAGE_UP:
-          return this.value_ + delta * numbers$4.PAGE_FACTOR;
-
-        case KEY_IDS.PAGE_DOWN:
-          return this.value_ - delta * numbers$4.PAGE_FACTOR;
-
-        default:
-          return NaN;
-      }
-    };
-
-    MDCSliderFoundation.prototype.handleFocus_ = function () {
-      if (this.preventFocusState_) {
-        return;
-      }
-
-      this.adapter_.addClass(cssClasses$7.FOCUS);
-    };
-
-    MDCSliderFoundation.prototype.handleBlur_ = function () {
-      this.preventFocusState_ = false;
-      this.adapter_.removeClass(cssClasses$7.FOCUS);
-    };
-    /**
-     * Sets the value of the slider
-     */
-
-
-    MDCSliderFoundation.prototype.setValue_ = function (value, shouldFireInput, force) {
-      if (force === void 0) {
-        force = false;
-      }
-
-      if (value === this.value_ && !force) {
-        return;
-      }
-
-      var _a = this,
-          min = _a.min_,
-          max = _a.max_;
-
-      var valueSetToBoundary = value === min || value === max;
-
-      if (this.step_ && !valueSetToBoundary) {
-        value = this.quantize_(value);
-      }
-
-      if (value < min) {
-        value = min;
-      } else if (value > max) {
-        value = max;
-      }
-
-      this.value_ = value;
-      this.adapter_.setAttribute(strings$5.ARIA_VALUENOW, String(this.value_));
-      this.updateUIForCurrentValue_();
-
-      if (shouldFireInput) {
-        this.adapter_.notifyInput();
-
-        if (this.isDiscrete_) {
-          this.adapter_.setMarkerValue(value);
-        }
-      }
-    };
-    /**
-     * Calculates the quantized value
-     */
-
-
-    MDCSliderFoundation.prototype.quantize_ = function (value) {
-      var numSteps = Math.round(value / this.step_);
-      return numSteps * this.step_;
-    };
-
-    MDCSliderFoundation.prototype.updateUIForCurrentValue_ = function () {
-      var _this = this;
-
-      var _a = this,
-          max = _a.max_,
-          min = _a.min_,
-          value = _a.value_;
-
-      var pctComplete = (value - min) / (max - min);
-      var translatePx = pctComplete * this.rect_.width;
-
-      if (this.adapter_.isRTL()) {
-        translatePx = this.rect_.width - translatePx;
-      }
-
-      var transformProp = getCorrectPropertyName(window, 'transform');
-      var transitionendEvtName = getCorrectEventName(window, 'transitionend');
-
-      if (this.inTransit_) {
-        var onTransitionEnd_1 = function () {
-          _this.setInTransit_(false);
-
-          _this.adapter_.deregisterThumbContainerInteractionHandler(transitionendEvtName, onTransitionEnd_1);
-        };
-
-        this.adapter_.registerThumbContainerInteractionHandler(transitionendEvtName, onTransitionEnd_1);
-      }
-
-      requestAnimationFrame(function () {
-        // NOTE(traviskaufman): It would be nice to use calc() here,
-        // but IE cannot handle calcs in transforms correctly.
-        // See: https://goo.gl/NC2itk
-        // Also note that the -50% offset is used to center the slider thumb.
-        _this.adapter_.setThumbContainerStyleProperty(transformProp, "translateX(" + translatePx + "px) translateX(-50%)");
-
-        _this.adapter_.setTrackStyleProperty(transformProp, "scaleX(" + pctComplete + ")");
-      });
-    };
-    /**
-     * Toggles the active state of the slider
-     */
-
-
-    MDCSliderFoundation.prototype.setActive_ = function (active) {
-      this.active_ = active;
-      this.toggleClass_(cssClasses$7.ACTIVE, this.active_);
-    };
-    /**
-     * Toggles the inTransit state of the slider
-     */
-
-
-    MDCSliderFoundation.prototype.setInTransit_ = function (inTransit) {
-      this.inTransit_ = inTransit;
-      this.toggleClass_(cssClasses$7.IN_TRANSIT, this.inTransit_);
-    };
-    /**
-     * Conditionally adds or removes a class based on shouldBePresent
-     */
-
-
-    MDCSliderFoundation.prototype.toggleClass_ = function (className, shouldBePresent) {
-      if (shouldBePresent) {
-        this.adapter_.addClass(className);
-      } else {
-        this.adapter_.removeClass(className);
-      }
-    };
-
-    return MDCSliderFoundation;
-  }(MDCFoundation);
-
-  /**
-   * @license
-   * Copyright (c) 2018 The Polymer Project Authors. All rights reserved.
-   * This code may only be used under the BSD style license found at
-   * http://polymer.github.io/LICENSE.txt
-   * The complete set of authors may be found at
-   * http://polymer.github.io/AUTHORS.txt
-   * The complete set of contributors may be found at
-   * http://polymer.github.io/CONTRIBUTORS.txt
-   * Code distributed by Google as part of the polymer project is also
-   * subject to an additional IP rights grant found at
-   * http://polymer.github.io/PATENTS.txt
-   */
-  /**
-   * Stores the StyleInfo object applied to a given AttributePart.
-   * Used to unset existing values when a new StyleInfo object is applied.
-   */
-
-  const previousStylePropertyCache = new WeakMap();
-  /**
-   * A directive that applies CSS properties to an element.
-   *
-   * `styleMap` can only be used in the `style` attribute and must be the only
-   * expression in the attribute. It takes the property names in the `styleInfo`
-   * object and adds the property values as CSS properties. Property names with
-   * dashes (`-`) are assumed to be valid CSS property names and set on the
-   * element's style object using `setProperty()`. Names without dashes are
-   * assumed to be camelCased JavaScript property names and set on the element's
-   * style object using property assignment, allowing the style object to
-   * translate JavaScript-style names to CSS property names.
-   *
-   * For example `styleMap({backgroundColor: 'red', 'border-top': '5px', '--size':
-   * '0'})` sets the `background-color`, `border-top` and `--size` properties.
-   *
-   * @param styleInfo {StyleInfo}
-   */
-
-  const styleMap = directive(styleInfo => part => {
-    if (!(part instanceof AttributePart) || part instanceof PropertyPart || part.committer.name !== 'style' || part.committer.parts.length > 1) {
-      throw new Error('The `styleMap` directive must be used in the style attribute ' + 'and must be the only part in the attribute.');
-    }
-
-    const {
-      committer
-    } = part;
-    const {
-      style
-    } = committer.element;
-    let previousStyleProperties = previousStylePropertyCache.get(part);
-
-    if (previousStyleProperties === undefined) {
-      // Write static styles once
-      style.cssText = committer.strings.join(' ');
-      previousStylePropertyCache.set(part, previousStyleProperties = new Set());
-    } // Remove old properties that no longer exist in styleInfo
-    // We use forEach() instead of for-of so that re don't require down-level
-    // iteration.
-
-
-    previousStyleProperties.forEach(name => {
-      if (!(name in styleInfo)) {
-        previousStyleProperties.delete(name);
-
-        if (name.indexOf('-') === -1) {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          style[name] = null;
-        } else {
-          style.removeProperty(name);
-        }
-      }
-    }); // Add or update properties
-
-    for (const name in styleInfo) {
-      previousStyleProperties.add(name);
-
-      if (name.indexOf('-') === -1) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        style[name] = styleInfo[name];
-      } else {
-        style.setProperty(name, styleInfo[name]);
-      }
-    }
-  });
-
-  const INPUT_EVENT = 'input';
-  const CHANGE_EVENT = 'change';
-  class SliderBase extends FormElement {
-    constructor() {
-      super(...arguments);
-      this.mdcFoundationClass = MDCSliderFoundation;
-      this.value = 0;
-      this.min = 0;
-      this.max = 100;
-      this.step = 0;
-      this.disabled = false;
-      this.pin = false;
-      this.markers = false;
-      this.pinMarkerText = '';
-      this.trackMarkerContainerStyles = {};
-      this.thumbContainerStyles = {};
-      this.trackStyles = {};
-      this.isFoundationDestroyed = false;
-    } // TODO(sorvell) #css: needs a default width
-
-
-    render() {
-      const isDiscrete = this.step !== 0;
-      const hostClassInfo = {
-        'mdc-slider--discrete': isDiscrete,
-        'mdc-slider--display-markers': this.markers && isDiscrete
-      };
-      let markersTemplate = '';
-
-      if (isDiscrete && this.markers) {
-        markersTemplate = html`
-        <div
-            class="mdc-slider__track-marker-container"
-            style="${styleMap(this.trackMarkerContainerStyles)}">
-        </div>`;
-      }
-
-      let pin = '';
-
-      if (this.pin) {
-        pin = html`
-      <div class="mdc-slider__pin">
-        <span class="mdc-slider__pin-value-marker">${this.pinMarkerText}</span>
-      </div>`;
-      }
-
-      return html`
-      <div class="mdc-slider ${classMap(hostClassInfo)}"
-           tabindex="0" role="slider"
-           aria-valuemin="${this.min}" aria-valuemax="${this.max}"
-           aria-valuenow="${this.value}" aria-disabled="${this.disabled}"
-           data-step="${this.step}"
-           @mousedown=${this.layout}
-           @touchstart=${this.layout}>
-        <div class="mdc-slider__track-container">
-          <div
-              class="mdc-slider__track"
-              style="${styleMap(this.trackStyles)}">
-          </div>
-          ${markersTemplate}
-        </div>
-        <div
-            class="mdc-slider__thumb-container"
-            style="${styleMap(this.thumbContainerStyles)}">
-          <!-- TODO: use cache() directive -->
-          ${pin}
-          <svg class="mdc-slider__thumb" width="21" height="21">
-            <circle cx="10.5" cy="10.5" r="7.875"></circle>
-          </svg>
-        <div class="mdc-slider__focus-ring"></div>
-      </div>
-    </div>`;
-    }
-
-    connectedCallback() {
-      super.connectedCallback();
-
-      if (this.mdcRoot && this.isFoundationDestroyed) {
-        this.isFoundationDestroyed = false;
-        this.mdcFoundation.init();
-      }
-    }
-
-    disconnectedCallback() {
-      super.disconnectedCallback();
-      this.isFoundationDestroyed = true;
-      this.mdcFoundation.destroy();
-    }
-
-    createAdapter() {
-      return Object.assign(Object.assign({}, addHasRemoveClass(this.mdcRoot)), {
-        getAttribute: name => this.mdcRoot.getAttribute(name),
-        setAttribute: (name, value) => this.mdcRoot.setAttribute(name, value),
-        removeAttribute: name => this.mdcRoot.removeAttribute(name),
-        computeBoundingRect: () => {
-          const rect = this.mdcRoot.getBoundingClientRect();
-          const myRect = {
-            bottom: rect.bottom,
-            height: rect.height,
-            left: rect.left + window.pageXOffset,
-            right: rect.right,
-            top: rect.top,
-            width: rect.width
-          };
-          return myRect;
-        },
-        getTabIndex: () => this.mdcRoot.tabIndex,
-        registerInteractionHandler: (type, handler) => {
-          const init = type === 'touchstart' ? applyPassive() : undefined;
-          this.mdcRoot.addEventListener(type, handler, init);
-        },
-        deregisterInteractionHandler: (type, handler) => this.mdcRoot.removeEventListener(type, handler),
-        registerThumbContainerInteractionHandler: (type, handler) => {
-          const init = type === 'touchstart' ? applyPassive() : undefined;
-          this.thumbContainer.addEventListener(type, handler, init);
-        },
-        deregisterThumbContainerInteractionHandler: (type, handler) => this.thumbContainer.removeEventListener(type, handler),
-        registerBodyInteractionHandler: (type, handler) => document.body.addEventListener(type, handler),
-        deregisterBodyInteractionHandler: (type, handler) => document.body.removeEventListener(type, handler),
-        registerResizeHandler: handler => window.addEventListener('resize', handler, applyPassive()),
-        deregisterResizeHandler: handler => window.removeEventListener('resize', handler),
-        notifyInput: () => {
-          const value = this.mdcFoundation.getValue();
-
-          if (value !== this.value) {
-            this.value = value;
-            this.dispatchEvent(new CustomEvent(INPUT_EVENT, {
-              detail: this,
-              composed: true,
-              bubbles: true,
-              cancelable: true
-            }));
-          }
-        },
-        notifyChange: () => {
-          this.dispatchEvent(new CustomEvent(CHANGE_EVENT, {
-            detail: this,
-            composed: true,
-            bubbles: true,
-            cancelable: true
-          }));
-        },
-        setThumbContainerStyleProperty: (propertyName, value) => {
-          this.thumbContainerStyles[propertyName] = value;
-          this.requestUpdate();
-        },
-        setTrackStyleProperty: (propertyName, value) => {
-          this.trackStyles[propertyName] = value;
-          this.requestUpdate();
-        },
-        setMarkerValue: value => this.pinMarkerText = value.toLocaleString(),
-        setTrackMarkers: (step, max, min) => {
-          // calculates the CSS for the notches on the slider. Taken from
-          // https://github.com/material-components/material-components-web/blob/8f851d9ed2f75dc8b8956d15b3bb2619e59fa8a9/packages/mdc-slider/component.ts#L122
-          const stepStr = step.toLocaleString();
-          const maxStr = max.toLocaleString();
-          const minStr = min.toLocaleString(); // keep calculation in css for better rounding/subpixel behavior
-
-          const markerAmount = `((${maxStr} - ${minStr}) / ${stepStr})`;
-          const markerWidth = '2px';
-          const markerBkgdImage = `linear-gradient(to right, currentColor ${markerWidth}, transparent 0)`;
-          const markerBkgdLayout = `0 center / calc((100% - ${markerWidth}) / ${markerAmount}) 100% repeat-x`;
-          const markerBkgdShorthand = `${markerBkgdImage} ${markerBkgdLayout}`;
-          this.trackMarkerContainerStyles['background'] = markerBkgdShorthand;
-          this.requestUpdate();
-        },
-        isRTL: () => getComputedStyle(this.mdcRoot).direction === 'rtl'
-      });
-    }
-
-    resetFoundation() {
-      if (this.mdcFoundation) {
-        this.mdcFoundation.destroy();
-        this.mdcFoundation.init();
-      }
-    }
-    /**
-     * Layout is called on mousedown / touchstart as the dragging animations of
-     * slider are calculated based off of the bounding rect which can change
-     * between interactions with this component, and this is the only location
-     * in the foundation that udpates the rects. e.g. scrolling horizontally
-     * causes adverse effects on the bounding rect vs mouse drag / touchmove
-     * location.
-     */
-
-
-    layout() {
-      this.mdcFoundation.layout();
-    }
-
-  }
-
-  __decorate([query('.mdc-slider')], SliderBase.prototype, "mdcRoot", void 0);
-
-  __decorate([query('.mdc-slider')], SliderBase.prototype, "formElement", void 0);
-
-  __decorate([query('.mdc-slider__thumb-container')], SliderBase.prototype, "thumbContainer", void 0);
-
-  __decorate([query('.mdc-slider__pin-value-marker')], SliderBase.prototype, "pinMarker", void 0);
-
-  __decorate([property({
-    type: Number
-  }), observer(function (value) {
-    this.mdcFoundation.setValue(value);
-  })], SliderBase.prototype, "value", void 0);
-
-  __decorate([property({
-    type: Number
-  }), observer(function (value) {
-    this.mdcFoundation.setMin(value);
-  })], SliderBase.prototype, "min", void 0);
-
-  __decorate([property({
-    type: Number
-  }), observer(function (value) {
-    this.mdcFoundation.setMax(value);
-  })], SliderBase.prototype, "max", void 0);
-
-  __decorate([property({
-    type: Number
-  }), observer(function (value, old) {
-    const oldWasDiscrete = old !== 0;
-    const newIsDiscrete = value !== 0;
-
-    if (oldWasDiscrete !== newIsDiscrete) {
-      this.resetFoundation();
-    }
-
-    this.mdcFoundation.setStep(value);
-  })], SliderBase.prototype, "step", void 0);
-
-  __decorate([property({
-    type: Boolean,
-    reflect: true
-  }), observer(function (value) {
-    this.mdcFoundation.setDisabled(value);
-  })], SliderBase.prototype, "disabled", void 0);
-
-  __decorate([property({
-    type: Boolean,
-    reflect: true
-  })], SliderBase.prototype, "pin", void 0);
-
-  __decorate([property({
-    type: Boolean,
-    reflect: true
-  }), observer(function () {
-    this.mdcFoundation.setupTrackMarker();
-  })], SliderBase.prototype, "markers", void 0);
-
-  __decorate([property({
-    type: String
-  })], SliderBase.prototype, "pinMarkerText", void 0);
-
-  __decorate([property({
-    type: Object
-  })], SliderBase.prototype, "trackMarkerContainerStyles", void 0);
-
-  __decorate([property({
-    type: Object
-  })], SliderBase.prototype, "thumbContainerStyles", void 0);
-
-  __decorate([property({
-    type: Object
-  })], SliderBase.prototype, "trackStyles", void 0);
-
-  __decorate([eventOptions({
-    capture: true,
-    passive: true
-  })], SliderBase.prototype, "layout", null);
-
-  /**
-  @license
-  Copyright 2018 Google Inc. All Rights Reserved.
-
-  Licensed under the Apache License, Version 2.0 (the "License");
-  you may not use this file except in compliance with the License.
-  You may obtain a copy of the License at
-
-      http://www.apache.org/licenses/LICENSE-2.0
-
-  Unless required by applicable law or agreed to in writing, software
-  distributed under the License is distributed on an "AS IS" BASIS,
-  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-  See the License for the specific language governing permissions and
-  limitations under the License.
-  */
-  const style$6 = css`@keyframes mdc-slider-emphasize{0%{animation-timing-function:ease-out}50%{animation-timing-function:ease-in;transform:scale(0.85)}100%{transform:scale(0.571)}}.mdc-slider{position:relative;width:100%;height:48px;cursor:pointer;touch-action:pan-x;-webkit-tap-highlight-color:rgba(0,0,0,0)}.mdc-slider:not(.mdc-slider--disabled) .mdc-slider__track{background-color:#018786;background-color:var(--mdc-theme-secondary, #018786)}.mdc-slider:not(.mdc-slider--disabled) .mdc-slider__track-container{background-color:rgba(1,135,134,.26)}.mdc-slider:not(.mdc-slider--disabled) .mdc-slider__track-marker-container{background-color:#018786;background-color:var(--mdc-theme-secondary, #018786)}.mdc-slider:not(.mdc-slider--disabled) .mdc-slider__thumb{fill:#018786;fill:var(--mdc-theme-secondary, #018786);stroke:#018786;stroke:var(--mdc-theme-secondary, #018786)}.mdc-slider:not(.mdc-slider--disabled) .mdc-slider__focus-ring{background-color:#018786;background-color:var(--mdc-theme-secondary, #018786)}.mdc-slider:not(.mdc-slider--disabled) .mdc-slider__pin{background-color:#018786;background-color:var(--mdc-theme-secondary, #018786)}.mdc-slider:not(.mdc-slider--disabled) .mdc-slider__pin{color:#fff;color:var(--mdc-theme-text-primary-on-dark, white)}.mdc-slider--disabled{cursor:auto}.mdc-slider--disabled .mdc-slider__track{background-color:#9a9a9a}.mdc-slider--disabled .mdc-slider__track-container{background-color:rgba(154,154,154,.26)}.mdc-slider--disabled .mdc-slider__track-marker-container{background-color:#9a9a9a}.mdc-slider--disabled .mdc-slider__thumb{fill:#9a9a9a;stroke:#9a9a9a}.mdc-slider--disabled .mdc-slider__thumb{stroke:#fff;stroke:var(--mdc-slider-bg-color-behind-component, white)}.mdc-slider:focus{outline:none}.mdc-slider__track-container{position:absolute;top:50%;width:100%;height:2px;overflow:hidden}.mdc-slider__track{position:absolute;width:100%;height:100%;transform-origin:left top;will-change:transform}.mdc-slider[dir=rtl] .mdc-slider__track,[dir=rtl] .mdc-slider .mdc-slider__track{transform-origin:right top}.mdc-slider__track-marker-container{display:flex;margin-right:0;margin-left:-1px;visibility:hidden}.mdc-slider[dir=rtl] .mdc-slider__track-marker-container,[dir=rtl] .mdc-slider .mdc-slider__track-marker-container{margin-right:-1px;margin-left:0}.mdc-slider__track-marker-container::after{display:block;width:2px;height:2px;content:""}.mdc-slider__track-marker{flex:1}.mdc-slider__track-marker::after{display:block;width:2px;height:2px;content:""}.mdc-slider__track-marker:first-child::after{width:3px}.mdc-slider__thumb-container{position:absolute;top:15px;left:0;width:21px;height:100%;user-select:none;will-change:transform}.mdc-slider__thumb{position:absolute;top:0;left:0;transform:scale(0.571);stroke-width:3.5;transition:transform 100ms ease-out,fill 100ms ease-out,stroke 100ms ease-out}.mdc-slider__focus-ring{width:21px;height:21px;border-radius:50%;opacity:0;transition:transform 266.67ms ease-out,opacity 266.67ms ease-out,background-color 266.67ms ease-out}.mdc-slider__pin{display:flex;position:absolute;top:0;left:0;align-items:center;justify-content:center;width:26px;height:26px;margin-top:-2px;margin-left:-2px;transform:rotate(-45deg) scale(0) translate(0, 0);border-radius:50% 50% 50% 0%;z-index:1;transition:transform 100ms ease-out}.mdc-slider__pin-value-marker{font-family:Roboto, sans-serif;-moz-osx-font-smoothing:grayscale;-webkit-font-smoothing:antialiased;font-size:.875rem;line-height:1.25rem;font-weight:400;letter-spacing:.0178571429em;text-decoration:inherit;text-transform:inherit;transform:rotate(45deg)}.mdc-slider--active .mdc-slider__thumb{transform:scale3d(1, 1, 1)}.mdc-slider--focus .mdc-slider__thumb{animation:mdc-slider-emphasize 266.67ms linear}.mdc-slider--focus .mdc-slider__focus-ring{transform:scale3d(1.55, 1.55, 1.55);opacity:.25}.mdc-slider--in-transit .mdc-slider__thumb{transition-delay:140ms}.mdc-slider--in-transit .mdc-slider__thumb-container,.mdc-slider--in-transit .mdc-slider__track,.mdc-slider:focus:not(.mdc-slider--active) .mdc-slider__thumb-container,.mdc-slider:focus:not(.mdc-slider--active) .mdc-slider__track{transition:transform 80ms ease}.mdc-slider--discrete.mdc-slider--active .mdc-slider__thumb{transform:scale(calc(12 / 21))}.mdc-slider--discrete.mdc-slider--active .mdc-slider__pin{transform:rotate(-45deg) scale(1) translate(19px, -20px)}.mdc-slider--discrete.mdc-slider--focus .mdc-slider__thumb{animation:none}.mdc-slider--discrete.mdc-slider--display-markers .mdc-slider__track-marker-container{visibility:visible}:host{display:inline-block;min-width:120px;outline:none}`;
-
-  let Slider = class Slider extends SliderBase {};
-  Slider.styles = style$6;
-  Slider = __decorate([customElement('mwc-slider')], Slider);
-
-  /**
   @license
   Copyright (c) 2017 The Polymer Project Authors. All rights reserved.
   This code may only be used under the BSD style license found at http://polymer.github.io/LICENSE.txt
@@ -41577,19 +40400,851 @@
 </dom-module>`;
   document.head.appendChild($_documentContainer$l.content);
 
-  /* Webcomponents polyfill... https://github.com/webcomponents/webcomponentsjs#using-webcomponents-loaderjs */
+  const weekdays = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+
+  function pad(num) {
+    return "0".concat(num).slice(-2);
+  }
+
+  function strftime(time, formatString) {
+    const day = time.getDay();
+    const date = time.getDate();
+    const month = time.getMonth();
+    const year = time.getFullYear();
+    const hour = time.getHours();
+    const minute = time.getMinutes();
+    const second = time.getSeconds();
+    return formatString.replace(/%([%aAbBcdeHIlmMpPSwyYZz])/g, function (_arg) {
+      let match;
+      const modifier = _arg[1];
+
+      switch (modifier) {
+        case '%':
+          return '%';
+
+        case 'a':
+          return weekdays[day].slice(0, 3);
+
+        case 'A':
+          return weekdays[day];
+
+        case 'b':
+          return months[month].slice(0, 3);
+
+        case 'B':
+          return months[month];
+
+        case 'c':
+          return time.toString();
+
+        case 'd':
+          return pad(date);
+
+        case 'e':
+          return String(date);
+
+        case 'H':
+          return pad(hour);
+
+        case 'I':
+          return pad(strftime(time, '%l'));
+
+        case 'l':
+          if (hour === 0 || hour === 12) {
+            return String(12);
+          } else {
+            return String((hour + 12) % 12);
+          }
+
+        case 'm':
+          return pad(month + 1);
+
+        case 'M':
+          return pad(minute);
+
+        case 'p':
+          if (hour > 11) {
+            return 'PM';
+          } else {
+            return 'AM';
+          }
+
+        case 'P':
+          if (hour > 11) {
+            return 'pm';
+          } else {
+            return 'am';
+          }
+
+        case 'S':
+          return pad(second);
+
+        case 'w':
+          return String(day);
+
+        case 'y':
+          return pad(year % 100);
+
+        case 'Y':
+          return String(year);
+
+        case 'Z':
+          match = time.toString().match(/\((\w+)\)$/);
+          return match ? match[1] : '';
+
+        case 'z':
+          match = time.toString().match(/\w([+-]\d\d\d\d) /);
+          return match ? match[1] : '';
+      }
+
+      return '';
+    });
+  }
+
+  function makeFormatter(options) {
+    let format;
+    return function () {
+      if (format) return format;
+
+      if ('Intl' in window) {
+        try {
+          format = new Intl.DateTimeFormat(undefined, options);
+          return format;
+        } catch (e) {
+          if (!(e instanceof RangeError)) {
+            throw e;
+          }
+        }
+      }
+    };
+  }
+
+  let dayFirst = null;
+  const dayFirstFormatter = makeFormatter({
+    day: 'numeric',
+    month: 'short'
+  }); // Private: Determine if the day should be formatted before the month name in
+  // the user's current locale. For example, `9 Jun` for en-GB and `Jun 9`
+  // for en-US.
+  //
+  // Returns true if the day appears before the month.
+
+  function isDayFirst() {
+    if (dayFirst !== null) {
+      return dayFirst;
+    }
+
+    const formatter = dayFirstFormatter();
+
+    if (formatter) {
+      const output = formatter.format(new Date(0));
+      dayFirst = !!output.match(/^\d/);
+      return dayFirst;
+    } else {
+      return false;
+    }
+  }
+
+  let yearSeparator = null;
+  const yearFormatter = makeFormatter({
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric'
+  }); // Private: Determine if the year should be separated from the month and day
+  // with a comma. For example, `9 Jun 2014` in en-GB and `Jun 9, 2014` in en-US.
+  //
+  // Returns true if the date needs a separator.
+
+  function isYearSeparator() {
+    if (yearSeparator !== null) {
+      return yearSeparator;
+    }
+
+    const formatter = yearFormatter();
+
+    if (formatter) {
+      const output = formatter.format(new Date(0));
+      yearSeparator = !!output.match(/\d,/);
+      return yearSeparator;
+    } else {
+      return true;
+    }
+  } // Private: Determine if the date occurs in the same year as today's date.
+  //
+  // date - The Date to test.
+  //
+  // Returns true if it's this year.
+
+
+  function isThisYear(date) {
+    const now = new Date();
+    return now.getUTCFullYear() === date.getUTCFullYear();
+  }
+
+  function makeRelativeFormat(locale, options) {
+    if ('Intl' in window && 'RelativeTimeFormat' in window.Intl) {
+      try {
+        // eslint-disable-next-line flowtype/no-flow-fix-me-comments
+        // $FlowFixMe: missing RelativeTimeFormat type
+        return new Intl.RelativeTimeFormat(locale, options);
+      } catch (e) {
+        if (!(e instanceof RangeError)) {
+          throw e;
+        }
+      }
+    }
+  } // Private: Get preferred Intl locale for a target element.
+  //
+  // Traverses parents until it finds an explicit `lang` other returns "default".
+
+
+  function localeFromElement(el) {
+    const container = el.closest('[lang]');
+
+    if (container instanceof HTMLElement && container.lang) {
+      return container.lang;
+    }
+
+    return 'default';
+  }
+
+  const datetimes = new WeakMap();
+
+  class ExtendedTimeElement extends HTMLElement {
+    static get observedAttributes() {
+      return ['datetime', 'day', 'format', 'lang', 'hour', 'minute', 'month', 'second', 'title', 'weekday', 'year'];
+    }
+
+    connectedCallback() {
+      const title = this.getFormattedTitle();
+
+      if (title && !this.hasAttribute('title')) {
+        this.setAttribute('title', title);
+      }
+
+      const text = this.getFormattedDate();
+
+      if (text) {
+        this.textContent = text;
+      }
+    } // Internal: Refresh the time element's formatted date when an attribute changes.
+
+
+    attributeChangedCallback(attrName, oldValue, newValue) {
+      const oldTitle = this.getFormattedTitle();
+
+      if (attrName === 'datetime') {
+        const millis = Date.parse(newValue);
+
+        if (isNaN(millis)) {
+          datetimes.delete(this);
+        } else {
+          datetimes.set(this, new Date(millis));
+        }
+      }
+
+      const title = this.getFormattedTitle();
+      const currentTitle = this.getAttribute('title');
+
+      if (attrName !== 'title' && title && (!currentTitle || currentTitle === oldTitle)) {
+        this.setAttribute('title', title);
+      }
+
+      const text = this.getFormattedDate();
+
+      if (text) {
+        this.textContent = text;
+      }
+    }
+
+    get date() {
+      return datetimes.get(this);
+    } // Internal: Format the ISO 8601 timestamp according to the user agent's
+    // locale-aware formatting rules. The element's existing `title` attribute
+    // value takes precedence over this custom format.
+    //
+    // Returns a formatted time String.
+
+
+    getFormattedTitle() {
+      const date = this.date;
+      if (!date) return;
+      const formatter = titleFormatter();
+
+      if (formatter) {
+        return formatter.format(date);
+      } else {
+        try {
+          return date.toLocaleString();
+        } catch (e) {
+          if (e instanceof RangeError) {
+            return date.toString();
+          } else {
+            throw e;
+          }
+        }
+      }
+    }
+
+    getFormattedDate() {}
+
+  }
+
+  const titleFormatter = makeFormatter({
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    timeZoneName: 'short'
+  });
+  const formatters = new WeakMap();
+
+  class LocalTimeElement extends ExtendedTimeElement {
+    attributeChangedCallback(attrName, oldValue, newValue) {
+      if (attrName === 'hour' || attrName === 'minute' || attrName === 'second' || attrName === 'time-zone-name') {
+        formatters.delete(this);
+      }
+
+      super.attributeChangedCallback(attrName, oldValue, newValue);
+    } // Formats the element's date, in the user's current locale, according to
+    // the formatting attribute values. Values are not passed straight through to
+    // an Intl.DateTimeFormat instance so that weekday and month names are always
+    // displayed in English, for now.
+    //
+    // Supported attributes are:
+    //
+    //   weekday - "short", "long"
+    //   year    - "numeric", "2-digit"
+    //   month   - "short", "long"
+    //   day     - "numeric", "2-digit"
+    //   hour    - "numeric", "2-digit"
+    //   minute  - "numeric", "2-digit"
+    //   second  - "numeric", "2-digit"
+    //
+    // Returns a formatted time String.
+
+
+    getFormattedDate() {
+      const d = this.date;
+      if (!d) return;
+      const date = formatDate(this, d) || '';
+      const time = formatTime(this, d) || '';
+      return "".concat(date, " ").concat(time).trim();
+    }
+
+  } // Private: Format a date according to the `weekday`, `day`, `month`,
+  // and `year` attribute values.
+  //
+  // This doesn't use Intl.DateTimeFormat to avoid creating text in the user's
+  // language when the majority of the surrounding text is in English. There's
+  // currently no way to separate the language from the format in Intl.
+  //
+  // el - The local-time element to format.
+  //
+  // Returns a date String or null if no date formats are provided.
+
+
+  function formatDate(el, date) {
+    // map attribute values to strftime
+    const props = {
+      weekday: {
+        short: '%a',
+        long: '%A'
+      },
+      day: {
+        numeric: '%e',
+        '2-digit': '%d'
+      },
+      month: {
+        short: '%b',
+        long: '%B'
+      },
+      year: {
+        numeric: '%Y',
+        '2-digit': '%y'
+      }
+    }; // build a strftime format string
+
+    let format = isDayFirst() ? 'weekday day month year' : 'weekday month day, year';
+
+    for (const prop in props) {
+      const value = props[prop][el.getAttribute(prop)];
+      format = format.replace(prop, value || '');
+    } // clean up year separator comma
+
+
+    format = format.replace(/(\s,)|(,\s$)/, ''); // squeeze spaces from final string
+
+    return strftime(date, format).replace(/\s+/, ' ').trim();
+  } // Private: Format a time according to the `hour`, `minute`, and `second`
+  // attribute values.
+  //
+  // el - The local-time element to format.
+  //
+  // Returns a time String or null if no time formats are provided.
+
+
+  function formatTime(el, date) {
+    const options = {}; // retrieve format settings from attributes
+
+    const hour = el.getAttribute('hour');
+    if (hour === 'numeric' || hour === '2-digit') options.hour = hour;
+    const minute = el.getAttribute('minute');
+    if (minute === 'numeric' || minute === '2-digit') options.minute = minute;
+    const second = el.getAttribute('second');
+    if (second === 'numeric' || second === '2-digit') options.second = second;
+    const tz = el.getAttribute('time-zone-name');
+    if (tz === 'short' || tz === 'long') options.timeZoneName = tz; // No time format attributes provided.
+
+    if (Object.keys(options).length === 0) {
+      return;
+    }
+
+    let factory = formatters.get(el);
+
+    if (!factory) {
+      factory = makeFormatter(options);
+      formatters.set(el, factory);
+    }
+
+    const formatter = factory();
+
+    if (formatter) {
+      // locale-aware formatting of 24 or 12 hour times
+      return formatter.format(date);
+    } else {
+      // fall back to strftime for non-Intl browsers
+      const timef = options.second ? '%H:%M:%S' : '%H:%M';
+      return strftime(date, timef);
+    }
+  } // Public: LocalTimeElement constructor.
+  //
+  //   var time = new LocalTimeElement()
+  //   # => <local-time></local-time>
+  //
+
+
+  if (!window.customElements.get('local-time')) {
+    window.LocalTimeElement = LocalTimeElement;
+    window.customElements.define('local-time', LocalTimeElement);
+  }
+
+  class RelativeTime {
+    constructor(date, locale) {
+      this.date = date;
+      this.locale = locale;
+    }
+
+    toString() {
+      const ago = this.timeElapsed();
+
+      if (ago) {
+        return ago;
+      } else {
+        const ahead = this.timeAhead();
+
+        if (ahead) {
+          return ahead;
+        } else {
+          return "on ".concat(this.formatDate());
+        }
+      }
+    }
+
+    timeElapsed() {
+      const ms = new Date().getTime() - this.date.getTime();
+      const sec = Math.round(ms / 1000);
+      const min = Math.round(sec / 60);
+      const hr = Math.round(min / 60);
+      const day = Math.round(hr / 24);
+
+      if (ms >= 0 && day < 30) {
+        return this.timeAgoFromMs(ms);
+      } else {
+        return null;
+      }
+    }
+
+    timeAhead() {
+      const ms = this.date.getTime() - new Date().getTime();
+      const sec = Math.round(ms / 1000);
+      const min = Math.round(sec / 60);
+      const hr = Math.round(min / 60);
+      const day = Math.round(hr / 24);
+
+      if (ms >= 0 && day < 30) {
+        return this.timeUntil();
+      } else {
+        return null;
+      }
+    }
+
+    timeAgo() {
+      const ms = new Date().getTime() - this.date.getTime();
+      return this.timeAgoFromMs(ms);
+    }
+
+    timeAgoFromMs(ms) {
+      const sec = Math.round(ms / 1000);
+      const min = Math.round(sec / 60);
+      const hr = Math.round(min / 60);
+      const day = Math.round(hr / 24);
+      const month = Math.round(day / 30);
+      const year = Math.round(month / 12);
+
+      if (ms < 0) {
+        return formatRelativeTime(this.locale, 0, 'second');
+      } else if (sec < 10) {
+        return formatRelativeTime(this.locale, 0, 'second');
+      } else if (sec < 45) {
+        return formatRelativeTime(this.locale, -sec, 'second');
+      } else if (sec < 90) {
+        return formatRelativeTime(this.locale, -min, 'minute');
+      } else if (min < 45) {
+        return formatRelativeTime(this.locale, -min, 'minute');
+      } else if (min < 90) {
+        return formatRelativeTime(this.locale, -hr, 'hour');
+      } else if (hr < 24) {
+        return formatRelativeTime(this.locale, -hr, 'hour');
+      } else if (hr < 36) {
+        return formatRelativeTime(this.locale, -day, 'day');
+      } else if (day < 30) {
+        return formatRelativeTime(this.locale, -day, 'day');
+      } else if (month < 18) {
+        return formatRelativeTime(this.locale, -month, 'month');
+      } else {
+        return formatRelativeTime(this.locale, -year, 'year');
+      }
+    }
+
+    microTimeAgo() {
+      const ms = new Date().getTime() - this.date.getTime();
+      const sec = Math.round(ms / 1000);
+      const min = Math.round(sec / 60);
+      const hr = Math.round(min / 60);
+      const day = Math.round(hr / 24);
+      const month = Math.round(day / 30);
+      const year = Math.round(month / 12);
+
+      if (min < 1) {
+        return '1m';
+      } else if (min < 60) {
+        return "".concat(min, "m");
+      } else if (hr < 24) {
+        return "".concat(hr, "h");
+      } else if (day < 365) {
+        return "".concat(day, "d");
+      } else {
+        return "".concat(year, "y");
+      }
+    }
+
+    timeUntil() {
+      const ms = this.date.getTime() - new Date().getTime();
+      return this.timeUntilFromMs(ms);
+    }
+
+    timeUntilFromMs(ms) {
+      const sec = Math.round(ms / 1000);
+      const min = Math.round(sec / 60);
+      const hr = Math.round(min / 60);
+      const day = Math.round(hr / 24);
+      const month = Math.round(day / 30);
+      const year = Math.round(month / 12);
+
+      if (month >= 18) {
+        return formatRelativeTime(this.locale, year, 'year');
+      } else if (month >= 12) {
+        return formatRelativeTime(this.locale, year, 'year');
+      } else if (day >= 45) {
+        return formatRelativeTime(this.locale, month, 'month');
+      } else if (day >= 30) {
+        return formatRelativeTime(this.locale, month, 'month');
+      } else if (hr >= 36) {
+        return formatRelativeTime(this.locale, day, 'day');
+      } else if (hr >= 24) {
+        return formatRelativeTime(this.locale, day, 'day');
+      } else if (min >= 90) {
+        return formatRelativeTime(this.locale, hr, 'hour');
+      } else if (min >= 45) {
+        return formatRelativeTime(this.locale, hr, 'hour');
+      } else if (sec >= 90) {
+        return formatRelativeTime(this.locale, min, 'minute');
+      } else if (sec >= 45) {
+        return formatRelativeTime(this.locale, min, 'minute');
+      } else if (sec >= 10) {
+        return formatRelativeTime(this.locale, sec, 'second');
+      } else {
+        return formatRelativeTime(this.locale, 0, 'second');
+      }
+    }
+
+    microTimeUntil() {
+      const ms = this.date.getTime() - new Date().getTime();
+      const sec = Math.round(ms / 1000);
+      const min = Math.round(sec / 60);
+      const hr = Math.round(min / 60);
+      const day = Math.round(hr / 24);
+      const month = Math.round(day / 30);
+      const year = Math.round(month / 12);
+
+      if (day >= 365) {
+        return "".concat(year, "y");
+      } else if (hr >= 24) {
+        return "".concat(day, "d");
+      } else if (min >= 60) {
+        return "".concat(hr, "h");
+      } else if (min > 1) {
+        return "".concat(min, "m");
+      } else {
+        return '1m';
+      }
+    }
+
+    formatDate() {
+      let format = isDayFirst() ? '%e %b' : '%b %e';
+
+      if (!isThisYear(this.date)) {
+        format += isYearSeparator() ? ', %Y' : ' %Y';
+      }
+
+      return strftime(this.date, format);
+    }
+
+    formatTime() {
+      const formatter = timeFormatter();
+
+      if (formatter) {
+        return formatter.format(this.date);
+      } else {
+        return strftime(this.date, '%l:%M%P');
+      }
+    }
+
+  }
+
+  function formatRelativeTime(locale, value, unit) {
+    const formatter = makeRelativeFormat(locale, {
+      numeric: 'auto'
+    });
+
+    if (formatter) {
+      return formatter.format(value, unit);
+    } else {
+      return formatEnRelativeTime(value, unit);
+    }
+  } // Simplified "en" RelativeTimeFormat.format function
+  //
+  // Values should roughly match
+  //   new Intl.RelativeTimeFormat('en', {numeric: 'auto'}).format(value, unit)
+  //
+
+
+  function formatEnRelativeTime(value, unit) {
+    if (value === 0) {
+      switch (unit) {
+        case 'year':
+        case 'quarter':
+        case 'month':
+        case 'week':
+          return "this ".concat(unit);
+
+        case 'day':
+          return 'today';
+
+        case 'hour':
+        case 'minute':
+          return "in 0 ".concat(unit, "s");
+
+        case 'second':
+          return 'now';
+      }
+    } else if (value === 1) {
+      switch (unit) {
+        case 'year':
+        case 'quarter':
+        case 'month':
+        case 'week':
+          return "next ".concat(unit);
+
+        case 'day':
+          return 'tomorrow';
+
+        case 'hour':
+        case 'minute':
+        case 'second':
+          return "in 1 ".concat(unit);
+      }
+    } else if (value === -1) {
+      switch (unit) {
+        case 'year':
+        case 'quarter':
+        case 'month':
+        case 'week':
+          return "last ".concat(unit);
+
+        case 'day':
+          return 'yesterday';
+
+        case 'hour':
+        case 'minute':
+        case 'second':
+          return "1 ".concat(unit, " ago");
+      }
+    } else if (value > 1) {
+      switch (unit) {
+        case 'year':
+        case 'quarter':
+        case 'month':
+        case 'week':
+        case 'day':
+        case 'hour':
+        case 'minute':
+        case 'second':
+          return "in ".concat(value, " ").concat(unit, "s");
+      }
+    } else if (value < -1) {
+      switch (unit) {
+        case 'year':
+        case 'quarter':
+        case 'month':
+        case 'week':
+        case 'day':
+        case 'hour':
+        case 'minute':
+        case 'second':
+          return "".concat(-value, " ").concat(unit, "s ago");
+      }
+    }
+
+    throw new RangeError("Invalid unit argument for format() '".concat(unit, "'"));
+  }
+
+  const timeFormatter = makeFormatter({
+    hour: 'numeric',
+    minute: '2-digit'
+  });
+
+  class RelativeTimeElement extends ExtendedTimeElement {
+    getFormattedDate() {
+      const date = this.date;
+
+      if (date) {
+        return new RelativeTime(date, localeFromElement(this)).toString();
+      }
+    }
+
+    connectedCallback() {
+      nowElements.push(this);
+
+      if (!updateNowElementsId) {
+        updateNowElements();
+        updateNowElementsId = setInterval(updateNowElements, 60 * 1000);
+      }
+
+      super.connectedCallback();
+    }
+
+    disconnectedCallback() {
+      const ix = nowElements.indexOf(this);
+
+      if (ix !== -1) {
+        nowElements.splice(ix, 1);
+      }
+
+      if (!nowElements.length) {
+        if (updateNowElementsId) {
+          clearInterval(updateNowElementsId);
+          updateNowElementsId = null;
+        }
+      }
+    }
+
+  } // Internal: Array tracking all elements attached to the document that need
+  // to be updated every minute.
+
+
+  const nowElements = []; // Internal: Timer ID for `updateNowElements` interval.
+
+  let updateNowElementsId; // Internal: Install a timer to refresh all attached relative-time elements every
+  // minute.
+
+  function updateNowElements() {
+    let time, i, len;
+
+    for (i = 0, len = nowElements.length; i < len; i++) {
+      time = nowElements[i];
+      time.textContent = time.getFormattedDate() || '';
+    }
+  } // Public: RelativeTimeElement constructor.
+  //
+  //   var time = new RelativeTimeElement()
+  //   # => <relative-time></relative-time>
+  //
+
+
+  if (!window.customElements.get('relative-time')) {
+    window.RelativeTimeElement = RelativeTimeElement;
+    window.customElements.define('relative-time', RelativeTimeElement);
+  }
+
+  class TimeAgoElement extends RelativeTimeElement {
+    getFormattedDate() {
+      const format = this.getAttribute('format');
+      const date = this.date;
+      if (!date) return;
+
+      if (format === 'micro') {
+        return new RelativeTime(date, localeFromElement(this)).microTimeAgo();
+      } else {
+        return new RelativeTime(date, localeFromElement(this)).timeAgo();
+      }
+    }
+
+  }
+
+  if (!window.customElements.get('time-ago')) {
+    window.TimeAgoElement = TimeAgoElement;
+    window.customElements.define('time-ago', TimeAgoElement);
+  }
+
+  class TimeUntilElement extends RelativeTimeElement {
+    getFormattedDate() {
+      const format = this.getAttribute('format');
+      const date = this.date;
+      if (!date) return;
+
+      if (format === 'micro') {
+        return new RelativeTime(date, localeFromElement(this)).microTimeUntil();
+      } else {
+        return new RelativeTime(date, localeFromElement(this)).timeUntil();
+      }
+    }
+
+  }
+
+  if (!window.customElements.get('time-until')) {
+    window.TimeUntilElement = TimeUntilElement;
+    window.customElements.define('time-until', TimeUntilElement);
+  }
+
   const parentEpml = new Epml({
     type: 'WINDOW',
     source: window.parent
   });
 
-  class RewardShare extends LitElement {
+  class GroupManagement extends LitElement {
     static get properties() {
       return {
         loading: {
           type: Boolean
         },
-        rewardShares: {
+        publicGroups: {
+          type: Array
+        },
+        joinedGroups: {
           type: Array
         },
         recipientPublicKey: {
@@ -41598,17 +41253,17 @@
         selectedAddress: {
           type: Object
         },
+        manageGroupObj: {
+          type: Object
+        },
+        joinGroupObj: {
+          type: Object
+        },
         btnDisable: {
           type: Boolean
         },
-        createRewardShareLoading: {
+        isLoading: {
           type: Boolean
-        },
-        removeRewardShareLoading: {
-          type: Boolean
-        },
-        rewardSharePercentage: {
-          type: Number
         },
         error: {
           type: Boolean
@@ -41629,12 +41284,38 @@
       return css`
             * {
                 --mdc-theme-primary: rgb(3, 169, 244);
-                --mdc-theme-secondary: var(--mdc-theme-primary);
+                /** --mdc-theme-secondary: var(--mdc-theme-primary); **/
                 --paper-input-container-focus-color: var(--mdc-theme-primary);
             }
-            #reward-share-page {
+            #group-management-page {
                 background: #fff;
                 padding: 12px 24px;
+            }
+
+            mwc-textfield { 
+                width:100%;
+            }
+
+            .red {
+                --mdc-theme-primary: red;
+            }
+
+            .red-button {
+                --mdc-theme-primary: red;
+                --mdc-theme-on-primary: white;
+            }
+
+            mwc-button.red-button {
+                --mdc-theme-primary: red;
+                --mdc-theme-on-primary: white;
+            }
+
+            .divCard {
+                border: 1px solid #eee;
+                padding: 1em;
+                /** box-shadow: 0 1px 1px 0 rgba(0,0,0,0.14), 0 2px 1px -1px rgba(0,0,0,0.12), 0 1px 2px 0 rgba(0,0,0,0.20); **/
+                box-shadow: 0 .3px 1px 0 rgba(0,0,0,0.14), 0 1px 1px -1px rgba(0,0,0,0.12), 0 1px 2px 0 rgba(0,0,0,0.20);
+                margin-bottom: 2em;
             }
 
             h2 {
@@ -41645,61 +41326,170 @@
                 color:#333;
                 font-weight: 400;
             }
+
+            [hidden] {
+                display: hidden !important;
+                visibility: none !important;
+            }
+            .details {
+                display: flex;
+                font-size: 18px;
+            }
+            span {
+                font-size: 18px;
+                word-break: break-all;
+            }
+            select {
+                padding: 13px 20px;
+                width: 100%;
+                font-size: 14px;
+                color: #555;
+                font-weight: 400;
+            }
+            .title {
+                font-weight:600;
+                font-size:12px;
+                line-height: 32px;
+                opacity: 0.66;
+            }
+            .itemList {
+                padding:0;
+            }
+            .itemList > * {
+                /* padding-left:24px;
+                padding-right:24px; */
+            }
         `;
     }
 
     constructor() {
       super();
       this.selectedAddress = {};
-      this.rewardShares = [];
+      this.publicGroups = [];
+      this.joinedGroups = [];
+      this.manageGroupObj = {};
+      this.joinGroupObj = {};
       this.recipientPublicKey = '';
-      this.rewardSharePercentage = 0;
       this.btnDisable = false;
-      this.createRewardShareLoading = false;
-      this.removeRewardShareLoading = false;
+      this.isLoading = false;
     }
 
     render() {
       return html`
-            <div id="reward-share-page">
-                <div style="min-height:48px; display: flex; padding-bottom: 6px;">
-                    <h3 style="margin: 0; flex: 1; padding-top: 8px; display: inline;">Rewardshares involving this account</h3>
-                    <mwc-button style="float:right;" @click=${() => this.shadowRoot.querySelector('#createRewardShareDialog').show()}><mwc-icon>add</mwc-icon>Create reward share</mwc-button>
+            <div id="group-management-page">
+                <div style="min-height:48px; display: flex; padding-bottom: 6px; margin: 2px;">
+                    <h2 style="margin: 0; flex: 1; padding-top: .1em; display: inline;">Qortal Groups</h2>
+                    <mwc-button style="float:right;" @click=${() => this.shadowRoot.querySelector('#createGroupDialog').show()}><mwc-icon>add</mwc-icon>Create Group</mwc-button>
                 </div>
 
-                <vaadin-grid id="accountRewardSharesGrid" style="height:auto;" ?hidden="${this.isEmptyArray(this.rewardShares)}" aria-label="Peers" .items="${this.rewardShares}" height-by-rows>
-                    <vaadin-grid-column path="mintingAccount"></vaadin-grid-column>
-                    <vaadin-grid-column width="7.8rem" flex-grow="0" path="sharePercent"></vaadin-grid-column>
-                    <vaadin-grid-column path="recipient"></vaadin-grid-column>
-                    <vaadin-grid-column path="rewardSharePublicKey"></vaadin-grid-column>
-                </vaadin-grid>
+                <div class="divCard">
+                    <h3 style="margin: 0; margin-bottom: 1em; text-align: center;">Public Groups</h3>
+                    <vaadin-grid id="publicGroupsGrid" style="height:auto;" ?hidden="${this.isEmptyArray(this.publicGroups)}" aria-label="Public Open Groups" .items="${this.publicGroups}" height-by-rows>
+                        <vaadin-grid-column path="groupName"></vaadin-grid-column>
+                        <vaadin-grid-column header="Description" path="description"></vaadin-grid-column>
+                        <vaadin-grid-column path="owner"></vaadin-grid-column>
+                        <vaadin-grid-column header="Action" .renderer=${(root, column, data) => {
+      render(html`<mwc-button @click=${() => this.joinGroup(data.item)}><mwc-icon>queue</mwc-icon>Join</mwc-button>`, root);
+    }}></vaadin-grid-column>
+                    </vaadin-grid>
+                    </vaadin-grid>
+                    ${this.isEmptyArray(this.publicGroups) ? html`
+                        No Open Public Groups available!
+                    ` : ''}
+                </div>
 
-                <mwc-dialog id="createRewardShareDialog" scrimClickAction="${this.createRewardShareLoading ? '' : 'close'}">
-                    <div>Level 1 - 4 can create a Self Share and Level 5 or above can create a Reward Share!</div>
-                    <br>
-                    <mwc-textfield style="width:100%;" ?disabled="${this.createRewardShareLoading}" label="Recipient Public Key" id="recipientPublicKey"></mwc-textfield>
+                <div class="divCard">
+                    <h3 style="margin: 0; margin-bottom: 1em; text-align: center;">Your Joined Groups</h3>
+                    <vaadin-grid id="joinedGroupsGrid" style="height:auto;" ?hidden="${this.isEmptyArray(this.joinedGroups)}" aria-label="Joined Groups" .items="${this.joinedGroups}" height-by-rows>
+                        <vaadin-grid-column header="Name" path="groupName"></vaadin-grid-column>
+                        <vaadin-grid-column header="Description" path="description"></vaadin-grid-column>
+                        <vaadin-grid-column header="Role" .renderer=${(root, column, data) => {
+      render(html`${this.renderRole(data.item)}`, root);
+    }}></vaadin-grid-column>
+                        <vaadin-grid-column header="Action" .renderer=${(root, column, data) => {
+      render(html`${this.renderManageButton(data.item)}`, root);
+    }}></vaadin-grid-column>
+                    </vaadin-grid>
+                    ${this.isEmptyArray(this.joinedGroups) ? html`
+                        Not a member of any groups!
+                    ` : ''}
+                </div>
+
+                <!-- Create Group Dialog -->
+                <mwc-dialog id="createGroupDialog" scrimClickAction="${this.isLoading ? '' : 'close'}">
+                    <div style="text-align:center">
+                        <h1>Create a New Group</h1>
+                        <hr>
+                    </div>
+                    
+                    <mwc-textfield style="width:100%;" ?disabled="${this.isLoading}" label="Group Name" id="groupNameInput"></mwc-textfield>
                     <p style="margin-bottom:0;">
-                        Reward share percentage: ${this.rewardSharePercentage}
-                        <!-- <mwc-textfield style="width:36px;" ?disabled="${this.createRewardShareLoading}" id="createRewardShare"></mwc-textfield> -->
+                        <mwc-textfield style="width:100%;" ?disabled="${this.isLoading}" label="Description" id="groupDescInput"></mwc-textfield>
                     </p>
-                    <mwc-slider
-                        @change="${e => this.rewardSharePercentage = this.shadowRoot.getElementById('rewardSharePercentageSlider').value}"
-                        id="rewardSharePercentageSlider"
-                        style="width:100%;"
-                        step="1"
-                        pin
-                        markers
-                        max="100"
-                        value="${this.rewardSharePercentage}">
-                    </mwc-slider>
+                    <p>
+                        Group Type:
+                        <select required validationMessage="This Field is Required" id="groupTypeInput" label="Group Type">
+                            <option value="reject" selected>Select an option</option>
+                            <option value="1">Public</option>
+                            <option value="0">Private</option>
+                        </select>
+                    </p>
+                    <p>
+                        Group Approval Threshold (number / percentage of Admins that must approve a transaction):
+                        <select required validationMessage="This Field is Required" id="groupApprovalInput" label="Group Type">
+                            <option value="reject" selected>Select an option</option>
+                            <option value="0">NONE</option>
+                            <option value="1">ONE</option>
+                            <option value="20">20%</option>
+                            <option value="40">40%</option>
+                            <option value="60">60%</option>
+                            <option value="80">80%</option>
+                            <option value="100">100%</option>
+                        </select>
+                    </p>
+                    <p>
+                        Minimum Block delay for Group Transaction Approvals:
+                        <select required validationMessage="This Field is Required" id="groupMinDelayInput" label="Group Type">
+                            <option value="reject" selected>Select an option</option>
+                            <option value="5">5 minutes</option>
+                            <option value="10">10 minutes</option>
+                            <option value="30">30 minutes</option>
+                            <option value="60">1 hour</option>
+                            <option value="180">3 hours</option>
+                            <option value="300">5 hours</option>
+                            <option value="420">7 hours</option>
+                            <option value="720">12 hours</option>
+                            <option value="1440">1 day</option>
+                            <option value="4320">3 days</option>
+                            <option value="7200">5 days</option>
+                            <option value="10080">7 days</option>
+                        </select>
+                    </p>
+                    <p>
+                        Maximum Block delay for Group Transaction Approvals:
+                        <select required validationMessage="This Field is Required" id="groupMaxDelayInput" label="Group Type">
+                            <option value="reject" selected>Select an option</option>
+                            <option value="60">1 hour</option>
+                            <option value="180">3 hours</option>
+                            <option value="300">5 hours</option>
+                            <option value="420">7 hours</option>
+                            <option value="720">12 hours</option>
+                            <option value="1440">1 day</option>
+                            <option value="4320">3 days</option>
+                            <option value="7200">5 days</option>
+                            <option value="10080">7 days</option>
+                            <option value="14400">10 days</option>
+                            <option value="21600">15 days</option>
+                        </select>
+                    </p>
                     <div style="text-align:right; height:36px;">
-                        <span ?hidden="${!this.createRewardShareLoading}">
+                        <span ?hidden="${!this.isLoading}">
                             <!-- loading message -->
-                            Doing something delicious &nbsp;
+                            Creating Group &nbsp;
                             <paper-spinner-lite
                                 style="margin-top:12px;"
-                                ?active="${this.createRewardShareLoading}"
-                                alt="Adding minting account"></paper-spinner-lite>
+                                ?active="${this.isLoading}"
+                                alt="Creating Group"></paper-spinner-lite>
                         </span>
                         <span ?hidden=${this.message === ''} style="${this.error ? 'color:red;' : ''}">
                             ${this.message}
@@ -41707,15 +41497,14 @@
                     </div>
                     
                     <mwc-button
-                        ?disabled="${this.createRewardShareLoading}"
+                        ?disabled="${this.isLoading}"
                         slot="primaryAction"
-                        @click=${this.createRewardShare}
+                        @click=${this.createGroup}
                         >
-                        <!--dialogAction="add"-->
-                        Add
+                        Create
                     </mwc-button>
                     <mwc-button
-                        ?disabled="${this.createRewardShareLoading}"
+                        ?disabled="${this.isLoading}"
                         slot="secondaryAction"
                         dialogAction="cancel"
                         class="red">
@@ -41723,33 +41512,58 @@
                     </mwc-button>
                 </mwc-dialog>
 
-                <!-- Remove Minting Account Dialog -->
-                <mwc-dialog id="removeRewardShareDialog" scrimClickAction="${this.removeRewardShareLoading ? '' : 'close'}">
-                    <div>Type the Recipient Public Key to stop sponsoring this account.</div>
-                    <br>
-                    <mwc-textfield style="width:100%;" ?disabled="${this.removeRewardShareLoading}" label="Recipient Public Key" id="myRecipientPublicKey"></mwc-textfield>
+                <!-- Join Group Dialog -->
+                <mwc-dialog id="joinDialog" scrimClickAction="${this.isLoading ? '' : 'close'}">
+                    <div style="text-align:center">
+                        <h1>Join Group Request</h1>
+                        <hr>
+                    </div>
+                    
+                    <div class="itemList">
+                        <span class="title">Group Name</span>
+                        <br>
+                        <div><span>${this.joinGroupObj.groupName}</span></div>
+
+                        <span class="title">Description</span>
+                        <br>
+                        <div><span>${this.joinGroupObj.description}</span></div>
+
+                        <span class="title">Owner</span>
+                        <br>
+                        <div><span>${this.joinGroupObj.owner}</span></div>
+
+                        <span class="title">Date Created</span>
+                        <br>
+                        <div><span><time-ago datetime=${this.timeIsoString(this.joinGroupObj.created)}></time-ago></span></div>
+
+                        ${!this.joinGroupObj.updated ? "" : html`<span class="title">Date Updated</span>
+                        <br>
+                        <div><span><time-ago datetime=${this.timeIsoString(this.joinGroupObj.updated)}></time-ago></span></div>`}
+                    </div>
+
                     <div style="text-align:right; height:36px;">
-                        <span ?hidden="${!this.removeRewardShareLoading}">
+                        <span ?hidden="${!this.isLoading}">
                             <!-- loading message -->
-                            Removing &nbsp;
+                            Joining &nbsp;
                             <paper-spinner-lite
                                 style="margin-top:12px;"
-                                ?active="${this.removeRewardShareLoading}"
-                                alt="Removing Reward Share"></paper-spinner-lite>
+                                ?active="${this.isLoading}"
+                                alt="Joining"></paper-spinner-lite>
                         </span>
-                        <span ?hidden=${this.removeMessage === ''} style="${this.removeError ? 'color:red;' : ''}">
-                            ${this.removeMessage}
+                        <span ?hidden=${this.message === ''} style="${this.error ? 'color:red;' : ''}">
+                            ${this.message}
                         </span>
                     </div>
+                    
                     <mwc-button
-                        ?disabled="${this.removeRewardShareLoading}"
+                        ?disabled="${this.isLoading}"
                         slot="primaryAction"
-                        @click=${this.removeRewardShare}
+                        @click=${() => this._joinGroup(this.joinGroupObj.groupId, this.joinGroupObj.groupName)}
                         >
-                        Remove
+                        Join
                     </mwc-button>
                     <mwc-button
-                        ?disabled="${this.removeRewardShareLoading}"
+                        ?disabled="${this.isLoading}"
                         slot="secondaryAction"
                         dialogAction="cancel"
                         class="red">
@@ -41757,34 +41571,122 @@
                     </mwc-button>
                 </mwc-dialog>
 
-                ${this.isEmptyArray(this.rewardShares) ? html`
-                    Account is not involved in any reward shares
-                ` : ''}
+                <!-- Manage Group Owner Dialog -->
+                <mwc-dialog id="manageGroupOwnerDialog" scrimClickAction="${this.isLoading ? '' : 'close'}">
+                    <div>Manage Group Owner: ${this.manageGroupObj.groupName}</div>
+                    
+                    <mwc-button
+                        ?disabled="${this.isLoading}"
+                        slot="secondaryAction"
+                        dialogAction="cancel"
+                        class="red">
+                        Close
+                    </mwc-button>
+                </mwc-dialog>
+
+                <!-- Manage Group Admin Dialog -->
+                <mwc-dialog id="manageGroupAdminDialog" scrimClickAction="${this.isLoading ? '' : 'close'}">
+                    <div>Manage Group Admin: ${this.manageGroupObj.groupName}</div>
+                    
+                    <mwc-button
+                        ?disabled="${this.isLoading}"
+                        slot="secondaryAction"
+                        dialogAction="cancel"
+                        class="red">
+                        Close
+                    </mwc-button>
+                </mwc-dialog>
             </div>
         `;
     }
 
-    getAccountRewardSharesGrid() {
-      const myGrid = this.shadowRoot.querySelector('#accountRewardSharesGrid');
-      myGrid.addEventListener('click', e => {
-        this.tempMintingAccount = myGrid.getEventContext(e).item;
-        this.shadowRoot.querySelector('#removeRewardShareDialog').show();
-      });
+    resetDefaultSettings() {
+      this.error = false;
+      this.message = '';
+      this.isLoading = false;
+    }
+
+    manageGroupOwner(groupObj) {
+      this.resetDefaultSettings();
+      this.manageGroupObj = groupObj;
+      this.shadowRoot.querySelector('#manageGroupOwnerDialog').show();
+    }
+
+    manageGroupAdmin(groupObj) {
+      this.resetDefaultSettings();
+      this.manageGroupObj = groupObj;
+      this.shadowRoot.querySelector('#manageGroupAdminDialog').show();
+    }
+
+    joinGroup(groupObj) {
+      this.resetDefaultSettings();
+      this.joinGroupObj = groupObj;
+      this.shadowRoot.querySelector('#joinDialog').show();
+    }
+
+    timeIsoString(timestamp) {
+      let myTimestamp = timestamp === undefined ? 1587560082346 : timestamp;
+      let time = new Date(myTimestamp);
+      return time.toISOString();
+    }
+
+    renderRole(groupObj) {
+      if (groupObj.owner === this.selectedAddress.address) {
+        return "Owner";
+      } else if (groupObj.isAdmin === true) {
+        return "Admin";
+      } else {
+        return "Member";
+      }
+    }
+
+    renderManageButton(groupObj) {
+      if (groupObj.owner === this.selectedAddress.address) {
+        // render owner actions btn to modal
+        return html`<mwc-button @click=${() => this.manageGroupOwner(groupObj)}><mwc-icon>create</mwc-icon>Manage</mwc-button>`;
+      } else if (groupObj.isAdmin === true) {
+        // render admin actions modal
+        return html`<mwc-button @click=${() => this.manageGroupAdmin(groupObj)}><mwc-icon>create</mwc-icon>Manage</mwc-button>`;
+      } else {
+        // render nothing...
+        return "";
+      }
     }
 
     firstUpdated() {
-      // Call getAccountRewardSharesGrid
-      this.getAccountRewardSharesGrid();
-
-      const updateRewardshares = () => {
-        parentEpml.request('apiCall', {
-          url: `/addresses/rewardshares?involving=${this.selectedAddress.address}`
-        }).then(res => {
-          setTimeout(() => {
-            this.rewardShares = res;
-          }, 1);
+      // Call getNamesGrid
+      // this.getNamesGrid()
+      const getOpenPublicGroups = async () => {
+        let openG = await parentEpml.request('apiCall', {
+          url: `/groups?limit=0&reverse=true`
         });
-        setTimeout(updateRewardshares, this.config.user.nodeSettings.pingInterval); //THOUGHTS: No config is definded, when then use it here....    // Perhaps should be slower...?
+        let myGs = openG.filter(myG => myG.isOpen === true);
+        return myGs;
+      };
+
+      const getJoinedGroups = async () => {
+        let joinedG = await parentEpml.request('apiCall', {
+          url: `/groups/member/${this.selectedAddress.address}`
+        });
+        return joinedG;
+      };
+
+      const getOpen_JoinedGroups = async () => {
+        // this.publicGroups = []
+        // this.joinedGroups = []
+        let _joinedGroups = await getJoinedGroups();
+
+        let _publicGroups = await getOpenPublicGroups();
+
+        let results = _publicGroups.filter(myOpenGroup => {
+          let value = _joinedGroups.some(myJoinedGroup => myOpenGroup.groupId === myJoinedGroup.groupId);
+
+          return !value;
+        });
+
+        this.publicGroups = results;
+        this.joinedGroups = _joinedGroups;
+        setTimeout(getOpen_JoinedGroups, this.config.user.nodeSettings.pingInterval);
       };
 
       let configLoaded = false;
@@ -41797,7 +41699,7 @@
         });
         parentEpml.subscribe('config', c => {
           if (!configLoaded) {
-            setTimeout(updateRewardshares, 1);
+            setTimeout(getOpen_JoinedGroups, 1);
             configLoaded = true;
           }
 
@@ -41807,15 +41709,16 @@
       parentEpml.imReady();
     }
 
-    async createRewardShare(e) {
-      this.error = false;
-      this.message = '';
-      const recipientPublicKey = this.shadowRoot.getElementById("recipientPublicKey").value;
-      const percentageShare = this.shadowRoot.getElementById("rewardSharePercentageSlider").value; // Check for valid...^
-
-      this.createRewardShareLoading = true;
-      let recipientAddress = window.parent.base58PublicKeyToAddress(recipientPublicKey);
-      console.log("Recipient Address: " + recipientAddress); // Get Last Ref
+    async createGroup(e) {
+      // Reset Default Settings...
+      this.resetDefaultSettings();
+      const groupNameInput = this.shadowRoot.getElementById("groupNameInput").value;
+      const groupDescInput = this.shadowRoot.getElementById("groupDescInput").value;
+      const groupTypeInput = this.shadowRoot.getElementById("groupTypeInput").value;
+      const groupApprovalInput = this.shadowRoot.getElementById("groupApprovalInput").value;
+      const groupMinDelayInput = this.shadowRoot.getElementById("groupMinDelayInput").value;
+      const groupMaxDelayInput = this.shadowRoot.getElementById("groupMaxDelayInput").value;
+      this.isLoading = true; // Get Last Ref
 
       const getLastRef = async () => {
         let myRef = await parentEpml.request('apiCall', {
@@ -41823,118 +41726,38 @@
           url: `/addresses/lastreference/${this.selectedAddress.address}`
         });
         return myRef;
-      }; // Get Account Details
-
-
-      const getAccountDetails = async () => {
-        let myAccountDetails = await parentEpml.request('apiCall', {
-          type: 'api',
-          url: `/addresses/${this.selectedAddress.address}`
-        });
-        return myAccountDetails;
-      }; // Get Reward Relationship if it already exists
-
-
-      const getRewardShareRelationship = async minterAddr => {
-        let isRewardShareExisting = false;
-        let myRewardShareArray = await parentEpml.request('apiCall', {
-          type: 'api',
-          url: `/addresses/rewardshares?minters=${minterAddr}&recipients=${recipientAddress}`
-        });
-        isRewardShareExisting = myRewardShareArray.length !== 0 ? true : false;
-        return isRewardShareExisting; // THOUGHTS: At this point, I think I dont wanna further do any check...
-        // myRewardShareArray.forEach(rewsh => {
-        //     if (rewsh.mintingAccount) {
-        //     }
-        // })
-      }; // Validate Reward Share by Level
-
+      };
 
       const validateReceiver = async () => {
-        let accountDetails = await getAccountDetails();
         let lastRef = await getLastRef();
-        let isExisting = await getRewardShareRelationship(this.selectedAddress.address); // Check for creating self share at different levels (also adding check for flags...)
 
-        if (accountDetails.flags === 1) {
-          this.error = false;
-          this.message = '';
-          let myTransaction = await makeTransactionRequest(lastRef);
+        let _groupTypeInput = parseInt(groupTypeInput);
 
-          if (isExisting === true) {
-            this.error = true;
-            this.message = `Cannot Create Multiple Reward Shares!`;
-          } else {
-            // Send the transaction for confirmation by the user
-            this.error = false;
-            this.message = '';
-            getTxnRequestResponse(myTransaction);
-          }
-        } else if (accountDetails.address === recipientAddress) {
-          if (accountDetails.level >= 1 && accountDetails.level <= 4) {
-            this.error = false;
-            this.message = '';
-            let myTransaction = await makeTransactionRequest(lastRef);
+        let _groupApprovalInput = parseInt(groupApprovalInput);
 
-            if (isExisting === true) {
-              this.error = true;
-              this.message = `Cannot Create Multiple Self Shares!`;
-            } else {
-              // Send the transaction for confirmation by the user
-              this.error = false;
-              this.message = '';
-              getTxnRequestResponse(myTransaction);
-            }
-          } else if (accountDetails.level >= 5) {
-            this.error = false;
-            this.message = '';
-            let myTransaction = await makeTransactionRequest(lastRef);
+        let _groupMinDelayInput = parseInt(groupMinDelayInput);
 
-            if (isExisting === true) {
-              this.error = true;
-              this.message = `Cannot Create Multiple Self Shares!`;
-            } else {
-              // Send the transaction for confirmation by the user
-              this.error = false;
-              this.message = '';
-              getTxnRequestResponse(myTransaction);
-            }
-          } else {
-            this.error = true;
-            this.message = `CANNOT CREATE SELF SHARE! at level ${accountDetails.level}`;
-          }
-        } else {
-          //Check for creating reward shares
-          if (accountDetails.level >= 5) {
-            this.error = false;
-            this.message = '';
-            let myTransaction = await makeTransactionRequest(lastRef);
+        let _groupMaxDelayInput = parseInt(groupMaxDelayInput);
 
-            if (isExisting === true) {
-              this.error = true;
-              this.message = `Cannot Create Multiple Reward Shares!`;
-            } else {
-              // Send the transaction for confirmation by the user
-              this.error = false;
-              this.message = '';
-              getTxnRequestResponse(myTransaction);
-            }
-          } else {
-            this.error = true;
-            this.message = `CANNOT CREATE REWARD SHARE! at level ${accountDetails.level}`;
-          }
-        }
+        this.resetDefaultSettings();
+        let myTransaction = await makeTransactionRequest(_groupTypeInput, _groupApprovalInput, _groupMinDelayInput, _groupMaxDelayInput, lastRef);
+        getTxnRequestResponse(myTransaction);
       }; // Make Transaction Request
 
 
-      const makeTransactionRequest = async lastRef => {
-        let mylastRef = lastRef;
+      const makeTransactionRequest = async (_groupTypeInput, _groupApprovalInput, _groupMinDelayInput, _groupMaxDelayInput, lastRef) => {
         let myTxnrequest = await parentEpml.request('transaction', {
-          type: 38,
+          type: 22,
           nonce: this.selectedAddress.nonce,
           params: {
-            recipientPublicKey,
-            percentageShare,
-            lastReference: mylastRef
+            registrantAddress: this.selectedAddress.address,
+            rGroupName: groupNameInput,
+            rGroupDesc: groupDescInput,
+            rGroupType: _groupTypeInput,
+            rGroupApprovalThreshold: _groupApprovalInput,
+            rGroupMinimumBlockDelay: _groupMinDelayInput,
+            rGroupMaximumBlockDelay: _groupMaxDelayInput,
+            lastReference: lastRef
           }
         });
         return myTxnrequest;
@@ -41948,7 +41771,7 @@
           this.message = txnResponse.message;
           throw new Error(txnResponse);
         } else if (txnResponse.success === true && !txnResponse.data.error) {
-          this.message = 'Reward Share Successful!';
+          this.message = 'Group Creation Successful!';
           this.error = false;
         } else {
           this.error = true;
@@ -41957,17 +41780,42 @@
         }
       };
 
-      validateReceiver();
-      this.createRewardShareLoading = false;
+      if (groupNameInput.length < 3) {
+        this.error = true;
+        this.message = "Invalid Group Name";
+        this.isLoading = false;
+      } else if (groupDescInput.length < 3) {
+        this.error = true;
+        this.message = "Invalid Group Description";
+        this.isLoading = false;
+      } else if (groupTypeInput === 'reject') {
+        this.error = true;
+        this.message = "Select a Group Type";
+        this.isLoading = false;
+      } else if (groupApprovalInput === 'reject') {
+        this.error = true;
+        this.message = "Select a Group Approval Threshold";
+        this.isLoading = false;
+      } else if (groupMinDelayInput === 'reject') {
+        this.error = true;
+        this.message = "Select a Minimum Block delay for Group Transaction Approvals";
+        this.isLoading = false;
+      } else if (groupMaxDelayInput === 'reject') {
+        this.error = true;
+        this.message = "Select a Maximum Block delay for Group Transaction Approvals";
+        this.isLoading = false;
+      } else {
+        this.error = false; // Call validateReceiver
+
+        validateReceiver();
+      } // this.resetDefaultSettings()
+
     }
 
-    async removeRewardShare(e) {
-      this.removeError = false;
-      this.removeMessage = '';
-      const myRecipientPublicKey = this.shadowRoot.getElementById("myRecipientPublicKey").value;
-      const myPercentageShare = -1; // Check for valid...^
-
-      this.removeRewardShareLoading = true; // Get Last Ref
+    async _joinGroup(groupId, groupName) {
+      // Reset Default Settings...
+      this.resetDefaultSettings();
+      this.isLoading = true; // Get Last Ref
 
       const getLastRef = async () => {
         let myRef = await parentEpml.request('apiCall', {
@@ -41975,27 +41823,25 @@
           url: `/addresses/lastreference/${this.selectedAddress.address}`
         });
         return myRef;
-      }; // Remove Reward Share
+      };
 
-
-      const removeReceiver = async () => {
+      const validateReceiver = async () => {
         let lastRef = await getLastRef();
+        this.resetDefaultSettings();
         let myTransaction = await makeTransactionRequest(lastRef);
-        this.removeError = false;
-        this.removeMessage = '';
         getTxnRequestResponse(myTransaction);
       }; // Make Transaction Request
 
 
       const makeTransactionRequest = async lastRef => {
-        let mylastRef = lastRef;
         let myTxnrequest = await parentEpml.request('transaction', {
-          type: 38,
+          type: 31,
           nonce: this.selectedAddress.nonce,
           params: {
-            recipientPublicKey: myRecipientPublicKey,
-            percentageShare: myPercentageShare,
-            lastReference: mylastRef
+            registrantAddress: this.selectedAddress.address,
+            rGroupName: groupName,
+            rGroupId: groupId,
+            lastReference: lastRef
           }
         });
         return myTxnrequest;
@@ -42005,21 +41851,21 @@
 
       const getTxnRequestResponse = txnResponse => {
         if (txnResponse.success === false && txnResponse.message) {
-          this.removeError = true;
-          this.removeMessage = txnResponse.message;
+          this.error = true;
+          this.message = txnResponse.message;
           throw new Error(txnResponse);
         } else if (txnResponse.success === true && !txnResponse.data.error) {
-          this.removeMessage = 'Reward Share Removed Successfully!';
-          this.removeError = false;
+          this.message = 'Join Group Request Sent Successfully!';
+          this.error = false;
         } else {
-          this.removeError = true;
-          this.removeMessage = txnResponse.data.message;
+          this.error = true;
+          this.message = txnResponse.data.message;
           throw new Error(txnResponse);
         }
       };
 
-      removeReceiver();
-      this.removeRewardShareLoading = false;
+      validateReceiver();
+      this.resetDefaultSettings();
     }
 
     isEmptyArray(arr) {
@@ -42032,6 +41878,6 @@
 
   }
 
-  window.customElements.define('reward-share', RewardShare);
+  window.customElements.define('group-management', GroupManagement);
 
 })));

@@ -4,13 +4,10 @@ import '@webcomponents/webcomponentsjs/webcomponents-loader.js'
 import '@webcomponents/webcomponentsjs/custom-elements-es5-adapter.js'
 
 import { LitElement, html, css } from 'lit-element'
-import { render } from 'lit-html'
-// import { Epml } from '../../../src/epml.js'
 import { Epml } from '../../../epml.js'
 
 import '@polymer/paper-spinner/paper-spinner-lite.js'
 
-// import * as thing from 'time-elements'
 import '@vaadin/vaadin-grid/vaadin-grid.js'
 import '@vaadin/vaadin-grid/theme/material/all-imports.js'
 
@@ -38,7 +35,9 @@ class NodeManagement extends LitElement {
             confPeerMessage: { type: String },
             addMintingAccountMessage: { type: String },
             removeMintingAccountMessage: { type: String },
-            tempMintingAccount: { type: Object }
+            tempMintingAccount: { type: Object },
+            nodeConfig: { type: Object },
+            nodeDomain: { type: String }
         }
     }
 
@@ -130,6 +129,8 @@ class NodeManagement extends LitElement {
                 }
             }
         }
+        this.nodeConfig = {}
+        this.nodeDomain = ''
     }
 
     render() {
@@ -137,8 +138,8 @@ class NodeManagement extends LitElement {
             <div id="node-management-page">
 
                 <div class="node-card">
-                    <h2>Node management for ${this.config.user.node.domain}</h2>
-                    <span><br>Node has been online for ${this.upTime}</span>
+                    <h2>Node management for: ${this.nodeDomain}</h2>
+                    <span><br>Node has been online for: ${this.upTime}</span>
 
                     <br><br>
                     <div id="minting">
@@ -205,7 +206,6 @@ class NodeManagement extends LitElement {
                                 slot="primaryAction"
                                 @click=${() => { this.removeMintingAccount() }}
                                 >
-                                <!--dialogAction="add"-->
                                 Remove
                             </mwc-button>
                             <mwc-button
@@ -270,16 +270,6 @@ class NodeManagement extends LitElement {
                             <vaadin-grid-column path="address"></vaadin-grid-column>
                             <vaadin-grid-column path="lastHeight"></vaadin-grid-column>
                             <vaadin-grid-column path="version" header="Build Version"></vaadin-grid-column>
-                            <!-- <vaadin-grid-column header="Sync Peer" auto-width .renderer=${(root, column, data) => {
-                render(html`
-                                <mwc-button ?disabled="${this.confPeerLoading}"  @click=${() => { this.syncPeer(data.item.address) }} slot="primaryAction">&nbsp; Sync Peer </mwc-button>
-                `, root)
-            }}></vaadin-grid-column>
-            <vaadin-grid-column header="Remove Peer" auto-width .renderer=${(root, column, data) => {
-                render(html`
-                                <mwc-button class="red" @click=${() => { this.removePeer(data.item.address) }} slot="primaryAction">&nbsp; Remove Peer </mwc-button>
-                `, root)
-            }}></vaadin-grid-column> -->
                         </vaadin-grid>
 
                         ${this.isEmptyArray(this.peers) ? html`
@@ -287,7 +277,6 @@ class NodeManagement extends LitElement {
                         `: ''}
                     </div>
                     <br>
-                    <!-- <mwc-button class="red-button"><mwc-icon style="width:24px;">highlight_off</mwc-icon>&nbsp; Shutdown node</mwc-button> -->
                 </div>
             </div>
         `
@@ -298,15 +287,20 @@ class NodeManagement extends LitElement {
         const myGrid = this.shadowRoot.querySelector('#mintingAccountsGrid')
 
         myGrid.addEventListener('click', (e) => {
-            this.tempMintingAccount = myGrid.getEventContext(e).item
 
+            this.tempMintingAccount = myGrid.getEventContext(e).item
             this.shadowRoot.querySelector('#removeMintingAccountDialog').show()
         })
 
     }
 
+    onPageNavigation(pageUrl) {
+
+        parentEpml.request('setPageUrl', pageUrl)
+    }
 
     addPeer(e) {
+
         this.addPeerLoading = true
         const addPeerAddress = this.shadowRoot.querySelector('#addPeerAddress').value
 
@@ -315,77 +309,12 @@ class NodeManagement extends LitElement {
             method: 'POST',
             body: addPeerAddress
         }).then(res => {
-            this.addPeerMessage = res.message
 
+            this.addPeerMessage = res.message
             this.addPeerLoading = false
         })
 
     }
-
-    // THOUGHTS: I dont think this functionality is needed (same with sync peer)
-    // Sync peer takes time and can be a bad experience to users..
-
-    // removePeer(peerAddress) {
-    //     // this.confPeerLoading = true
-
-    //     // parentEpml.request('apiCall', {
-    //     //     url: `/peers`,
-    //     //     method: 'DELETE',
-    //     //     body: peerAddress
-    //     // }).then(res => {
-    //     //     if (res === true) {
-    //     //         this.confPeerMessage = `Successfully removed peer: ${peerAddress}`
-    //     //         console.log(res)
-    //     //         this.confPeerLoading = false
-    //     //     } else {
-    //     //         this.confPeerMessage = `Failed to remove peer: ${peerAddress}`
-    //     //         console.log(res)
-    //     //         this.confPeerLoading = false
-    //     //     }
-    //     // })
-
-    // }
-
-    // syncPeer(peerAddress) {
-    //     this.confPeerLoading = true
-    //     console.log(peerAddress);
-
-    //     parentEpml.request('apiCall', {
-    //         url: `/peers`,
-    //         method: 'POST',
-    //         body: peerAddress
-    //     }).then(res => {
-
-    //         if (res === true) {
-    //             parentEpml.request('apiCall', {
-    //                 url: `/admin/forcesync`,
-    //                 method: 'POST',
-    //                 body: peerAddress
-    //             }).then(res => {
-    //                 this.confPeerLoading = false
-    //                 this.confPeerMessage = res
-
-    //             })
-    //         }
-
-    //         // if (res === true) {
-    //         //     this.confPeerLoading = false
-    //         //     this.confPeerMessage = `Successfully Synced To Peer: ${peerAddress}`
-    //         //     console.log(res)
-    //         // } else if (res === "NOTHING_TO_DO") {
-    //         //     this.confPeerLoading = false
-    //         //     this.confPeerMessage = `Node is already synced!`
-    //         //     console.log(res)
-
-    //         // }
-    //         // else {
-    //         //     this.confPeerLoading = false
-    //         //     this.confPeerMessage = `Failed to sync to Peer: ${peerAddress}`
-    //         //     console.log(res)
-    //         // }
-    //     })
-
-    // }
 
     addMintingAccount(e) {
         this.addMintingAccountLoading = true
@@ -412,11 +341,11 @@ class NodeManagement extends LitElement {
     }
 
     updateMintingAccounts() {
+
         parentEpml.request('apiCall', {
             url: `/admin/mintingaccounts`
         }).then(res => {
 
-            this.mintingAccounts = []
             setTimeout(() => { this.mintingAccounts = res }, 1)
         })
 
@@ -424,12 +353,14 @@ class NodeManagement extends LitElement {
     }
 
     removeMintingAccount(e) {
+
         this.removeMintingAccountLoading = true
         this.removeMintingAccountMessage = "Loading..."
 
         this.removeMintingAccountKey = this.shadowRoot.querySelector('#removeMintingAccountKey').value
 
         this.mintingAccounts.forEach(mintingAccount => {
+
             if (this.tempMintingAccount.recipientAccount === mintingAccount.recipientAccount) {
 
                 parentEpml.request('apiCall', {
@@ -437,6 +368,7 @@ class NodeManagement extends LitElement {
                     method: 'DELETE',
                     body: this.removeMintingAccountKey
                 }).then(res => {
+
                     if (res === true) {
                         this.updateMintingAccounts()
                         this.removeMintingAccountKey = ''
@@ -463,6 +395,7 @@ class NodeManagement extends LitElement {
 
         // Calculate HH MM SS from Milliseconds...
         const convertMsToTime = milliseconds => {
+
             let day, hour, minute, seconds;
             seconds = Math.floor(milliseconds / 1000);
             minute = Math.floor(seconds / 60);
@@ -475,39 +408,57 @@ class NodeManagement extends LitElement {
         };
 
         const getNodeUpTime = () => {
-            console.log("=========================================");
-            parentEpml
-                .request("apiCall", {
-                    url: `/admin/uptime`
-                })
-                .then(res => {
-                    this.upTime = "";
-                    setTimeout(() => {
-                        this.upTime = convertMsToTime(res);
-                    }, 1);
-                });
+
+            parentEpml.request("apiCall", {
+                url: `/admin/uptime`
+            }).then(res => {
+
+                this.upTime = "";
+                setTimeout(() => {
+
+                    this.upTime = convertMsToTime(res);
+                }, 1);
+            });
 
             setTimeout(getNodeUpTime, this.config.user.nodeSettings.pingInterval);
         };
 
         const updatePeers = () => {
+
             parentEpml.request('apiCall', {
                 url: `/peers`
             }).then(res => {
-                this.peers = []
+
                 setTimeout(() => { this.peers = res }, 1)
             })
 
             setTimeout(updatePeers, this.config.user.nodeSettings.pingInterval)
         }
 
+
+        const getNodeConfig = () => {
+
+            parentEpml.request('getNodeConfig').then(res => {
+
+                setTimeout(() => { this.nodeConfig = res }, 1)
+                let myNode = window.parent.reduxStore.getState().app.nodeConfig.knownNodes[window.parent.reduxStore.getState().app.nodeConfig.node]
+                this.nodeDomain = myNode.domain + ":" + myNode.port
+            })
+
+            setTimeout(getNodeConfig, 1000)
+        }
+
         let configLoaded = false
         parentEpml.ready().then(() => {
+
             parentEpml.subscribe('config', c => {
+
                 if (!configLoaded) {
+
                     setTimeout(getNodeUpTime, 1)
                     setTimeout(updatePeers, 1)
                     setTimeout(this.updateMintingAccounts, 1)
+                    setTimeout(getNodeConfig, 1)
                     configLoaded = true
                 }
                 this.config = JSON.parse(c)
@@ -518,6 +469,7 @@ class NodeManagement extends LitElement {
     }
 
     isEmptyArray(arr) {
+
         if (!arr) { return true }
         return arr.length === 0
     }

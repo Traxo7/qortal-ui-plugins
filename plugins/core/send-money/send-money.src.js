@@ -246,22 +246,22 @@ class SendMoneyPage extends LitElement {
 
         // Validate name
         const validateName = async (receiverName) => {
-            let myName = false
+            let myRes
             let myNameRes = await parentEpml.request('apiCall', {
                 type: 'api',
                 url: `/names/${receiverName}`
             })
 
-            if (myNameRes.message === "name unknown") {
-                myName = false
-                return myName
+            if (myNameRes.error === 401) {
+                myRes = false
             } else {
-                myName = true
-                return myName
+                myRes = myNameRes
             }
+
+            return myRes
         }
 
-        // Validate Address
+        // Validate Address UPDATE: Use the crypto module to validate addr
         const validateAddress = async (receiverAddress) => {
             let myAddress = await parentEpml.request('apiCall', {
                 type: 'api',
@@ -275,14 +275,13 @@ class SendMoneyPage extends LitElement {
             let lastRef = await getLastRef();
             let isAddress = await validateAddress(recipient)
             if (isAddress) {
-                console.log("CALLING TRUE")
                 let myTransaction = await makeTransactionRequest(recipient, lastRef) // THOUGHTS: Might wanna use a setTimeout here...
                 getTxnRequestResponse(myTransaction)
             } else {
-                console.log("CALLING False")
-                let isName = await validateName(recipient)
-                if (isName) {
-                    let myTransaction = await makeTransactionRequest(recipient, lastRef)
+                let myNameRes = await validateName(recipient)
+                if (myNameRes !== false) {
+                    let myNameAddress = myNameRes.owner
+                    let myTransaction = await makeTransactionRequest(myNameAddress, lastRef)
                     getTxnRequestResponse(myTransaction)
                 } else {
                     // Return INVALID_RECEIVER
@@ -349,9 +348,6 @@ class SendMoneyPage extends LitElement {
         // Calling validateReceiver without timeout
         validateReceiver(recipient)
 
-
-        // this.sendMoneyLoading = false
-        // this.btnDisable = false
     }
 
     updateAccountBalance() {
@@ -407,7 +403,6 @@ class SendMoneyPage extends LitElement {
                     configLoaded = true
                 }
                 this.config = JSON.parse(c)
-                console.log(this.config);
             })
         })
     }

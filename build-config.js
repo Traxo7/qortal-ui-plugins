@@ -84,7 +84,31 @@ const generateForPlugins = () => {
         {
             in: 'plugins/core/node-management/node-management.src.js',
             out: 'plugins/core/node-management/node-management.js'
-        }
+        },
+        {
+            in: 'plugins/core/group-management/group-management.src.js',
+            out: 'plugins/core/group-management/group-management.js'
+        },
+        {
+            in: 'plugins/core/group-management/group-transaction/group-transaction.src.js',
+            out: 'plugins/core/group-management/group-transaction/group-transaction.js'
+        },
+        {
+            in: 'plugins/core/name-registration/name-registration.src.js',
+            out: 'plugins/core/name-registration/name-registration.js'
+        },
+        {
+            in: 'plugins/core/messaging/messaging.src.js',
+            out: 'plugins/core/messaging/messaging.js'
+        },
+        {
+            in: 'plugins/core/messaging/chain-messaging/chain-messaging.src.js',
+            out: 'plugins/core/messaging/chain-messaging/chain-messaging.js'
+        },
+        {
+            in: 'plugins/core/messaging/q-chat/q-chat.src.js',
+            out: 'plugins/core/messaging/q-chat/q-chat.js'
+        },
     ].map(file => {
         return generateRollupConfig(path.join(__dirname, file.in), path.join(__dirname, file.out))
     })

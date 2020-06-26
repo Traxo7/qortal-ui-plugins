@@ -3,10 +3,7 @@ import '@webcomponents/webcomponentsjs/webcomponents-loader.js'
 /* Es6 browser but transpi;led code */
 import '@webcomponents/webcomponentsjs/custom-elements-es5-adapter.js'
 
-import CryptoApi from 'qortal-ui-crypto';
-
 import { LitElement, html, css } from 'lit-element'
-// import { Epml } from '../../../src/epml.js'
 import { Epml } from '../../../epml.js'
 
 import '@material/mwc-icon'
@@ -16,8 +13,6 @@ import '@material/mwc-dialog'
 import '@material/mwc-slider'
 
 import '@polymer/paper-spinner/paper-spinner-lite.js'
-// import '@polymer/paper-input/paper-input.js'
-// import * as thing from 'time-elements'
 import '@vaadin/vaadin-grid/vaadin-grid.js'
 import '@vaadin/vaadin-grid/theme/material/all-imports.js'
 
@@ -185,11 +180,10 @@ class RewardShare extends LitElement {
         const myGrid = this.shadowRoot.querySelector('#accountRewardSharesGrid')
 
         myGrid.addEventListener('click', (e) => {
-            this.tempMintingAccount = myGrid.getEventContext(e).item
 
+            this.tempMintingAccount = myGrid.getEventContext(e).item
             this.shadowRoot.querySelector('#removeRewardShareDialog').show()
         })
-
     }
 
 
@@ -199,12 +193,10 @@ class RewardShare extends LitElement {
         this.getAccountRewardSharesGrid()
 
         const updateRewardshares = () => {
-            console.log('=========================================')
+
             parentEpml.request('apiCall', {
                 url: `/addresses/rewardshares?involving=${this.selectedAddress.address}`
             }).then(res => {
-
-                this.rewardShares = []
                 setTimeout(() => { this.rewardShares = res }, 1)
             })
             setTimeout(updateRewardshares, this.config.user.nodeSettings.pingInterval) //THOUGHTS: No config is definded, when then use it here....    // Perhaps should be slower...?
@@ -213,11 +205,11 @@ class RewardShare extends LitElement {
         let configLoaded = false
 
         parentEpml.ready().then(() => {
-            // Guess this is our version of state management...should make a plugin for it...proxied redux or whatever lol
+
             parentEpml.subscribe('selected_address', async selectedAddress => {
                 this.selectedAddress = {}
                 selectedAddress = JSON.parse(selectedAddress)
-                if (!selectedAddress || Object.entries(selectedAddress).length === 0) return // Not ready yet ofc
+                if (!selectedAddress || Object.entries(selectedAddress).length === 0) return
                 this.selectedAddress = selectedAddress
             })
             parentEpml.subscribe('config', c => {
@@ -229,26 +221,26 @@ class RewardShare extends LitElement {
             })
         })
 
-
         parentEpml.imReady()
     }
 
     async createRewardShare(e) {
+
         this.error = false
         this.message = ''
         const recipientPublicKey = this.shadowRoot.getElementById("recipientPublicKey").value
-        const percentageShare = this.shadowRoot.getElementById("rewardSharePercentageSlider").value // or just this.rewardSharePercentage?
-        // var fee = this.fee
+        const percentageShare = this.shadowRoot.getElementById("rewardSharePercentageSlider").value
 
         // Check for valid...^
         this.createRewardShareLoading = true
 
-        let recipientAddress = CryptoApi.base58PublicKeyToAddress(recipientPublicKey)
+        let recipientAddress = window.parent.base58PublicKeyToAddress(recipientPublicKey)
 
         console.log("Recipient Address: " + recipientAddress);
 
         // Get Last Ref
         const getLastRef = async () => {
+
             let myRef = await parentEpml.request('apiCall', {
                 type: 'api',
                 url: `/addresses/lastreference/${this.selectedAddress.address}`
@@ -258,6 +250,7 @@ class RewardShare extends LitElement {
 
         // Get Account Details
         const getAccountDetails = async () => {
+
             let myAccountDetails = await parentEpml.request('apiCall', {
                 type: 'api',
                 url: `/addresses/${this.selectedAddress.address}`
@@ -267,6 +260,7 @@ class RewardShare extends LitElement {
 
         // Get Reward Relationship if it already exists
         const getRewardShareRelationship = async (minterAddr) => {
+
             let isRewardShareExisting = false
             let myRewardShareArray = await parentEpml.request('apiCall', {
                 type: 'api',
@@ -282,24 +276,24 @@ class RewardShare extends LitElement {
 
             //     }
             // })
-
         }
 
         // Validate Reward Share by Level
         const validateReceiver = async () => {
+
             let accountDetails = await getAccountDetails();
             let lastRef = await getLastRef();
+            let isExisting = await getRewardShareRelationship(this.selectedAddress.address)
 
             // Check for creating self share at different levels (also adding check for flags...)
             if (accountDetails.flags === 1) {
                 this.error = false
                 this.message = ''
                 let myTransaction = await makeTransactionRequest(lastRef)
-                let isExisting = await getRewardShareRelationship(this.selectedAddress.address)
                 if (isExisting === true) {
+
                     this.error = true
                     this.message = `Cannot Create Multiple Reward Shares!`
-                    console.log("Cannot create REWARD SHARE Transaction");
                 } else {
                     // Send the transaction for confirmation by the user
                     this.error = false
@@ -307,36 +301,52 @@ class RewardShare extends LitElement {
                     getTxnRequestResponse(myTransaction)
                 }
             } else if (accountDetails.address === recipientAddress) {
+
                 if (accountDetails.level >= 1 && accountDetails.level <= 4) {
+
                     this.error = false
                     this.message = ''
                     let myTransaction = await makeTransactionRequest(lastRef)
-                    let isExisting = await getRewardShareRelationship(this.selectedAddress.address, recipientPublicKey)
                     if (isExisting === true) {
+
                         this.error = true
                         this.message = `Cannot Create Multiple Self Shares!`
-                        console.log("Cannot create SELF SHARE Transaction");
                     } else {
                         // Send the transaction for confirmation by the user
                         this.error = false
                         this.message = ''
                         getTxnRequestResponse(myTransaction)
                     }
+                } else if (accountDetails.level >= 5) {
 
+                    this.error = false
+                    this.message = ''
+                    let myTransaction = await makeTransactionRequest(lastRef)
+                    if (isExisting === true) {
+
+                        this.error = true
+                        this.message = `Cannot Create Multiple Self Shares!`
+                    } else {
+                        // Send the transaction for confirmation by the user
+                        this.error = false
+                        this.message = ''
+                        getTxnRequestResponse(myTransaction)
+                    }
                 } else {
                     this.error = true
                     this.message = `CANNOT CREATE SELF SHARE! at level ${accountDetails.level}`
                 }
             } else { //Check for creating reward shares
+
                 if (accountDetails.level >= 5) {
+
                     this.error = false
                     this.message = ''
                     let myTransaction = await makeTransactionRequest(lastRef)
-                    let isExisting = await getRewardShareRelationship(this.selectedAddress.address, recipientPublicKey)
                     if (isExisting === true) {
+
                         this.error = true
                         this.message = `Cannot Create Multiple Reward Shares!`
-                        console.log("Cannot create REWARD SHARE Transaction");
                     } else {
                         // Send the transaction for confirmation by the user
                         this.error = false
@@ -344,6 +354,7 @@ class RewardShare extends LitElement {
                         getTxnRequestResponse(myTransaction)
                     }
                 } else {
+
                     this.error = true
                     this.message = `CANNOT CREATE REWARD SHARE! at level ${accountDetails.level}`
                 }
@@ -393,6 +404,7 @@ class RewardShare extends LitElement {
     }
 
     async removeRewardShare(e) {
+
         this.removeError = false
         this.removeMessage = ''
         const myRecipientPublicKey = this.shadowRoot.getElementById("myRecipientPublicKey").value
@@ -403,6 +415,7 @@ class RewardShare extends LitElement {
 
         // Get Last Ref
         const getLastRef = async () => {
+
             let myRef = await parentEpml.request('apiCall', {
                 type: 'api',
                 url: `/addresses/lastreference/${this.selectedAddress.address}`
@@ -412,6 +425,7 @@ class RewardShare extends LitElement {
 
         // Remove Reward Share
         const removeReceiver = async () => {
+
             let lastRef = await getLastRef();
 
             let myTransaction = await makeTransactionRequest(lastRef)
@@ -445,13 +459,16 @@ class RewardShare extends LitElement {
         const getTxnRequestResponse = (txnResponse) => {
 
             if (txnResponse.success === false && txnResponse.message) {
+
                 this.removeError = true
                 this.removeMessage = txnResponse.message
                 throw new Error(txnResponse)
             } else if (txnResponse.success === true && !txnResponse.data.error) {
+
                 this.removeMessage = 'Reward Share Removed Successfully!'
                 this.removeError = false
             } else {
+
                 this.removeError = true
                 this.removeMessage = txnResponse.data.message
                 throw new Error(txnResponse)

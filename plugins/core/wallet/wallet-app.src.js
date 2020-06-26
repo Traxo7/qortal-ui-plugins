@@ -44,7 +44,7 @@ const TX_TYPES = {
 
     17: 'Message',
 
-    18: 'Delegation',
+    18: 'Chat',
     19: 'Supernode',
     20: 'Airdrop'
 }
@@ -221,26 +221,11 @@ class WalletApp extends LitElement {
 
                 this.updateAccountTransactions()
                 this.updateAccountBalance()
-
-
             })
 
         })
     }
 
-    /*
-    <time-ago .datetime=${new Date(transaction.transaction.timestamp).toISOString()}>
-
-                                                    </time-ago>
-                                                    */
-    /*
-
-                        <div>
-                            <span class="mono weight-100" style="font-size: 70px;">${this.floor(this.selectedAddressInfo.nativeBalance.total[1])}<span
-                                    style="font-size:24px; vertical-align: top; line-height:60px;">.${this.decimals(this.selectedAddressInfo.nativeBalance.total[1])}
-                                    KEX</span></span>
-                        </div>
-    */
     render() {
         return html`
             <div class="white-bg">
@@ -254,11 +239,8 @@ class WalletApp extends LitElement {
                 <div ?hidden="${this.loading}">
                     <div id="topbar" style="background: ; color: ; padding: 20px;">
                         <span class="mono weight-1300">
-                            <!-- <mwc-icon>account_balance_wallet</mwc-icon>  -->${this.selectedAddress.address}
+                            ${this.selectedAddress.address}
                         </span>
-                        <!-- <template is="dom-if" if="{{!address.name}}">
-                                                        <paper-button on-tap="setName"><i>Set name</i></paper-button>
-                                                    </template> -->
                         <br>
                         <div class="layout horizontal wrap">
                             <div>
@@ -278,13 +260,10 @@ class WalletApp extends LitElement {
                         <div class="layout horizontal">
                             <div style="padding-left:12px;" ?hidden="${!this.isEmptyArray(this.transactions)}">
                                 Address has no transactions yet. 
-                                <!-- Start by sending some KMX to <b>${this.selectedAddress.address}</b>
-                                or
-                                by claiming KEX from the airdrop. -->
                             </div>
 
                             <vaadin-grid id="transactionsGrid" style="height:auto;" ?hidden="${this.isEmptyArray(this.transactions)}" aria-label="Peers" .items="${this.transactions}" height-by-rows>
-                                <vaadin-grid-column width="6.4rem" header="Type" .renderer=${(root, column, data) => {
+                                <vaadin-grid-column width="4.4rem" header="Type" .renderer=${(root, column, data) => {
                 render(html`
                                 ${data.item.type} 
                                     ${data.item.creatorAddress === this.selectedAddress.address ? html`<span class="color-out">OUT</span>` : html`<span class="color-in">IN</span>`}
@@ -292,7 +271,8 @@ class WalletApp extends LitElement {
                 `, root)
             }}>
                                 </vaadin-grid-column>
-                                <vaadin-grid-column width="10rem" path="recipient"></vaadin-grid-column>
+                                <vaadin-grid-column width="13rem" header="Sender" path="creatorAddress"></vaadin-grid-column>
+                                <vaadin-grid-column width="13rem" header="Receiver" path="recipient"></vaadin-grid-column>
                                 <vaadin-grid-column width="2rem" path="fee"></vaadin-grid-column>
                                 <vaadin-grid-column width="2rem" path="amount"></vaadin-grid-column>
                                 <vaadin-grid-column width="2rem" header="Timestamp" .renderer=${(root, column, data) => {
@@ -321,6 +301,10 @@ class WalletApp extends LitElement {
                             <div><span class="">${this.selectedTransaction.type}</span>
                                     ${this.selectedTransaction.txnFlow === "OUT" ? html`<span class="color-out">OUT</span>` : html`<span class="color-in">IN</span>`}
                             </div>
+
+                            <span class="title">Sender</span>
+                            <br>
+                            <div><span class="">${this.selectedTransaction.creatorAddress}</span></div>
 
                             <span class="title">Receiver</span>
                             <br>
@@ -384,7 +368,7 @@ class WalletApp extends LitElement {
             this.transactions = res
             // I made the API call return a reversed result so I can reduce complexity... 
             // this.transactions.reverse() // Not needed
-            this.updateAccountTransactionTimeout = setTimeout(() => this.updateAccountTransactions(), 2000)
+            this.updateAccountTransactionTimeout = setTimeout(() => this.updateAccountTransactions(), 5000)
         })
     }
 
@@ -400,12 +384,13 @@ class WalletApp extends LitElement {
     }
 
     updateAccountBalance() {
+
         clearTimeout(this.updateAccountBalanceTimeout)
         parentEpml.request('apiCall', {
             url: `/addresses/balance/${this.selectedAddress.address}`
         }).then(res => {
             this.balance = res
-            this.updateAccountBalanceTimeout = setTimeout(() => this.updateAccountBalance(), 2000)
+            this.updateAccountBalanceTimeout = setTimeout(() => this.updateAccountBalance(), 5000)
         })
     }
 
@@ -448,12 +433,15 @@ class WalletApp extends LitElement {
     txColor(tx) {
         return this.sendOrRecieve(tx) ? 'red' : 'green'
     }
+
     getTxType(type) {
         return TX_TYPES[type]
     }
+
     subtract(num1, num2) {
         return num1 - num2
     }
+
     getConfirmations(height, lastBlockHeight) {
         return lastBlockHeight - height + 1
     }

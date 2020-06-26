@@ -17,83 +17,6 @@
       }
     });
 
-    const DEFAULT_ADDRESS_INFO = {};
-    class AddressWatcher {
-      constructor(addresses) {
-        addresses = addresses || [];
-        this.reset();
-        addresses.forEach(addr => this.addAddress(addr));
-      }
-
-      reset() {
-        this._addresses = {};
-        this._addressStreams = {};
-      } // Adds an address to watch
-
-
-      addAddress(address) {
-        const addr = address.address;
-        this._addresses[addr] = address;
-        this._addressStreams[addr] = new EpmlStream(`address/${addr}`, () => this._addresses[addr]);
-        this.updateAddress(addr);
-      }
-
-      async testBlock(block) {
-        // console.log('TESTING BLOCK')
-        const pendingUpdateAddresses = []; // blockTests.forEach(fn => {
-        // })
-        // transactionTests.forEach(fn => {
-        // 
-
-        const transactions = await parentEpml.request('apiCall', {
-          url: `/transactions/block/${block.signature}`
-        });
-        transactions.forEach(transaction => {
-          // console.log(this)
-          // fn(transaction, Object.keys(this._addresses))
-          // Guess the block needs transactions
-          for (const addr of Object.keys(this._addresses)) {
-            if (!(addr in pendingUpdateAddresses)) pendingUpdateAddresses.push(addr);
-            /**
-             * In the future transactions are potentially stored from here...and address is updated excluding transactions...and also somehow manage tx pages...
-             * Probably will just make wallet etc. listen for address change and then do the api call itself. If tx. page is on, say, page 3...and there's a new transaction...
-             * it will refresh, changing the "page" to have 1 extra transaction at the top and losing 1 at the bottom (pushed to next page)
-             */
-          }
-        });
-        pendingUpdateAddresses.forEach(addr => this.updateAddress(addr));
-      }
-
-      async updateAddress(addr) {
-        // console.log('UPPPDDAAATTTINGGG AADDDRRR', addr)
-        let addressRequest = await parentEpml.request('apiCall', {
-          type: 'explorer',
-          data: {
-            addr: addr,
-            txOnPage: 10
-          }
-        }); // addressRequest = JSON.parse(addressRequest)
-        // console.log(addressRequest, 'AAADDDREESS REQQUEESTT')
-        // console.log('response: ', addressRequest)
-
-        const addressInfo = addressRequest.success ? addressRequest.data : DEFAULT_ADDRESS_INFO; // const addressInfo = addressRequest.success ? addressRequest.data : DEFAULT_ADDRESS_INFO
-
-        addressInfo.transactions = [];
-
-        for (let i = addressInfo.start; i >= addressInfo.end; i--) {
-          addressInfo.transactions.push(addressInfo[i]);
-          delete addressInfo[i];
-        } // console.log('ADDRESS INFO', addressInfo)
-
-
-        if (!(addr in this._addresses)) return;
-        this._addresses[addr] = addressInfo; // console.log('---------------------------Emitting-----------------------------', this._addresses[addr], this._addressStreams[addr])
-
-        this._addressStreams[addr].emit(addressInfo);
-      }
-
-    }
-
     class TwoWayMap {
       constructor(map) {
         this._map = map || new Map();
@@ -156,74 +79,396 @@
 
     const proxySources = new TwoWayMap();
 
-    const BLOCK_CHECK_INTERVAL = 3000; // You should be runn off config.user.nodeSettings.pingInterval...
+    let nodeStatusSocketObject;
+    let nodeStatusSocketTimeout;
+    let nodeStatusCount = 0;
+    let nodeStatusRetryOnClose = false;
+    let nodeStateCall = false;
 
-    const BLOCK_CHECK_TIMEOUT = 3000;
-    const BLOCK_STREAM_NAME = 'new_block';
-    const onNewBlockFunctions = [];
-    let mostRecentBlock = {
-      height: -1
+    const doNodeInfo = async () => {
+      const nodeInfo = await parentEpml.request('apiCall', {
+        url: '/admin/info'
+      });
+      parentEpml.request('updateNodeInfo', nodeInfo);
+    }; // Call doNodeInfo
+
+
+    doNodeInfo();
+    const startConfigWatcher = () => {
+      parentEpml.ready().then(() => {
+        parentEpml.subscribe('node_config', c => {
+          nodeStateCall = true;
+          initNodeStatusCall(JSON.parse(c));
+        });
+      });
+      parentEpml.imReady();
     };
-    const onNewBlock = newBlockFn => onNewBlockFunctions.push(newBlockFn);
-    const check = () => {
-      const c = doCheck(); // CHANGE TO Promise.prototype.finally
 
-      c.then(() => {
-        setTimeout(() => check(), BLOCK_CHECK_INTERVAL);
-      });
-      c.catch(() => {
-        setTimeout(() => check(), BLOCK_CHECK_INTERVAL);
-      });
+    const processBlock = blockObject => {
+      parentEpml.request('updateBlockInfo', blockObject);
     };
 
-    const doCheck = async () => {
-      let timeout = setTimeout(() => {
-        throw new Error('Block check timed out');
-      }, BLOCK_CHECK_TIMEOUT);
-      const block = await parentEpml.request('apiCall', {
-        url: '/blocks/last'
-      });
-      clearTimeout(timeout); // console.log(block)
-      // const parsedBlock = JSON.parse(block)
-      // console.log(parsedBlock, mostRecentBlock)
+    const doNodeStatus = async nodeStatusObject => {
+      parentEpml.request('updateNodeStatus', nodeStatusObject);
+    };
 
-      if (block.height > mostRecentBlock.height) {
-        // console.log('NNEEEWWW BLLOOCCCKKK')
-        mostRecentBlock = block;
-        onNewBlockFunctions.forEach(fn => fn(mostRecentBlock));
+    const initNodeStatusCall = nodeConfig => {
+      if (nodeConfig.node === 0 || nodeConfig.node === 1) {
+        pingNodeStatusSocket();
+      } else if (nodeStatusSocketObject !== undefined) {
+        nodeStatusSocketObject.close();
       }
     };
 
-    const addrWatcher = new AddressWatcher(); // who cares
+    let socketObject;
+    let activeBlockSocketTimeout;
+    let initial = 0;
+    let isCalled = false;
+    let retryOnClose = false;
+    let blockFirstCall = true;
+
+    const initBlockSocket = () => {
+      let myNode = window.parent.reduxStore.getState().app.nodeConfig.knownNodes[window.parent.reduxStore.getState().app.nodeConfig.node];
+      let nodeUrl = myNode.domain + ":" + myNode.port;
+      let activeBlockSocketLink;
+
+      if (window.parent.location.protocol === "https:") {
+        activeBlockSocketLink = `wss://${nodeUrl}/websockets/blocks`;
+      } else {
+        activeBlockSocketLink = `ws://${nodeUrl}/websockets/blocks`;
+      }
+
+      const activeBlockSocket = new WebSocket(activeBlockSocketLink); // Open Connection
+
+      activeBlockSocket.onopen = e => {
+        console.log(`[SOCKET-BLOCKS]: Connected.`);
+        socketObject = activeBlockSocket;
+        initial = initial + 1;
+      }; // Message Event
+
+
+      activeBlockSocket.onmessage = e => {
+        processBlock(JSON.parse(e.data));
+      }; // Closed Event
+
+
+      activeBlockSocket.onclose = () => {
+        console.log(`[SOCKET-BLOCKS]: CLOSED`);
+        clearInterval(activeBlockSocketTimeout);
+
+        if ( initial <= 52) {
+          if (initial <= 52) {
+            retryOnClose = true;
+            setTimeout(pingactiveBlockSocket, 10000);
+            initial = initial + 1;
+          } else {
+            // ... Stop retrying...
+            retryOnClose = false;
+          }
+        }
+      }; // Error Event
+
+
+      activeBlockSocket.onerror = e => {
+        console.log(`[SOCKET-BLOCKS]: ${e.type}`);
+      };
+
+      if (blockFirstCall) {
+        parentEpml.request('apiCall', {
+          url: '/blocks/last'
+        }).then(res => {
+          processBlock(res);
+          blockFirstCall = false;
+        });
+      }
+    };
+
+    const pingactiveBlockSocket = () => {
+      if (!isCalled) {
+        initBlockSocket();
+        isCalled = true;
+        activeBlockSocketTimeout = setTimeout(pingactiveBlockSocket, 295000);
+      } else if (retryOnClose) {
+        retryOnClose = false;
+        clearTimeout(activeBlockSocketTimeout);
+        initBlockSocket();
+        isCalled = true;
+        activeBlockSocketTimeout = setTimeout(pingactiveBlockSocket, 295000);
+      } else {
+        socketObject.send("non-integer ping");
+        activeBlockSocketTimeout = setTimeout(pingactiveBlockSocket, 295000);
+      }
+    };
+
+    const initNodeStatusSocket = () => {
+      let myNode = window.parent.reduxStore.getState().app.nodeConfig.knownNodes[window.parent.reduxStore.getState().app.nodeConfig.node];
+      let nodeUrl = myNode.domain + ":" + myNode.port;
+      let activeNodeStatusSocketLink;
+
+      if (window.parent.location.protocol === "https:") {
+        activeNodeStatusSocketLink = `wss://${nodeUrl}/websockets/admin/status`;
+      } else {
+        activeNodeStatusSocketLink = `ws://${nodeUrl}/websockets/admin/status`;
+      }
+
+      const activeNodeStatusSocket = new WebSocket(activeNodeStatusSocketLink); // Open Connection
+
+      activeNodeStatusSocket.onopen = e => {
+        console.log(`[SOCKET-NODE-STATUS]: Connected.`);
+        nodeStatusSocketObject = activeNodeStatusSocket;
+        nodeStatusCount = nodeStatusCount + 1;
+      }; // Message Event
+
+
+      activeNodeStatusSocket.onmessage = e => {
+        doNodeStatus(JSON.parse(e.data));
+      }; // Closed Event
+
+
+      activeNodeStatusSocket.onclose = () => {
+        console.log(`[SOCKET-NODE-STATUS]: CLOSED`);
+        clearInterval(nodeStatusSocketTimeout);
+
+        if ( nodeStatusCount <= 52) {
+          if (nodeStatusCount <= 52) {
+            nodeStatusRetryOnClose = true;
+            setTimeout(pingNodeStatusSocket, 10000);
+            nodeStatusCount = nodeStatusCount + 1;
+          } else {
+            // ... Stop retrying...
+            nodeStatusRetryOnClose = false;
+          }
+        }
+      }; // Error Event
+
+
+      activeNodeStatusSocket.onerror = e => {
+        console.log(`[SOCKET-NODE-STATUS]: ${e.type}`);
+      };
+    };
+
+    const pingNodeStatusSocket = () => {
+      if (nodeStateCall) {
+        clearTimeout(nodeStatusSocketTimeout);
+        initNodeStatusSocket();
+        nodeStateCall = false;
+        nodeStatusSocketTimeout = setTimeout(pingNodeStatusSocket, 295000);
+      } else if (nodeStatusRetryOnClose) {
+        nodeStatusRetryOnClose = false;
+        clearTimeout(nodeStatusSocketTimeout);
+        initNodeStatusSocket();
+        nodeStatusSocketTimeout = setTimeout(pingNodeStatusSocket, 295000);
+      } else {
+        nodeStatusSocketObject.send("non-integer ping");
+        nodeStatusSocketTimeout = setTimeout(pingNodeStatusSocket, 295000);
+      }
+    };
+
     // const txWatcher = new UnconfirmedTransactionWatcher()
 
-    let mostRecentBlock$1 = {
-      height: -1
+    const setAccountInfo = async addr => {
+      const names = await parentEpml.request('apiCall', {
+        url: `/names/address/${addr}`
+      });
+      const addressInfo = await parentEpml.request('apiCall', {
+        url: `/addresses/${addr}`
+      });
+      let accountInfo = {
+        names: names,
+        addressInfo: addressInfo
+      };
+      parentEpml.request('setAccountInfo', accountInfo);
     };
-    const blockStream = new EpmlStream(BLOCK_STREAM_NAME, () => {
-      // console.log('WE GOT A SUBSCRIPTION')
-      return mostRecentBlock$1;
-    });
+
+    const objectToArray = object => {
+      let groupList = object.groups.map(group => group.groupId === 0 ? {
+        groupId: group.groupId,
+        url: `group/${group.groupId}`,
+        groupName: "Qortal General Chat",
+        sender: group.sender,
+        senderName: group.senderName,
+        timestamp: group.timestamp === undefined ? 1 : group.timestamp
+      } : { ...group,
+        url: `group/${group.groupId}`
+      });
+      let directList = object.direct.map(dc => {
+        return { ...dc,
+          url: `direct/${dc.address}`
+        };
+      });
+      let chatHeadMasterList = [...groupList, ...directList];
+      return chatHeadMasterList;
+    };
+
+    const sortActiveChat = (activeChatObject, localChatHeads) => {
+      let oldChatHeads = JSON.parse(localChatHeads);
+
+      if (window.parent._.isEqual(oldChatHeads, activeChatObject) === true) {
+        return;
+      } else {
+        let oldActiveChats = objectToArray(oldChatHeads);
+        let newActiveChats = objectToArray(activeChatObject);
+        let results = newActiveChats.filter(newChat => {
+          let value = oldActiveChats.some(oldChat => newChat.timestamp === oldChat.timestamp);
+          return !value;
+        });
+        results.forEach(chat => {
+          if (chat.sender !== window.parent.reduxStore.getState().app.selectedAddress.address) {
+            parentEpml.request('showNotification', chat);
+          }
+        });
+      }
+    };
+
+    let initialChatWatch = 0;
+
+    const chatHeadWatcher = activeChats => {
+      let addr = window.parent.reduxStore.getState().app.selectedAddress.address;
+      let key = `${addr.substr(0, 10)}_chat-heads`;
+
+      try {
+        let localChatHeads = localStorage.getItem(key);
+
+        if (localChatHeads === null) {
+          parentEpml.request('setLocalStorage', {
+            key: key,
+            dataObj: activeChats
+          }).then(ms => {
+            parentEpml.request('setChatHeads', activeChats).then(ret => {// ...
+            });
+          });
+        } else {
+          parentEpml.request('setLocalStorage', {
+            key: key,
+            dataObj: activeChats
+          }).then(ms => {
+            parentEpml.request('setChatHeads', activeChats).then(ret => {// ...
+            });
+          });
+
+          if (initialChatWatch >= 1) {
+            sortActiveChat(activeChats, localChatHeads);
+          } else {
+            initialChatWatch = initialChatWatch + 1;
+          }
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    };
+    //     return mostRecentBlock
+    // })
+
+    let socketObject$1;
+    let activeChatSocketTimeout;
+    let initial$1 = 0;
+    let closeGracefully = false;
+    let onceLoggedIn = false;
+    let retryOnClose$1 = false;
     parentEpml.subscribe('logged_in', async isLoggedIn => {
+      const initChatHeadSocket = () => {
+        let myNode = window.parent.reduxStore.getState().app.nodeConfig.knownNodes[window.parent.reduxStore.getState().app.nodeConfig.node];
+        let nodeUrl = myNode.domain + ":" + myNode.port;
+        let activeChatSocketLink;
+
+        if (window.parent.location.protocol === "https:") {
+          activeChatSocketLink = `wss://${nodeUrl}/websockets/chat/active/${window.parent.reduxStore.getState().app.selectedAddress.address}`;
+        } else {
+          activeChatSocketLink = `ws://${nodeUrl}/websockets/chat/active/${window.parent.reduxStore.getState().app.selectedAddress.address}`;
+        }
+
+        const activeChatSocket = new WebSocket(activeChatSocketLink); // Open Connection
+
+        activeChatSocket.onopen = () => {
+          console.log(`[SOCKET]: Connected.`);
+          socketObject$1 = activeChatSocket;
+          initial$1 = initial$1 + 1;
+        }; // Message Event
+
+
+        activeChatSocket.onmessage = e => {
+          chatHeadWatcher(JSON.parse(e.data));
+        }; // Closed Event
+
+
+        activeChatSocket.onclose = () => {
+          console.log(`[SOCKET]: CLOSED`);
+          clearInterval(activeChatSocketTimeout);
+
+          if (closeGracefully === false && initial$1 <= 52) {
+            if (initial$1 <= 52) {
+              parentEpml.request('showSnackBar', "Connection to the Qortal Core was lost, is your Core running ?");
+              retryOnClose$1 = true;
+              setTimeout(pingActiveChatSocket, 10000);
+              initial$1 = initial$1 + 1;
+            } else {
+              parentEpml.request('showSnackBar', "Cannot connect to the Qortal Core, restart UI and Core!");
+            }
+          }
+        }; // Error Event
+
+
+        activeChatSocket.onerror = e => {
+          console.log(`[SOCKET]: ${e.type}`);
+        };
+      };
+
+      const pingActiveChatSocket = () => {
+        if (window.parent.reduxStore.getState().app.loggedIn === true) {
+          if (!onceLoggedIn) {
+            initChatHeadSocket();
+            onceLoggedIn = true;
+            activeChatSocketTimeout = setTimeout(pingActiveChatSocket, 295000);
+          } else if (retryOnClose$1) {
+            retryOnClose$1 = false;
+            clearTimeout(activeChatSocketTimeout);
+            initChatHeadSocket();
+            onceLoggedIn = true;
+            activeChatSocketTimeout = setTimeout(pingActiveChatSocket, 295000);
+          } else {
+            socketObject$1.send('ping');
+            activeChatSocketTimeout = setTimeout(pingActiveChatSocket, 295000);
+          }
+        } else {
+          if (onceLoggedIn && !closeGracefully) {
+            closeGracefully = true;
+            socketObject$1.close();
+            clearTimeout(activeChatSocketTimeout);
+            onceLoggedIn = false;
+          }
+        }
+      };
+
       if (isLoggedIn === 'true') {
         // console.log('"logged_in stream" in core/main.js', isLoggedIn)
-        const addresses = await parentEpml.request('addresses');
-        const parsedAddresses = addresses; // JSON.parse(addresses)
-        // console.log(parsedAddresses)
-        // console.log(parsedAddress)
+        const addresses = await parentEpml.request('addresses'); // Call Set Account Info...
 
-        addrWatcher.reset();
-        parsedAddresses.forEach(addr => addrWatcher.addAddress(addr)); // txWatcher.reset()
+        setAccountInfo(window.parent.reduxStore.getState().app.selectedAddress.address); // Start Chat Watcher Socket
+
+        pingActiveChatSocket(); // const parsedAddresses = addresses
+        // addrWatcher.reset()
+        // parsedAddresses.forEach(addr => addrWatcher.addAddress(addr))
+        // txWatcher.reset()
         // parsedAddresses.forEach(addr => txWatcher.addAddress(addr))
+      } else {
+        if (onceLoggedIn) {
+          closeGracefully = true;
+          socketObject$1.close();
+          clearTimeout(activeChatSocketTimeout);
+          onceLoggedIn = false;
+        }
+
+        initialChatWatch = 0;
       }
-    });
-    onNewBlock(block => {
-      console.log('New block', block);
-      mostRecentBlock$1 = block;
-      blockStream.emit(block);
-      addrWatcher.testBlock(block);
-    });
-    check();
+    }); // onNewBlock(async block => {
+    //     mostRecentBlock = block
+    //     blockStream.emit(block)
+    //     addrWatcher.testBlock(block)
+    // })
+    // check()
+
+    startConfigWatcher();
+    pingactiveBlockSocket();
 
     // const DHCP_PING_INTERVAL = 1000 * 60 * 10
 
@@ -241,6 +486,7 @@
     const pingAirdropServer = () => {
       if (!address || !config.coin) return;
       const node = config.coin.node.airdrop;
+      console.log("PING_AIRDROP_SERVER_NODE:  ==> ", node);
       const url = `${node.protocol}://${node.domain}:${node.port}${node.dhcpUrl}${address}`;
       fetch(url).then(res => {
         /* console.log(res)*/
@@ -248,7 +494,9 @@
     };
 
     parentEpml.ready().then(() => {
-      parentEpml.request('registerUrl', {
+      // THOUGHTS: The request to register urls should be made once...
+      // pluginUrlsConf
+      let pluginUrlsConf = [{
         url: 'wallet',
         domain: 'core',
         page: 'wallet/index.html',
@@ -257,8 +505,7 @@
         icon: 'account_balance_wallet',
         menus: [],
         parent: false
-      });
-      parentEpml.request('registerUrl', {
+      }, {
         url: 'send-money',
         domain: 'core',
         page: 'send-money/index.html',
@@ -266,25 +513,75 @@
         icon: 'send',
         menus: [],
         parent: false
-      });
-      parentEpml.request('registerUrl', {
+      }, {
         url: 'reward-share',
         domain: 'core',
         page: 'reward-share/index.html',
-        title: 'Reward share',
+        title: 'Reward Share',
         icon: 'call_split',
         menus: [],
         parent: false
-      });
+      }, {
+        url: 'name-registration',
+        domain: 'core',
+        page: 'name-registration/index.html',
+        title: 'Name Registration',
+        icon: 'assignment_ind',
+        menus: [],
+        parent: false
+      }, {
+        url: 'messaging',
+        domain: 'core',
+        page: 'messaging/index.html',
+        title: 'Messaging',
+        icon: 'message',
+        menus: [{
+          url: 'chain-messaging',
+          domain: 'core',
+          page: 'messaging/chain-messaging/index.html',
+          title: 'Chain Messaging',
+          icon: 'toc',
+          menus: [],
+          parent: false
+        }, {
+          url: 'q-chat',
+          domain: 'core',
+          page: 'messaging/q-chat/index.html',
+          title: 'Q-Chat',
+          icon: 'toc',
+          menus: [],
+          parent: false
+        }],
+        parent: false
+      }, {
+        url: 'group-management',
+        domain: 'core',
+        page: 'group-management/index.html',
+        title: 'Group Management',
+        icon: 'group',
+        menus: [{
+          url: 'group-transaction',
+          domain: 'core',
+          page: 'group-management/group-transaction/index.html',
+          title: 'Group Transaction',
+          icon: 'toc',
+          menus: [],
+          parent: false
+        }],
+        parent: false
+      }];
+
+      const registerPlugins = pluginInfo => {
+        parentEpml.request('registerUrl', pluginInfo);
+      };
+
       parentEpml.subscribe('config', c => {
         config = JSON.parse(c);
         pingAirdropServer(); // Only register node management if node management is enabled and it hasn't already been registered
-        // console.log("==============================")
-        // console.log(config)
 
         if (!haveRegisteredNodeManagement && config.user.knownNodes[config.user.node].enableManagement) {
           haveRegisteredNodeManagement = true;
-          parentEpml.request('registerUrl', {
+          let nodeManagementConf = {
             url: 'node-management',
             domain: 'core',
             page: 'node-management/index.html',
@@ -292,7 +589,11 @@
             icon: 'cloud',
             menus: [],
             parent: false
-          });
+          };
+          let _pluginUrlsConf = [...pluginUrlsConf, nodeManagementConf];
+          registerPlugins(_pluginUrlsConf);
+        } else {
+          registerPlugins(pluginUrlsConf);
         }
       });
       parentEpml.subscribe('selected_address', addr => {
