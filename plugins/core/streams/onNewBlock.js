@@ -1,6 +1,12 @@
 import { parentEpml } from '../connect.js'
-import { EpmlStream } from 'epml'
 
+let socketObject
+let activeBlockSocketTimeout
+let initial = 0
+let closeGracefully = false
+let isCalled = false
+let retryOnClose = false
+let blockFirstCall = true
 
 let nodeStatusSocketObject
 let nodeStatusSocketTimeout
@@ -19,17 +25,56 @@ const doNodeInfo = async () => {
     parentEpml.request('updateNodeInfo', nodeInfo)
 }
 
-// Call doNodeInfo
-doNodeInfo()
+let initStateCount = 0
+let oldState
 
+const closeSockets = () => {
+
+    socketObject.close();
+    closeGracefully = true
+
+    nodeStatusSocketObject.close();
+    nodeStatusSocketcloseGracefully = true
+}
 
 export const startConfigWatcher = () => {
 
     parentEpml.ready().then(() => {
         parentEpml.subscribe('node_config', c => {
 
-            nodeStateCall = true
-            initNodeStatusCall(JSON.parse(c))
+            if (initStateCount === 0) {
+                let _oldState = JSON.parse(c)
+                oldState = { node: _oldState.node, knownNodes: _oldState.knownNodes }
+                initStateCount = initStateCount + 1
+
+                nodeStateCall = true
+                isCalled = true
+                socketObject !== undefined ? closeSockets() : undefined;
+                nodeStatusSocketObject !== undefined ? closeSockets() : undefined;
+                initNodeStatusCall(oldState)
+                pingactiveBlockSocket()
+
+                // Call doNodeInfo
+                doNodeInfo()
+            }
+
+            let _newState = JSON.parse(c);
+            let newState = { node: _newState.node, knownNodes: _newState.knownNodes }
+
+            if (window.parent._.isEqual(oldState, newState) === true) {
+                return
+            } else {
+                oldState = newState
+                nodeStateCall = true
+                isCalled = true
+                socketObject !== undefined ? closeSockets() : undefined;
+                nodeStatusSocketObject !== undefined ? closeSockets() : undefined;
+                initNodeStatusCall(newState)
+                pingactiveBlockSocket()
+
+                // Call doNodeInfo
+                doNodeInfo()
+            }
         })
     })
 
@@ -49,22 +94,17 @@ const doNodeStatus = async (nodeStatusObject) => {
 
 const initNodeStatusCall = (nodeConfig) => {
 
-    if (nodeConfig.node === 0 || nodeConfig.node === 1) {
+    if (nodeConfig.node == 0) {
+        pingNodeStatusSocket()
+    } else if (nodeConfig.node == 1) {
         pingNodeStatusSocket()
     } else if (nodeStatusSocketObject !== undefined) {
         nodeStatusSocketObject.close()
+        nodeStatusSocketcloseGracefully = true
+    } else {
+        // ...
     }
 }
-
-
-let socketObject
-let activeBlockSocketTimeout
-let initial = 0
-let closeGracefully = false
-let isCalled = false
-let retryOnClose = false
-let blockFirstCall = true
-
 
 const initBlockSocket = () => {
 
@@ -87,6 +127,7 @@ const initBlockSocket = () => {
     activeBlockSocket.onopen = (e) => {
 
         console.log(`[SOCKET-BLOCKS]: Connected.`);
+        closeGracefully = false
         socketObject = activeBlockSocket
 
         initial = initial + 1
@@ -102,6 +143,9 @@ const initBlockSocket = () => {
     activeBlockSocket.onclose = () => {
 
         console.log(`[SOCKET-BLOCKS]: CLOSED`);
+
+        processBlock({});
+        blockFirstCall = true
         clearInterval(activeBlockSocketTimeout)
 
         if (closeGracefully === false && initial <= 52) {
@@ -123,6 +167,8 @@ const initBlockSocket = () => {
     activeBlockSocket.onerror = (e) => {
 
         console.log(`[SOCKET-BLOCKS]: ${e.type}`);
+        blockFirstCall = true
+        processBlock({});
     }
 
     if (blockFirstCall) {
@@ -138,13 +184,13 @@ const initBlockSocket = () => {
 }
 
 
-export const pingactiveBlockSocket = () => {
+const pingactiveBlockSocket = () => {
 
+    if (isCalled) {
 
-    if (!isCalled) {
+        isCalled = false
 
         initBlockSocket()
-        isCalled = true
         activeBlockSocketTimeout = setTimeout(pingactiveBlockSocket, 295000)
     } else if (retryOnClose) {
 
@@ -182,6 +228,7 @@ const initNodeStatusSocket = () => {
     activeNodeStatusSocket.onopen = (e) => {
 
         console.log(`[SOCKET-NODE-STATUS]: Connected.`);
+        nodeStatusSocketcloseGracefully = false
         nodeStatusSocketObject = activeNodeStatusSocket
 
         nodeStatusCount = nodeStatusCount + 1
@@ -197,6 +244,8 @@ const initNodeStatusSocket = () => {
     activeNodeStatusSocket.onclose = () => {
 
         console.log(`[SOCKET-NODE-STATUS]: CLOSED`);
+
+        doNodeStatus({});
         clearInterval(nodeStatusSocketTimeout)
 
         if (nodeStatusSocketcloseGracefully === false && nodeStatusCount <= 52) {
@@ -218,6 +267,7 @@ const initNodeStatusSocket = () => {
     activeNodeStatusSocket.onerror = (e) => {
 
         console.log(`[SOCKET-NODE-STATUS]: ${e.type}`);
+        doNodeStatus({});
     }
 }
 

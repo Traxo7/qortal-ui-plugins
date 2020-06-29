@@ -2,7 +2,7 @@ import { parentEpml } from '../connect.js'
 // import { AddressWatcher } from './AddressWatcher.js'
 // import { UnconfirmedTransactionWatcher } from './UnconfirmedTransactionWatcher.js'
 
-import { pingactiveBlockSocket, startConfigWatcher } from './onNewBlock.js'
+import { startConfigWatcher } from './onNewBlock.js'
 
 // const addrWatcher = new AddressWatcher()
 
@@ -57,7 +57,7 @@ const sortActiveChat = (activeChatObject, localChatHeads) => {
 
             if (chat.sender !== window.parent.reduxStore.getState().app.selectedAddress.address) {
 
-                parentEpml.request('showNotification', chat)
+                if (chat.sender !== undefined) parentEpml.request('showNotification', chat)
             } else {
                 // ...
             }
@@ -267,4 +267,3 @@ parentEpml.subscribe('logged_in', async isLoggedIn => {
 // })
 // check()
 startConfigWatcher()
-pingactiveBlockSocket()

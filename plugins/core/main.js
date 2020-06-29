@@ -17,70 +17,16 @@
       }
     });
 
-    class TwoWayMap {
-      constructor(map) {
-        this._map = map || new Map();
-        this._revMap = new Map();
-
-        this._map.forEach((key, value) => {
-          this._revMap.set(value, key);
-        });
-      }
-
-      values() {
-        return this._map.values();
-      }
-
-      entries() {
-        return this._map.entries();
-      }
-
-      push(key, value) {
-        this._map.set(key, value);
-
-        this._revMap.set(value, key);
-      }
-
-      getByKey(key) {
-        return this._map.get(key);
-      }
-
-      getByValue(value) {
-        return this._revMap.get(value);
-      }
-
-      hasKey(key) {
-        return this._map.has(key);
-      }
-
-      hasValue(value) {
-        return this._revMap.has(value);
-      }
-
-      deleteByKey(key) {
-        const value = this._map.get(key);
-
-        this._map.delete(key);
-
-        this._revMap.delete(value);
-      }
-
-      deleteByValue(value) {
-        const key = this._revMap.get(value);
-
-        this._map.delete(key);
-
-        this._revMap.delete(value);
-      }
-
-    }
-
-    // Proxy target source will be another instance of epml. The source instance will be the proxy. The extra parameter will be the target for that proxy
-
-    const proxySources = new TwoWayMap();
-
+    let socketObject;
+    let activeBlockSocketTimeout;
+    let initial = 0;
+    let closeGracefully = false;
+    let isCalled = false;
+    let retryOnClose = false;
+    let blockFirstCall = true;
     let nodeStatusSocketObject;
     let nodeStatusSocketTimeout;
+    let nodeStatusSocketcloseGracefully = false;
     let nodeStatusCount = 0;
     let nodeStatusRetryOnClose = false;
     let nodeStateCall = false;
@@ -90,15 +36,59 @@
         url: '/admin/info'
       });
       parentEpml.request('updateNodeInfo', nodeInfo);
-    }; // Call doNodeInfo
+    };
 
+    let initStateCount = 0;
+    let oldState;
 
-    doNodeInfo();
+    const closeSockets = () => {
+      socketObject.close();
+      closeGracefully = true;
+      nodeStatusSocketObject.close();
+      nodeStatusSocketcloseGracefully = true;
+    };
+
     const startConfigWatcher = () => {
       parentEpml.ready().then(() => {
         parentEpml.subscribe('node_config', c => {
-          nodeStateCall = true;
-          initNodeStatusCall(JSON.parse(c));
+          if (initStateCount === 0) {
+            let _oldState = JSON.parse(c);
+
+            oldState = {
+              node: _oldState.node,
+              knownNodes: _oldState.knownNodes
+            };
+            initStateCount = initStateCount + 1;
+            nodeStateCall = true;
+            isCalled = true;
+            socketObject !== undefined ? closeSockets() : undefined;
+            nodeStatusSocketObject !== undefined ? closeSockets() : undefined;
+            initNodeStatusCall(oldState);
+            pingactiveBlockSocket(); // Call doNodeInfo
+
+            doNodeInfo();
+          }
+
+          let _newState = JSON.parse(c);
+
+          let newState = {
+            node: _newState.node,
+            knownNodes: _newState.knownNodes
+          };
+
+          if (window.parent._.isEqual(oldState, newState) === true) {
+            return;
+          } else {
+            oldState = newState;
+            nodeStateCall = true;
+            isCalled = true;
+            socketObject !== undefined ? closeSockets() : undefined;
+            nodeStatusSocketObject !== undefined ? closeSockets() : undefined;
+            initNodeStatusCall(newState);
+            pingactiveBlockSocket(); // Call doNodeInfo
+
+            doNodeInfo();
+          }
         });
       });
       parentEpml.imReady();
@@ -113,19 +103,15 @@
     };
 
     const initNodeStatusCall = nodeConfig => {
-      if (nodeConfig.node === 0 || nodeConfig.node === 1) {
+      if (nodeConfig.node == 0) {
+        pingNodeStatusSocket();
+      } else if (nodeConfig.node == 1) {
         pingNodeStatusSocket();
       } else if (nodeStatusSocketObject !== undefined) {
         nodeStatusSocketObject.close();
+        nodeStatusSocketcloseGracefully = true;
       }
     };
-
-    let socketObject;
-    let activeBlockSocketTimeout;
-    let initial = 0;
-    let isCalled = false;
-    let retryOnClose = false;
-    let blockFirstCall = true;
 
     const initBlockSocket = () => {
       let myNode = window.parent.reduxStore.getState().app.nodeConfig.knownNodes[window.parent.reduxStore.getState().app.nodeConfig.node];
@@ -142,6 +128,7 @@
 
       activeBlockSocket.onopen = e => {
         console.log(`[SOCKET-BLOCKS]: Connected.`);
+        closeGracefully = false;
         socketObject = activeBlockSocket;
         initial = initial + 1;
       }; // Message Event
@@ -154,9 +141,11 @@
 
       activeBlockSocket.onclose = () => {
         console.log(`[SOCKET-BLOCKS]: CLOSED`);
+        processBlock({});
+        blockFirstCall = true;
         clearInterval(activeBlockSocketTimeout);
 
-        if ( initial <= 52) {
+        if (closeGracefully === false && initial <= 52) {
           if (initial <= 52) {
             retryOnClose = true;
             setTimeout(pingactiveBlockSocket, 10000);
@@ -171,6 +160,8 @@
 
       activeBlockSocket.onerror = e => {
         console.log(`[SOCKET-BLOCKS]: ${e.type}`);
+        blockFirstCall = true;
+        processBlock({});
       };
 
       if (blockFirstCall) {
@@ -184,9 +175,9 @@
     };
 
     const pingactiveBlockSocket = () => {
-      if (!isCalled) {
+      if (isCalled) {
+        isCalled = false;
         initBlockSocket();
-        isCalled = true;
         activeBlockSocketTimeout = setTimeout(pingactiveBlockSocket, 295000);
       } else if (retryOnClose) {
         retryOnClose = false;
@@ -215,6 +206,7 @@
 
       activeNodeStatusSocket.onopen = e => {
         console.log(`[SOCKET-NODE-STATUS]: Connected.`);
+        nodeStatusSocketcloseGracefully = false;
         nodeStatusSocketObject = activeNodeStatusSocket;
         nodeStatusCount = nodeStatusCount + 1;
       }; // Message Event
@@ -227,9 +219,10 @@
 
       activeNodeStatusSocket.onclose = () => {
         console.log(`[SOCKET-NODE-STATUS]: CLOSED`);
+        doNodeStatus({});
         clearInterval(nodeStatusSocketTimeout);
 
-        if ( nodeStatusCount <= 52) {
+        if (nodeStatusSocketcloseGracefully === false && nodeStatusCount <= 52) {
           if (nodeStatusCount <= 52) {
             nodeStatusRetryOnClose = true;
             setTimeout(pingNodeStatusSocket, 10000);
@@ -244,6 +237,7 @@
 
       activeNodeStatusSocket.onerror = e => {
         console.log(`[SOCKET-NODE-STATUS]: ${e.type}`);
+        doNodeStatus({});
       };
     };
 
@@ -314,7 +308,7 @@
         });
         results.forEach(chat => {
           if (chat.sender !== window.parent.reduxStore.getState().app.selectedAddress.address) {
-            parentEpml.request('showNotification', chat);
+            if (chat.sender !== undefined) parentEpml.request('showNotification', chat);
           }
         });
       }
@@ -362,7 +356,7 @@
     let socketObject$1;
     let activeChatSocketTimeout;
     let initial$1 = 0;
-    let closeGracefully = false;
+    let closeGracefully$1 = false;
     let onceLoggedIn = false;
     let retryOnClose$1 = false;
     parentEpml.subscribe('logged_in', async isLoggedIn => {
@@ -395,7 +389,7 @@
           console.log(`[SOCKET]: CLOSED`);
           clearInterval(activeChatSocketTimeout);
 
-          if (closeGracefully === false && initial$1 <= 52) {
+          if (closeGracefully$1 === false && initial$1 <= 52) {
             if (initial$1 <= 52) {
               parentEpml.request('showSnackBar', "Connection to the Qortal Core was lost, is your Core running ?");
               retryOnClose$1 = true;
@@ -430,8 +424,8 @@
             activeChatSocketTimeout = setTimeout(pingActiveChatSocket, 295000);
           }
         } else {
-          if (onceLoggedIn && !closeGracefully) {
-            closeGracefully = true;
+          if (onceLoggedIn && !closeGracefully$1) {
+            closeGracefully$1 = true;
             socketObject$1.close();
             clearTimeout(activeChatSocketTimeout);
             onceLoggedIn = false;
@@ -452,7 +446,7 @@
         // parsedAddresses.forEach(addr => txWatcher.addAddress(addr))
       } else {
         if (onceLoggedIn) {
-          closeGracefully = true;
+          closeGracefully$1 = true;
           socketObject$1.close();
           clearTimeout(activeChatSocketTimeout);
           onceLoggedIn = false;
@@ -468,7 +462,6 @@
     // check()
 
     startConfigWatcher();
-    pingactiveBlockSocket();
 
     // const DHCP_PING_INTERVAL = 1000 * 60 * 10
 
