@@ -2,11 +2,32 @@
 <html>
 
 <head>
-    <link rel="stylesheet" type="text/css"
-        href="https://fonts.googleapis.com/css?family=Roboto+Mono:100,400,700|Roboto:400,300,300italic,400italic,500,500italic,700,700italic"
-        crossorigin="anonymous">
     <link rel="stylesheet" href="/font/material-icons.css">
     <style>
+        html {
+            --scrollbarBG: #a1a1a1;
+            --thumbBG: #6a6c75;
+        }
+
+        *::-webkit-scrollbar {
+            width: 11px;
+        }
+
+        * {
+            scrollbar-width: thin;
+            scrollbar-color: var(--thumbBG) var(--scrollbarBG);
+        }
+
+        *::-webkit-scrollbar-track {
+            background: var(--scrollbarBG);
+        }
+
+        *::-webkit-scrollbar-thumb {
+            background-color: var(--thumbBG);
+            border-radius: 6px;
+            border: 3px solid var(--scrollbarBG);
+        }
+
         html,
         body {
             margin: 0;
@@ -18,7 +39,6 @@
 
 <body>
     <node-management></node-management>
-
     <script src="node-management.js"></script>
 </body>
 

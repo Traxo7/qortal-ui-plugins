@@ -1,26 +1,11 @@
-import '@webcomponents/webcomponentsjs/webcomponents-loader.js'
-/* Es6 browser but transpi;led code */
-import '@webcomponents/webcomponentsjs/custom-elements-es5-adapter.js'
-
 import { LitElement, html, css } from 'lit-element'
-// import { ERROR_CODES } from '../../../src/qora/constants.js'
-// import { Epml } from '../../../src/epml.js'
 import { Epml } from '../../../epml'
+
 import '@material/mwc-button'
-import '@polymer/paper-input/paper-input.js'
+import '@material/mwc-textfield'
 import '@polymer/paper-progress/paper-progress.js'
-// import '@polymer/paper-spinner/paper-spinner-lite.js'
 
 const parentEpml = new Epml({ type: 'WINDOW', source: window.parent })
-
-const coreEpml = new Epml({
-    type: 'PROXY',
-    source: {
-        id: 'visible-plugin',
-        target: 'core-plugin',
-        proxy: parentEpml
-    }
-})
 
 class SendMoneyPage extends LitElement {
     static get properties() {
@@ -104,7 +89,7 @@ class SendMoneyPage extends LitElement {
                 padding: 8px;
             }
 
-            paper-input {
+            mwc-textfield {
                 margin: 0;
             }
 
@@ -140,24 +125,27 @@ class SendMoneyPage extends LitElement {
                         </div>
 
                     </paper-card>
-                    <paper-input
-                        id="amountInput"
-                        required
-                        label="Amount (qort)"
-                        @input=${() => { this._checkAmount() }}
-                        type="number" 
-                        auto-validate="false"
-                        value="${this.amount}">
-                        </paper-input>
-                    <paper-input label="To (address or name)" id="recipient" type="text" value="${this.recipient}"></paper-input>
-                    <!-- <paper-input label="Fee" type="text" value="{{fee}}"></paper-input> -->
+                    <p>
+                        <mwc-textfield
+                            style="width:100%;"
+                            id="amountInput"
+                            required
+                            label="Amount (qort)"
+                            @input=${() => { this._checkAmount() }}
+                            type="number" 
+                            auto-validate="false"
+                            value="${this.amount}">
+                        </mwc-textfield>
+                    </p>
+                    <p>
+                        <mwc-textfield style="width:100%;" label="To (address or name)" id="recipient" type="text" value="${this.recipient}"></mwc-textfield>
+                    </p>
                     
                     <p style="color:red">${this.errorMessage}</p>
                     <p style="color:green;word-break: break-word;">${this.successMessage}</p>
                     
                     ${this.sendMoneyLoading ? html`
                         <paper-progress indeterminate style="width:100%; margin:4px;"></paper-progress>
-                        <!-- <paper-spinner-lite></paper-spinner-lite> -->
                     ` : ''}
 
                     <div class="buttons" >
@@ -180,22 +168,25 @@ class SendMoneyPage extends LitElement {
 
     _checkAmount(e) {
         this.amount = this.shadowRoot.getElementById('amountInput').value
-        // const balance = this.balance
-        // console.log(parseFloat(amount), parseFloat(balance))
+
         if (this.amount.toString()[0] === '-') {
+
             this.isValidAmount = false
             this.btnDisable = true
             this.shadowRoot.getElementById('amountInput').invalid = true
             this.shadowRoot.getElementById('amountInput').errorMessage = "Cannot Send Negative Amount!"
         } else if (this.amount.toString() === '-') {
+
             this.isValidAmount = false
             this.btnDisable = true
             this.shadowRoot.getElementById('amountInput').invalid = true
             this.shadowRoot.getElementById('amountInput').errorMessage = "Invalid Amount!"
         }
         else if (this.amount.toString().includes('.') === true) {
+
             let myAmount = this.amount.toString().split('.')
             if (myAmount[1].length <= 8) {
+
                 this.isValidAmount = true
                 this.btnDisable = false
                 this.shadowRoot.getElementById('amountInput').invalid = false
@@ -209,18 +200,18 @@ class SendMoneyPage extends LitElement {
             }
         }
         else if ((parseFloat(this.amount) + parseFloat(0.001)) > parseFloat(this.balance)) {
+
             this.isValidAmount = false
             this.btnDisable = true
             this.shadowRoot.getElementById('amountInput').invalid = true
             this.shadowRoot.getElementById('amountInput').errorMessage = "Insufficient Funds!"
         } else {
+
             this.isValidAmount = true
             this.btnDisable = false
             this.shadowRoot.getElementById('amountInput').invalid = false
             this.shadowRoot.getElementById('amountInput').errorMessage = ""
         }
-        // this.isValidAmount = parseFloat(this.amount) <= parseFloat(balance)
-        // console.log(this.isValidAmount)
     }
 
     textColor(color) {
@@ -228,14 +219,12 @@ class SendMoneyPage extends LitElement {
     }
 
     async _sendMoney(e) {
-        const amount = this.shadowRoot.getElementById('amountInput').value // * Math.pow(10, 8)
+        const amount = this.shadowRoot.getElementById('amountInput').value
         let recipient = this.shadowRoot.getElementById('recipient').value
 
         this.sendMoneyLoading = true
         this.btnDisable = true
 
-        // Get Last Ref...
-        // Might want to call it with the sender's address or just pick it from the func..
         const getLastRef = async () => {
             let myRef = await parentEpml.request('apiCall', {
                 type: 'api',
@@ -244,7 +233,6 @@ class SendMoneyPage extends LitElement {
             return myRef
         };
 
-        // Validate name
         const validateName = async (receiverName) => {
             let myRes
             let myNameRes = await parentEpml.request('apiCall', {
@@ -261,21 +249,23 @@ class SendMoneyPage extends LitElement {
             return myRes
         }
 
-        // Validate Address UPDATE: Use the crypto module to validate addr
         const validateAddress = async (receiverAddress) => {
-            let myAddress = await parentEpml.request('apiCall', {
-                type: 'api',
-                url: `/addresses/validate/${receiverAddress}`
-            })
+            let myAddress = await window.parent.validateAddress(receiverAddress)
             return myAddress
         }
 
-        // Validate Receiver
         const validateReceiver = async recipient => {
             let lastRef = await getLastRef();
-            let isAddress = await validateAddress(recipient)
+            let isAddress
+
+            try {
+                isAddress = await validateAddress(recipient)
+            } catch (err) {
+                isAddress = false
+            }
+
             if (isAddress) {
-                let myTransaction = await makeTransactionRequest(recipient, lastRef) // THOUGHTS: Might wanna use a setTimeout here...
+                let myTransaction = await makeTransactionRequest(recipient, lastRef)
                 getTxnRequestResponse(myTransaction)
             } else {
                 let myNameRes = await validateName(recipient)
@@ -284,8 +274,8 @@ class SendMoneyPage extends LitElement {
                     let myTransaction = await makeTransactionRequest(myNameAddress, lastRef)
                     getTxnRequestResponse(myTransaction)
                 } else {
-                    // Return INVALID_RECEIVER
-                    console.error("INVALID_RECEIVER") // THOUGHTS: Handle this properly..
+
+                    console.error("INVALID_RECEIVER")
                     this.errorMessage = "INVALID_RECEIVER"
                     this.sendMoneyLoading = false
                     this.btnDisable = false
@@ -294,7 +284,6 @@ class SendMoneyPage extends LitElement {
             }
         }
 
-        // Make Transaction Request
         const makeTransactionRequest = async (receiver, lastRef) => {
             let myReceiver = receiver
             let mylastRef = lastRef
@@ -307,18 +296,13 @@ class SendMoneyPage extends LitElement {
                     amount: amount,
                     lastReference: mylastRef,
                     fee: 0.001
-                    // Fees shouldn't be hard-coded in here...
                 }
             })
 
             return myTxnrequest
         }
 
-        // FAILED txnResponse = {success: false, message: "User declined transaction"}
-        // SUCCESS txnResponse = { success: true, data: true }
-
         const getTxnRequestResponse = (txnResponse) => {
-            // const responseData = JSON.parse(txnResponse) // FIX: This is not necessary. GIVES error because response is not a JSON object...
 
             if (txnResponse.success === false && txnResponse.message) {
                 this.errorMessage = txnResponse.message
@@ -340,14 +324,34 @@ class SendMoneyPage extends LitElement {
             }
         }
 
-        // Call validateReceiver
-        // setTimeout(() => {
-        //     validateReceiver(recipient)
-        // }, 1000);
-
-        // Calling validateReceiver without timeout
         validateReceiver(recipient)
+    }
 
+    _textMenu(event) {
+
+        const getSelectedText = () => {
+            var text = "";
+            if (typeof window.getSelection != "undefined") {
+                text = window.getSelection().toString();
+            } else if (typeof this.shadowRoot.selection != "undefined" && this.shadowRoot.selection.type == "Text") {
+                text = this.shadowRoot.selection.createRange().text;
+            }
+            return text;
+        }
+
+        const checkSelectedTextAndShowMenu = () => {
+            let selectedText = getSelectedText();
+            if (selectedText && typeof selectedText === 'string') {
+
+                let _eve = { pageX: event.pageX, pageY: event.pageY, clientX: event.clientX, clientY: event.clientY }
+
+                let textMenuObject = { selectedText: selectedText, eventObject: _eve, isFrame: true }
+
+                parentEpml.request('openCopyTextMenu', textMenuObject)
+            }
+        }
+
+        checkSelectedTextAndShowMenu()
     }
 
     updateAccountBalance() {
@@ -355,10 +359,9 @@ class SendMoneyPage extends LitElement {
         parentEpml.request('apiCall', {
             url: `/addresses/balance/${this.selectedAddress.address}`
         }).then(res => {
-            // console.log(res)
             this.balance = res
-            // console.log(this.config.user.nodeSettings.pingInterval) // FIX: config not defined, so causing error... DONE: config already implemented
-            this.updateAccountBalanceTimeout = setTimeout(() => this.updateAccountBalance(), 4000) // can't use "this.config.user.nodeSettings.pingInterval" (too slow...), balance needs to be updated in real-time..
+
+            this.updateAccountBalanceTimeout = setTimeout(() => this.updateAccountBalance(), 4000)
         })
     }
 
@@ -377,7 +380,6 @@ class SendMoneyPage extends LitElement {
                 total: {}
             }
         }
-        // computed: '_getSelectedAddressInfo(addressesInfo, selectedAddress)'
         this.addressesUnconfirmedTransactions = {}
         this.addressInfoStreams = {}
         this.unconfirmedTransactionStreams = {}
@@ -391,8 +393,7 @@ class SendMoneyPage extends LitElement {
             parentEpml.subscribe('selected_address', async selectedAddress => {
                 this.selectedAddress = {}
                 selectedAddress = JSON.parse(selectedAddress)
-                // console.log('==========================SELECTED ADDRESS',selectedAddress)
-                if (!selectedAddress || Object.entries(selectedAddress).length === 0) return // Not ready yet ofc
+                if (!selectedAddress || Object.entries(selectedAddress).length === 0) return
                 this.selectedAddress = selectedAddress
                 const addr = selectedAddress.address
 
@@ -405,6 +406,27 @@ class SendMoneyPage extends LitElement {
                 this.config = JSON.parse(c)
             })
         })
+    }
+
+    firstUpdated() {
+
+        window.addEventListener("contextmenu", (event) => {
+
+            event.preventDefault();
+            this._textMenu(event)
+        });
+
+        window.addEventListener("click", () => {
+
+            parentEpml.request('closeCopyTextMenu', null)
+        });
+
+        window.onkeyup = (e) => {
+            if (e.keyCode === 27) {
+
+                parentEpml.request('closeCopyTextMenu', null)
+            }
+        }
     }
 }
 

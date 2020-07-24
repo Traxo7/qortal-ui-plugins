@@ -15,6 +15,42 @@ let nodeStatusCount = 0
 let nodeStatusRetryOnClose = false
 let nodeStateCall = false
 
+let isLoggedIn = false
+
+let oldAccountInfo
+
+parentEpml.subscribe('logged_in', loggedIn => {
+
+    if (loggedIn === 'true') {
+        isLoggedIn = true
+    } else {
+        isLoggedIn = false
+    }
+})
+
+const setAccountInfo = async (addr) => {
+
+    const names = await parentEpml.request('apiCall', {
+        url: `/names/address/${addr}`
+    })
+    const addressInfo = await parentEpml.request('apiCall', {
+        url: `/addresses/${addr}`
+    })
+
+    let accountInfo = {
+        names: names,
+        addressInfo: addressInfo
+    }
+
+    if (window.parent._.isEqual(oldAccountInfo, accountInfo) === true) {
+
+        return
+    } else {
+
+        parentEpml.request('setAccountInfo', accountInfo)
+        oldAccountInfo = accountInfo
+    }
+}
 
 const doNodeInfo = async () => {
 
@@ -136,7 +172,13 @@ const initBlockSocket = () => {
     // Message Event
     activeBlockSocket.onmessage = (e) => {
 
-        processBlock(JSON.parse(e.data))
+        processBlock(JSON.parse(e.data));
+
+        if (isLoggedIn) {
+
+            // Call Set Account Info...
+            setAccountInfo(window.parent.reduxStore.getState().app.selectedAddress.address)
+        }
     }
 
     // Closed Event

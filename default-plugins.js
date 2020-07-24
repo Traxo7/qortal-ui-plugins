@@ -1,28 +1,36 @@
-const path = require('path')
-// const generateForPlugins = require('./build.js')
-const build = require('./build.js')
-const watch = require('./watch.js')
 
-const plugins = [
-    // {
-    //     folder: path.join(__dirname, 'plugins/chat')
-    // },
-    {
-        folder: path.join(__dirname, 'plugins/core'),
-        name: 'core' // domain name
-    },
-    // {
-    //     folder: path.join(__dirname, 'plugins/rocket-chat')
-    // },
-    {
-        folder: path.join(__dirname, 'plugins/wallet'),
-        name: 'wallet'
+const PLUGINS = 'plugins'
+const BUILD = 'build'
+const WATCH = 'watch'
+
+
+/**
+ * @package Plugins Controller
+ * @param type String
+ */
+
+const pluginsController = (type) => {
+    switch (type) {
+        case PLUGINS:
+            const path = require('path')
+            const plugins = [
+                {
+                    folder: path.join(__dirname, 'plugins/core'),
+                    name: 'core'
+                }
+            ]
+            return plugins
+        case BUILD:
+            const build = require('./build.js')
+            return build
+        case WATCH:
+            const watch = require('./watch.js')
+            return watch
+        default:
+            return
     }
-]
 
-module.exports = {
-    plugins,
-    // generateForPlugins,
-    watch,
-    build
 }
+
+
+module.exports = pluginsController

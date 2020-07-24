@@ -1,8 +1,3 @@
-/* Webcomponents polyfill... https://github.com/webcomponents/webcomponentsjs#using-webcomponents-loaderjs */
-import '@webcomponents/webcomponentsjs/webcomponents-loader.js'
-/* Es6 browser but transpi;led code */
-import '@webcomponents/webcomponentsjs/custom-elements-es5-adapter.js'
-
 import { LitElement, html, css } from 'lit-element'
 import { render } from 'lit-html'
 import { Epml } from '../../../../epml.js'
@@ -353,7 +348,7 @@ class Chat extends LitElement {
         // Check for the chat ID from and render chat messages
         // Else render Welcome to Q-CHat
 
-        // TODO: DONE: Do the above in the ChatPage component
+        // TODO: DONE: Do the above in the ChatPage 
 
         return html`<chat-page myAddress=${window.parent.reduxStore.getState().app.selectedAddress.address} chatId=${chatId}></chat-page>`
     }
@@ -373,13 +368,7 @@ class Chat extends LitElement {
         this.chatHeads = chatHeadMasterList.sort(compareArgs)
     }
 
-    // UPDATE: I dont think I need this function to be a recursive function...
     getChatHeadFromState(chatObj) {
-
-        // parentEpml.request('getLocalStorage', "chat-heads").then(res => {
-        //     // console.log(res);
-
-        // })
 
         if (chatObj === undefined) {
             return
@@ -388,13 +377,6 @@ class Chat extends LitElement {
             this.chatHeadsObj = chatObj
             this.setChatHeads(chatObj)
         }
-
-        //  else if (window.parent._.isEqual(this.chatHeadsObj, chatObj) === false) {
-        //     console.log("Not calling setChatHeads...");
-        //     return
-        // } 
-
-        // setTimeout(this.getChatHeadFromStorage, 100)
     }
 
 
@@ -405,7 +387,7 @@ class Chat extends LitElement {
             let splitedUrl = decodeURI(tempUrl).split('?')
             let urlData = splitedUrl[1]
             if (urlData !== undefined) {
-                // this.fetchChatMessages(urlData)
+
                 this.chatId = urlData
             }
         }
@@ -431,6 +413,24 @@ class Chat extends LitElement {
         }
 
         let runFunctionsAfterPageLoadInterval = setInterval(runFunctionsAfterPageLoad, 100);
+
+        window.addEventListener("contextmenu", (event) => {
+
+            event.preventDefault();
+            this._textMenu(event)
+        });
+
+        window.addEventListener("click", () => {
+
+            parentEpml.request('closeCopyTextMenu', null)
+        });
+
+        window.onkeyup = (e) => {
+            if (e.keyCode === 27) {
+
+                parentEpml.request('closeCopyTextMenu', null)
+            }
+        }
 
         let configLoaded = false
         parentEpml.ready().then(() => {
@@ -533,7 +533,6 @@ class Chat extends LitElement {
 
             if (addressPublicKey.error === 102) {
                 _publicKey = false
-                // Do something here...
                 parentEpml.request('showSnackBar', "Invalid Name / Address, Check the name / address and retry...")
                 this.isLoading = false
             } else if (addressPublicKey !== false) {
@@ -613,6 +612,33 @@ class Chat extends LitElement {
 
         // Exec..
         getAddressPublicKey()
+    }
+
+    _textMenu(event) {
+
+        const getSelectedText = () => {
+            var text = "";
+            if (typeof window.getSelection != "undefined") {
+                text = window.getSelection().toString();
+            } else if (typeof this.shadowRoot.selection != "undefined" && this.shadowRoot.selection.type == "Text") {
+                text = this.shadowRoot.selection.createRange().text;
+            }
+            return text;
+        }
+
+        const checkSelectedTextAndShowMenu = () => {
+            let selectedText = getSelectedText();
+            if (selectedText && typeof selectedText === 'string') {
+
+                let _eve = { pageX: event.pageX, pageY: event.pageY, clientX: event.clientX, clientY: event.clientY }
+
+                let textMenuObject = { selectedText: selectedText, eventObject: _eve, isFrame: true }
+
+                parentEpml.request('openCopyTextMenu', textMenuObject)
+            }
+        }
+
+        checkSelectedTextAndShowMenu()
     }
 
     _textArea(e) {

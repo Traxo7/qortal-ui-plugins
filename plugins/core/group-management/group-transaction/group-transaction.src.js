@@ -1,10 +1,5 @@
-/* Webcomponents polyfill... https://github.com/webcomponents/webcomponentsjs#using-webcomponents-loaderjs */
-import '@webcomponents/webcomponentsjs/webcomponents-loader.js'
-/* Es6 browser but transpi;led code */
-import '@webcomponents/webcomponentsjs/custom-elements-es5-adapter.js'
-
 import { LitElement, html, css } from 'lit-element'
-import { render } from 'lit-html'
+// import { render } from 'lit-html'
 // import { Epml } from '../../../src/epml.js'
 import { Epml } from '../../../../epml.js'
 

@@ -1,12 +1,6 @@
 import { parentEpml } from '../connect.js'
-// import { AddressWatcher } from './AddressWatcher.js'
-// import { UnconfirmedTransactionWatcher } from './UnconfirmedTransactionWatcher.js'
 
 import { startConfigWatcher } from './onNewBlock.js'
-
-// const addrWatcher = new AddressWatcher()
-
-// const txWatcher = new UnconfirmedTransactionWatcher()
 
 const setAccountInfo = async (addr) => {
 
@@ -114,22 +108,13 @@ const chatHeadWatcher = (activeChats) => {
     }
 }
 
-
-let mostRecentBlock = { height: -1 }
-
-// const blockStream = new EpmlStream(BLOCK_STREAM_NAME, () => {
-
-//     return mostRecentBlock
-// })
-
-
-
 let socketObject
 let activeChatSocketTimeout
 let initial = 0
 let closeGracefully = false
 let onceLoggedIn = false
 let retryOnClose = false
+let canPing = false
 
 parentEpml.subscribe('logged_in', async isLoggedIn => {
 
@@ -157,6 +142,7 @@ parentEpml.subscribe('logged_in', async isLoggedIn => {
             socketObject = activeChatSocket
 
             initial = initial + 1
+            canPing = true
         }
 
         // Message Event
@@ -210,7 +196,7 @@ parentEpml.subscribe('logged_in', async isLoggedIn => {
                 initChatHeadSocket()
                 onceLoggedIn = true
                 activeChatSocketTimeout = setTimeout(pingActiveChatSocket, 295000)
-            } else {
+            } else if (canPing) {
 
                 socketObject.send('ping')
                 activeChatSocketTimeout = setTimeout(pingActiveChatSocket, 295000)
@@ -224,6 +210,7 @@ parentEpml.subscribe('logged_in', async isLoggedIn => {
                 socketObject.close()
                 clearTimeout(activeChatSocketTimeout)
                 onceLoggedIn = false
+                canPing = false
             }
         }
     }
@@ -231,21 +218,11 @@ parentEpml.subscribe('logged_in', async isLoggedIn => {
 
     if (isLoggedIn === 'true') {
 
-        // console.log('"logged_in stream" in core/main.js', isLoggedIn)
-        const addresses = await parentEpml.request('addresses')
-
         // Call Set Account Info...
         setAccountInfo(window.parent.reduxStore.getState().app.selectedAddress.address)
 
         // Start Chat Watcher Socket
         pingActiveChatSocket()
-
-        // const parsedAddresses = addresses
-
-        // addrWatcher.reset()
-        // parsedAddresses.forEach(addr => addrWatcher.addAddress(addr))
-        // txWatcher.reset()
-        // parsedAddresses.forEach(addr => txWatcher.addAddress(addr))
     } else {
 
         if (onceLoggedIn) {
@@ -254,16 +231,11 @@ parentEpml.subscribe('logged_in', async isLoggedIn => {
             socketObject.close()
             clearTimeout(activeChatSocketTimeout)
             onceLoggedIn = false
+            canPing = false
         }
 
         initialChatWatch = 0
     }
 })
 
-// onNewBlock(async block => {
-//     mostRecentBlock = block
-//     blockStream.emit(block)
-//     addrWatcher.testBlock(block)
-// })
-// check()
 startConfigWatcher()

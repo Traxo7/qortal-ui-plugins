@@ -1,11 +1,5 @@
-/* Webcomponents polyfill... https://github.com/webcomponents/webcomponentsjs#using-webcomponents-loaderjs */
-import '@webcomponents/webcomponentsjs/webcomponents-loader.js'
-/* Es6 browser but transpi;led code */
-import '@webcomponents/webcomponentsjs/custom-elements-es5-adapter.js'
-
 import { LitElement, html, css } from 'lit-element'
 import { render } from 'lit-html'
-// import { Epml } from '../../../src/epml.js'
 import { Epml } from '../../../epml.js'
 
 import '@material/mwc-icon'
@@ -13,7 +7,6 @@ import '@material/mwc-button'
 import '@material/mwc-dialog'
 
 import '@polymer/paper-spinner/paper-spinner-lite.js'
-// import * as thing from 'time-elements'
 import '@vaadin/vaadin-grid/vaadin-grid.js'
 import '@vaadin/vaadin-grid/theme/material/all-imports.js'
 
@@ -51,15 +44,6 @@ const TX_TYPES = {
 
 const parentEpml = new Epml({ type: 'WINDOW', source: window.parent })
 
-const coreEpml = new Epml({
-    type: 'PROXY',
-    source: {
-        id: 'visible-plugin',
-        target: 'core-plugin',
-        proxy: parentEpml
-    }
-})
-
 class WalletApp extends LitElement {
     static get properties() {
         return {
@@ -77,7 +61,8 @@ class WalletApp extends LitElement {
             transactions: { type: Object },
             addressInfo: { type: Object },
             balance: { type: Number },
-            selectedTransaction: { type: Object }
+            selectedTransaction: { type: Object },
+            isTextMenuOpen: { type: Boolean }
         }
     }
 
@@ -210,13 +195,14 @@ class WalletApp extends LitElement {
         this.addressInfoStreams = {}
         this.unconfirmedTransactionStreams = {}
         this.selectedTransaction = {}
+        this.isTextMenuOpen = false
 
         parentEpml.ready().then(() => {
 
             parentEpml.subscribe('selected_address', async selectedAddress => {
                 this.selectedAddress = {}
                 selectedAddress = JSON.parse(selectedAddress)
-                if (!selectedAddress || Object.entries(selectedAddress).length === 0) return // Not ready yet ofc
+                if (!selectedAddress || Object.entries(selectedAddress).length === 0) return
                 this.selectedAddress = selectedAddress
 
                 this.updateAccountTransactions()
@@ -229,12 +215,6 @@ class WalletApp extends LitElement {
     render() {
         return html`
             <div class="white-bg">
-                <div ?hidden="${!this.loading}" class="layout horizontal center" style="height:100vh;">
-                <div class="layout vertical center" style="width:100%;">
-                    <paper-spinner-lite ?active="${this.loading}" alt="Loading address"></paper-spinner-lite>
-                </div>
-                </div>
-                
                 
                 <div ?hidden="${this.loading}">
                     <div id="topbar" style="background: ; color: ; padding: 20px;">
@@ -246,7 +226,7 @@ class WalletApp extends LitElement {
                             <div>
                                 <span class="mono weight-100" style="font-size: 70px;">${this.floor(this.balance)}<span
                                         style="font-size:24px; vertical-align: top; line-height:60px;">.${this.decimals(this.balance)}
-                                        qort</span></span>
+                                        QORT</span></span>
                                 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
                             </div>
                 
@@ -349,14 +329,76 @@ class WalletApp extends LitElement {
             let myItem = myGrid.getEventContext(e).item
 
             this.showTransactionDetails(myItem, this.transactions)
-        })
+        }, { passive: true })
 
+    }
+
+    _textMenu(event) {
+
+        const getSelectedText = () => {
+            var text = "";
+            if (typeof window.getSelection != "undefined") {
+                text = window.getSelection().toString();
+            } else if (typeof this.shadowRoot.selection != "undefined" && this.shadowRoot.selection.type == "Text") {
+                text = this.shadowRoot.selection.createRange().text;
+            }
+            return text;
+        }
+
+        const checkSelectedTextAndShowMenu = () => {
+            let selectedText = getSelectedText();
+            if (selectedText && typeof selectedText === 'string') {
+
+                let _eve = { pageX: event.pageX, pageY: event.pageY, clientX: event.clientX, clientY: event.clientY }
+
+                let textMenuObject = { selectedText: selectedText, eventObject: _eve, isFrame: true }
+
+                parentEpml.request('openCopyTextMenu', textMenuObject)
+            }
+        }
+
+        checkSelectedTextAndShowMenu()
+    }
+
+    clearSelection() {
+
+        if (window.getSelection) {
+
+            window.getSelection().removeAllRanges()
+        } else if (document.selection) {
+
+            document.selection.empty()
+        }
     }
 
     firstUpdated() {
 
         // Calls the getGridTransaction func..
         this.getGridTransaction()
+
+        window.addEventListener("contextmenu", (event) => {
+
+            event.preventDefault();
+            this.isTextMenuOpen = true
+            this._textMenu(event)
+        });
+
+        window.addEventListener("click", () => {
+
+            if (this.isTextMenuOpen) {
+
+                parentEpml.request('closeCopyTextMenu', null)
+                this.clearSelection()
+                this.isTextMenuOpen = false
+            }
+        });
+
+        window.onkeyup = (e) => {
+            if (e.keyCode === 27) {
+
+                parentEpml.request('closeCopyTextMenu', null)
+            }
+        }
 
     }
 

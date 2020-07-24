@@ -1,9 +1,9 @@
 import { LitElement, html, css } from 'lit-element'
-import { Epml } from '../../../epml.js'
+// import { Epml } from '../../../epml.js'
 
 import '@github/time-elements'
 
-const parentEpml = new Epml({ type: 'WINDOW', source: window.parent })
+// const parentEpml = new Epml({ type: 'WINDOW', source: window.parent })
 
 class TimeAgo extends LitElement {
     static get properties() {
@@ -29,14 +29,14 @@ class TimeAgo extends LitElement {
 
     constructor() {
         super()
-        this.selectedAddress = {}
-        this.config = {
-            user: {
-                node: {
+        // this.selectedAddress = {}
+        // this.config = {
+        //     user: {
+        //         node: {
 
-                }
-            }
-        }
+        //         }
+        //     }
+        // }
         this.timestamp = 0
         this.timeIso = ''
     }
@@ -56,24 +56,24 @@ class TimeAgo extends LitElement {
 
 
     firstUpdated() {
-        let configLoaded = false
+        // let configLoaded = false
 
-        parentEpml.ready().then(() => {
-            parentEpml.subscribe('selected_address', async selectedAddress => {
-                this.selectedAddress = {}
-                selectedAddress = JSON.parse(selectedAddress)
-                if (!selectedAddress || Object.entries(selectedAddress).length === 0) return
-                this.selectedAddress = selectedAddress
-            })
-            parentEpml.subscribe('config', c => {
-                if (!configLoaded) {
-                    configLoaded = true
-                }
-                this.config = JSON.parse(c)
-            })
-        })
+        // parentEpml.ready().then(() => {
+        //     parentEpml.subscribe('selected_address', async selectedAddress => {
+        //         this.selectedAddress = {}
+        //         selectedAddress = JSON.parse(selectedAddress)
+        //         if (!selectedAddress || Object.entries(selectedAddress).length === 0) return
+        //         this.selectedAddress = selectedAddress
+        //     })
+        //     parentEpml.subscribe('config', c => {
+        //         if (!configLoaded) {
+        //             configLoaded = true
+        //         }
+        //         this.config = JSON.parse(c)
+        //     })
+        // })
 
-        parentEpml.imReady()
+        // parentEpml.imReady()
     }
 
 }

@@ -3,6 +3,7 @@ import { Epml } from '../../../epml.js'
 
 // Components
 // import './ChatMessage.js'
+import './ChatScroller.js'
 import './TimeAgo.js'
 
 import '@polymer/paper-spinner/paper-spinner-lite.js'
@@ -15,31 +16,27 @@ class ChatPage extends LitElement {
             selectedAddress: { type: Object },
             config: { type: Object },
             messages: { type: Array },
+            _messages: { type: Array },
             newMessages: { type: Array },
             chatId: { type: String },
             myAddress: { type: String },
             isReceipient: { type: Boolean },
             isLoading: { type: Boolean },
             sendTimestamp: { type: Number },
-            oldChatHead: { type: Object },
-            _publicKey: { type: String },
-            accountInfo: { type: Object },
+            _publicKey: { type: Object },
             balance: { type: Number },
             socketTimeout: { type: Number },
-            messageSignature: { type: String }
+            messageSignature: { type: String }, // maybe use this as an ID for each message, but also considering its length
+            _initialMessages: { type: Array },
+            isUserDown: { type: Boolean }
         }
     }
 
     static get styles() {
         return css`
-        ul {
-            list-style: none;
-            padding: 20px;
-        }
-        .chat-list {
-            overflow-y: auto;
-            height: 84vh;
-            box-sizing: border-box;
+
+        html {
+            scroll-behavior: smooth;
         }
         .chat-message {
             padding: 10px;
@@ -55,6 +52,8 @@ class ChatPage extends LitElement {
             width: 80%;
             border: none;
             display: inline-block;
+            overflow: auto;
+            outline: none;
             font-size: 16px;
             padding: 10px 20px;
             border-radius: 5px;
@@ -77,85 +76,7 @@ class ChatPage extends LitElement {
         .chat-message button:hover {
             color: #75b1e8;
         }
-        .message-data {
-            margin-bottom: 15px;
-        }
 
-        .message-data-time {
-            color: #a8aab1;
-            font-size: 13px;
-            padding-left: 6px;
-        }
-
-        .message {
-            color: black;
-            padding: 12px 10px;
-            line-height: 19px;
-            white-space: pre-wrap;
-            white-space: break-spaces;
-            word-wrap: break-word;
-            -webkit-user-select: text;
-            -moz-user-select: text;
-            -ms-user-select: text;
-            user-select: text;
-            font-size: 16px;
-            border-radius: 7px;
-            margin-bottom: 20px;
-            width: 90%;
-            position: relative;
-        }
-
-        .message:after {
-            bottom: 100%;
-            left: 93%;
-            border: solid transparent;
-            content: " ";
-            height: 0;
-            width: 0;
-            position: absolute;
-            white-space: pre-line;
-            word-wrap: break-word;
-            pointer-events: none;
-            border-bottom-color: #ddd;
-            border-width: 10px;
-            margin-left: -10px;
-        }
-
-        .my-message {
-            background: #ddd;
-            border: 2px #ccc solid;
-        }
-
-        .other-message {
-            background: #f1f1f1;
-            border: 2px solid #dedede;
-        }
-
-        .other-message:after {
-            border-bottom-color: #f1f1f1;
-            left: 7%;
-        }
-
-        .align-left {
-            text-align: left;
-        }
-
-        .align-right {
-            text-align: right;
-        }
-
-        .float-right {
-            float: right;
-        }
-
-        .clearfix:after {
-            visibility: hidden;
-            display: block;
-            font-size: 0;
-            content: " ";
-            clear: both;
-            height: 0;
-        }
         `
     }
 
@@ -173,64 +94,129 @@ class ChatPage extends LitElement {
 
     constructor() {
         super()
-        this.selectedAddress = {}
-        this.config = {
-            user: {
-                node: {
 
-                }
-            }
-        }
+        /**
+         * Bindings
+         */
+        // this.getNewMessage = this.getNewMessage.bind(this)
+        this.getOldMessage = this.getOldMessage.bind(this)
+        this._sendMessage = this._sendMessage.bind(this)
+        this._downObserverhandler = this._downObserverhandler.bind(this)
+
+
+        this.selectedAddress = {}
         this.chatId = ''
         this.myAddress = ''
         this.messages = []
-        this.oldChatHead = {}
-        this.accountInfo = {
-            names: [],
-            addressInfo: {}
-        }
+        this._messages = []
         this.newMessages = []
-        this._publicKey = ''
+        this._publicKey = { key: '', hasPubKey: false }
         this.messageSignature = ''
+        this._initialMessages = []
         this.balance = 1
         this.sendTimestamp = 0
         this.isReceipient = false
+        this.isLoadingMessages = true
         this.isLoading = false
+        this.isUserDown = false
     }
 
     render() {
 
         // TODO: Build a nice preloader for loading messages...
-        // TODO: DONE: Add a sendto name to message box..
         return html`
-            <div>
-                <ul class="chat-list clearfix">
-                    ${html`${this.renderChatMessages(this.messages)}`}
-                </ul>
-                <div class="chat-message clearfix">
-                    <textarea @keydown=${(e) => this._textArea(e)} ?disabled=${this.isLoading} id="messageBox" placeholder="Message${this.isReceipient === true ? ` ${this._chatId}` : '...'}" rows="1"></textarea>
-                    <button ?disabled=${this.isLoading} @click=${() => this._sendMessage()} >${this.isLoading === false ? "Send" : html`<paper-spinner-lite active></paper-spinner-lite>`}</button>
+            ${this.isLoadingMessages ? html`<h1>Loading Messages...</h1>` : this.renderChatScroller(this._initialMessages)}
 
-                </div>
+            <div class="chat-message clearfix">
+                <textarea tabindex='1' ?autofocus=${true} @keydown=${(e) => this._textArea(e)} ?disabled=${this.isLoading || this.isLoadingMessages} id="messageBox" placeholder="Message${this.isReceipient === true ? ` ${this._chatId}` : '...'}" rows="1"></textarea>
+                <button ?disabled=${this.isLoading || this.isLoadingMessages} @click=${() => this._sendMessage()} >${this.isLoading === false ? "Send" : html`<paper-spinner-lite active></paper-spinner-lite>`}</button>
             </div>
         `
     }
 
-    _renderChatMessages(messageObj) {
+    renderChatScroller(initialMessages) {
 
-        return html`
-            <li class="clearfix">
-                <div class="message-data ${messageObj.sender === this.selectedAddress.address ? "align-right" : ""}">
-                    <span class="message-data-name">${messageObj.senderName ? messageObj.senderName : messageObj.sender}</span>
-                    <span class="message-data-time"><message-time timestamp=${messageObj.timestamp}></message-time></span>
-
-                </div>
-                <div class="message ${messageObj.sender === this.selectedAddress.address ? "my-message float-right" : "other-message"}">${messageObj.decodedMessage}</div>
-            </li>
-        `
+        return html`<chat-scroller .initialMessages=${initialMessages} .getOldMessage=${this.getOldMessage} > </chat-scroller>`
     }
 
-    _renderNewMessages(messageObj) {
+    getOldMessage(scrollElement) {
+
+        if (this._messages.length <= 15 && this._messages.length >= 1) { // 15 is the default number of messages...
+
+            let __msg = [...this._messages]
+            this._messages = []
+
+            return { oldMessages: __msg, scrollElement: scrollElement }
+        } else if (this._messages.length > 15) {
+
+            return { oldMessages: this._messages.splice(this._messages.length - 15), scrollElement: scrollElement }
+        } else {
+
+            return false
+        }
+    }
+
+    processMessages(messages, isInitial) {
+
+        if (isInitial) {
+
+            this.messages = messages.map((eachMessage) => {
+
+                if (eachMessage.isText === true) {
+                    this.messageSignature = eachMessage.signature
+                    let _eachMessage = this.decodeMessage(eachMessage)
+                    return _eachMessage
+                }
+            })
+
+            this._messages = [...this.messages]
+
+            const adjustMessages = () => {
+
+                let __msg = [...this._messages]
+                this._messages = []
+                this._initialMessages = __msg
+            }
+
+            // TODO: Determine number of initial messages by screen height...
+            this._messages.length <= 15 ? adjustMessages() : this._initialMessages = this._messages.splice(this._messages.length - 15);
+
+            this.isLoadingMessages = false
+            setTimeout(() => this.downElementObserver(), 500)
+        } else {
+
+            let _newMessages = messages.map((eachMessage) => {
+
+                if (eachMessage.isText === true) {
+                    let _eachMessage = this.decodeMessage(eachMessage)
+
+                    if (this.messageSignature !== eachMessage.signature) {
+
+                        this.messageSignature = eachMessage.signature
+
+                        // What are we waiting for, send in the message immediately...
+                        this.renderNewMessage(_eachMessage)
+                    }
+
+                    return _eachMessage
+                }
+            })
+
+            this.newMessages = this.newMessages.concat(_newMessages)
+
+        }
+
+
+    }
+
+    /**
+    * New Message Template implementation, takes in a message object.
+    * @param { Object } messageObj
+    * @property id or index
+    * @property sender and other info..
+    */
+
+    newMessageRow(messageObj) {
 
         return `
             <li class="clearfix">
@@ -244,55 +230,30 @@ class ChatPage extends LitElement {
         `
     }
 
-    renderChatMessages(messages) {
+    renderNewMessage(newMessage) {
 
-        return messages.map((eachMessage, index, msgArray) => {
-            if (msgArray.length - 1 === index) {
+        const viewElement = this.shadowRoot.querySelector('chat-scroller').shadowRoot.getElementById('viewElement')
+        const downObserver = this.shadowRoot.querySelector('chat-scroller').shadowRoot.getElementById('downObserver')
+        const li = document.createElement('li');
+        li.innerHTML = this.newMessageRow(newMessage)
+        li.id = newMessage.signature
+        li.firstElementChild.firstElementChild.nextElementSibling.textContent = newMessage.decodedMessage;
 
-                this.scrollDownPage()
-                if (eachMessage.isText === true) {
-                    this.messageSignature = eachMessage.signature
-                    let _eachMessage = this.decodeMessage(eachMessage)
-                    return html`${this._renderChatMessages(_eachMessage)}`
-                }
-            } else {
-                if (eachMessage.isText === true) {
-                    this.messageSignature = eachMessage.signature
-                    let _eachMessage = this.decodeMessage(eachMessage)
-                    return html`${this._renderChatMessages(_eachMessage)}`
-                }
-            }
-        })
-    }
+        if (newMessage.sender === this.selectedAddress.address) {
 
-    renderNewMessages(newMessages) {
+            viewElement.insertBefore(li, downObserver)
+            viewElement.scrollTop = viewElement.scrollHeight
+        } else {
 
-        let eachMessage = newMessages[0]
-
-        // newMessages.forEach(eachMessage => {
-        if (this.messageSignature !== eachMessage.signature) {
-            this.messageSignature = eachMessage.signature
-            if (eachMessage.isText === true) {
-                let _eachMessage = this.decodeMessage(eachMessage)
-                this._updateChatHistory(_eachMessage)
-            }
+            viewElement.insertBefore(li, downObserver)
         }
-        // })
     }
 
-    _updateChatHistory(newMessage) {
-        const ul = this.shadowRoot.querySelector('ul')
-        const li = document.createElement('li')
-
-        if (newMessage.sender) {
-
-            li.innerHTML = this._renderNewMessages(newMessage)
-            li.firstElementChild.firstElementChild.nextElementSibling.textContent = newMessage.decodedMessage
-            ul.append(li)
-            this.scrollDownPage()
-        }
-
-    }
+    /**
+     *  Decode Message Method. Takes in a message object and returns a decoded message object
+     * @param {Object} encodedMessageObj 
+     * 
+     */
 
     decodeMessage(encodedMessageObj) {
         let decodedMessageObj = {}
@@ -300,14 +261,17 @@ class ChatPage extends LitElement {
         if (this.isReceipient === true) {
             // direct chat
 
-            if (encodedMessageObj.isEncrypted === true && this._publicKey !== false) {
-                let decodedMessage = window.parent.decryptChatMessage(encodedMessageObj.data, window.parent.reduxStore.getState().app.selectedAddress.keyPair.privateKey, this._publicKey, encodedMessageObj.reference)
+            if (encodedMessageObj.isEncrypted === true && this._publicKey.hasPubKey === true) {
+
+                let decodedMessage = window.parent.decryptChatMessage(encodedMessageObj.data, window.parent.reduxStore.getState().app.selectedAddress.keyPair.privateKey, this._publicKey.key, encodedMessageObj.reference)
                 decodedMessageObj = { ...encodedMessageObj, decodedMessage }
             } else if (encodedMessageObj.isEncrypted === false) {
+
                 let bytesArray = window.parent.Base58.decode(encodedMessageObj.data)
                 let decodedMessage = new TextDecoder('utf-8').decode(bytesArray)
                 decodedMessageObj = { ...encodedMessageObj, decodedMessage }
             } else {
+
                 decodedMessageObj = { ...encodedMessageObj, decodedMessage: "Cannot Decrypt Message!" }
             }
 
@@ -357,10 +321,13 @@ class ChatPage extends LitElement {
             directSocket.onmessage = (e) => {
 
                 if (initial === 0) {
-                    this.messages = JSON.parse(e.data)
+
+                    this.isLoadingMessages = true
+                    this.processMessages(JSON.parse(e.data), true)
                     initial = initial + 1
                 } else {
-                    this.renderNewMessages(JSON.parse(e.data))
+
+                    this.processMessages(JSON.parse(e.data), false)
                 }
             }
 
@@ -416,10 +383,13 @@ class ChatPage extends LitElement {
             groupSocket.onmessage = (e) => {
 
                 if (initial === 0) {
-                    this.messages = JSON.parse(e.data)
+
+                    this.isLoadingMessages = true
+                    this.processMessages(JSON.parse(e.data), true)
                     initial = initial + 1
                 } else {
-                    this.renderNewMessages(JSON.parse(e.data))
+
+                    this.processMessages(JSON.parse(e.data), false)
                 }
             }
 
@@ -472,16 +442,13 @@ class ChatPage extends LitElement {
             parentEpml.request('showSnackBar', "Maximum Characters per message is 255")
         } else {
 
-            this.sendMessage()
+            this.sendMessage(messageBox, messageText)
         }
     }
 
-    async sendMessage(e) {
+    async sendMessage(messageBox, messageText) {
 
         this.isLoading = true
-
-        const messageBox = this.shadowRoot.getElementById('messageBox')
-        const messageText = messageBox.value
 
         let _reference = new Uint8Array(64);
         window.crypto.getRandomValues(_reference);
@@ -501,11 +468,11 @@ class ChatPage extends LitElement {
                     params: {
                         timestamp: this.sendTimestamp,
                         recipient: this._chatId,
-                        recipientPublicKey: this._publicKey,
+                        recipientPublicKey: this._publicKey.key,
                         message: messageText,
                         lastReference: reference,
                         proofOfWorkNonce: 0,
-                        isEncrypted: 1,
+                        isEncrypted: this._publicKey.hasPubKey === false ? 0 : 1,
                         isText: 1
                     }
                 })
@@ -522,7 +489,7 @@ class ChatPage extends LitElement {
                         message: messageText,
                         lastReference: reference,
                         proofOfWorkNonce: 0,
-                        isEncrypted: 0,
+                        isEncrypted: 0, // Set default to be not encrypted for groups
                         isText: 1
                     }
                 })
@@ -565,8 +532,8 @@ class ChatPage extends LitElement {
 
             if (response === true) {
                 messageBox.value = ""
-                this.scrollDownPage()
                 this.isLoading = false
+                // messageBox.focus()
             } else if (response.error) {
                 parentEpml.request('showSnackBar', response.message)
                 this.isLoading = false
@@ -582,12 +549,11 @@ class ChatPage extends LitElement {
         sendMessageRequest()
     }
 
-    scrollDownPage() {
-        const ul = this.shadowRoot.querySelector('ul')
-        ul.scrollTop = ul.scrollHeight
 
-        this.shadowRoot.getElementById('messageBox').focus()
-    }
+    /**
+     *  _textArea Method gets called whenver a user presses a key in the textarea
+     * @param {Event} e - where e is the event object
+     */
 
     _textArea(e) {
 
@@ -595,10 +561,54 @@ class ChatPage extends LitElement {
     }
 
 
+    /**
+     * Method to set if the user's location is down in the chat
+     * @param { Boolean } isDown 
+     */
+
+    setIsUserDown(isDown) {
+
+        this.isUserDown = isDown
+        // console.log(this.isUserDown);
+    }
+
+    _downObserverhandler(entries) {
+
+        if (entries[0].isIntersecting) {
+
+            this.setIsUserDown(true)
+        } else {
+
+            this.setIsUserDown(false)
+        }
+    }
+
+    downElementObserver() {
+        const downObserver = this.shadowRoot.querySelector('chat-scroller').shadowRoot.getElementById('downObserver')
+
+        const options = {
+            root: this.shadowRoot.getElementById('viewElement'),
+            rootMargin: '500px',
+            threshold: 1
+        }
+        const observer = new IntersectionObserver(this._downObserverhandler, options)
+        observer.observe(downObserver)
+    }
+
+
     firstUpdated() {
-        let configLoaded = false
 
         // TODO: Load and fetch messages from localstorage (maybe save messages to localstorage...)
+
+        const textarea = this.shadowRoot.getElementById('messageBox')
+        document.onkeypress = (e) => {
+
+            if (textarea.matches(':focus')) {
+                // ...
+            } else {
+                textarea.focus()
+            }
+        }
 
         const getAddressPublicKey = () => {
 
@@ -606,14 +616,22 @@ class ChatPage extends LitElement {
                 type: 'api',
                 url: `/addresses/publickey/${this._chatId}`
             }).then(res => {
-                this._publicKey = res
 
                 if (res.error === 102) {
-                    this._publicKey = false
+
+                    this._publicKey.key = ''
+                    this._publicKey.hasPubKey = false
+                    this.fetchChatMessages(this._chatId)
                 } else if (res !== false) {
-                    this._publicKey = res
+
+                    this._publicKey.key = res
+                    this._publicKey.hasPubKey = true
+                    this.fetchChatMessages(this._chatId)
                 } else {
-                    this._publicKey = false
+
+                    this._publicKey.key = ''
+                    this._publicKey.hasPubKey = false
+                    this.fetchChatMessages(this._chatId)
                 }
             })
         };
@@ -622,10 +640,13 @@ class ChatPage extends LitElement {
             this.chatId.includes('direct') === true ? this.isReceipient = true : this.isReceipient = false
             this._chatId = this.chatId.split('/')[1]
 
-            this.fetchChatMessages(this._chatId)
             if (this.isReceipient) {
                 getAddressPublicKey()
+            } else {
+
+                this.fetchChatMessages(this._chatId)
             }
+
         }, 100)
 
         parentEpml.ready().then(() => {
@@ -634,16 +655,6 @@ class ChatPage extends LitElement {
                 selectedAddress = JSON.parse(selectedAddress)
                 if (!selectedAddress || Object.entries(selectedAddress).length === 0) return
                 this.selectedAddress = selectedAddress
-            })
-            parentEpml.subscribe('config', c => {
-                if (!configLoaded) {
-                    configLoaded = true
-                }
-                this.config = JSON.parse(c)
-            })
-            parentEpml.request('getAccountInfo', null).then(res => {
-
-                this.accountInfo = res
             })
             parentEpml.request('apiCall', {
                 url: `/addresses/balance/${window.parent.reduxStore.getState().app.selectedAddress.address}`

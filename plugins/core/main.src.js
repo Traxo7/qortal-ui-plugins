@@ -99,17 +99,7 @@ parentEpml.ready().then(() => {
             page: 'group-management/index.html',
             title: 'Group Management',
             icon: 'group',
-            menus: [
-                {
-                    url: 'group-transaction',
-                    domain: 'core',
-                    page: 'group-management/group-transaction/index.html',
-                    title: 'Group Transaction',
-                    icon: 'toc',
-                    menus: [],
-                    parent: false
-                }
-            ],
+            menus: [],
             parent: false
         }
     ]
@@ -145,7 +135,6 @@ parentEpml.ready().then(() => {
     })
 
     parentEpml.subscribe('selected_address', addr => {
-        // console.log('RECEIVED SELECTED ADDRESS STREAM')
         address = addr.address
         pingAirdropServer()
     })

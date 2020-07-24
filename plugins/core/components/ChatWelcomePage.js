@@ -160,14 +160,7 @@ class ChatWelcomePage extends LitElement {
 
     constructor() {
         super()
-        this.selectedAddress = {}
-        this.config = {
-            user: {
-                node: {
-
-                }
-            }
-        }
+        this.selectedAddress = window.parent.reduxStore.getState().app.selectedAddress.address
         this.myAddress = {}
         this.balance = 1
         this.btnDisable = false
@@ -386,18 +379,6 @@ class ChatWelcomePage extends LitElement {
         let configLoaded = false
 
         parentEpml.ready().then(() => {
-            parentEpml.subscribe('selected_address', async selectedAddress => {
-                this.selectedAddress = {}
-                selectedAddress = JSON.parse(selectedAddress)
-                if (!selectedAddress || Object.entries(selectedAddress).length === 0) return
-                this.selectedAddress = selectedAddress
-            })
-            parentEpml.subscribe('config', c => {
-                if (!configLoaded) {
-                    configLoaded = true
-                }
-                this.config = JSON.parse(c)
-            })
             parentEpml.request('apiCall', {
                 url: `/addresses/balance/${window.parent.reduxStore.getState().app.selectedAddress.address}`
             }).then(res => {
@@ -408,7 +389,6 @@ class ChatWelcomePage extends LitElement {
 
         parentEpml.imReady()
     }
-
 
 }
 

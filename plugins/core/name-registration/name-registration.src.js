@@ -1,10 +1,8 @@
-/* Webcomponents polyfill... https://github.com/webcomponents/webcomponentsjs#using-webcomponents-loaderjs */
-import '@webcomponents/webcomponentsjs/webcomponents-loader.js'
-/* Es6 browser but transpi;led code */
-import '@webcomponents/webcomponentsjs/custom-elements-es5-adapter.js'
+// import '@webcomponents/webcomponentsjs/webcomponents-loader.js'
+// /* Es6 browser but transpi;led code */
+// import '@webcomponents/webcomponentsjs/custom-elements-es5-adapter.js'
 
 import { LitElement, html, css } from 'lit-element'
-// import { Epml } from '../../../src/epml.js'
 import { Epml } from '../../../epml.js'
 
 import '@material/mwc-icon'
@@ -13,8 +11,6 @@ import '@material/mwc-textfield'
 import '@material/mwc-dialog'
 
 import '@polymer/paper-spinner/paper-spinner-lite.js'
-// import '@polymer/paper-input/paper-input.js'
-// import * as thing from 'time-elements'
 import '@vaadin/vaadin-grid/vaadin-grid.js'
 import '@vaadin/vaadin-grid/theme/material/all-imports.js'
 
@@ -153,6 +149,24 @@ class NameRegistration extends LitElement {
         // Call getNamesGrid
         // this.getNamesGrid()
 
+        window.addEventListener("contextmenu", (event) => {
+
+            event.preventDefault();
+            this._textMenu(event)
+        });
+
+        window.addEventListener("click", () => {
+
+            parentEpml.request('closeCopyTextMenu', null)
+        });
+
+        window.onkeyup = (e) => {
+            if (e.keyCode === 27) {
+
+                parentEpml.request('closeCopyTextMenu', null)
+            }
+        }
+
         const fetchNames = () => {
             // console.log('=========================================')
             parentEpml.request('apiCall', {
@@ -267,6 +281,33 @@ class NameRegistration extends LitElement {
         validateReceiver()
 
         this.registerNameLoading = false
+    }
+
+    _textMenu(event) {
+
+        const getSelectedText = () => {
+            var text = "";
+            if (typeof window.getSelection != "undefined") {
+                text = window.getSelection().toString();
+            } else if (typeof this.shadowRoot.selection != "undefined" && this.shadowRoot.selection.type == "Text") {
+                text = this.shadowRoot.selection.createRange().text;
+            }
+            return text;
+        }
+
+        const checkSelectedTextAndShowMenu = () => {
+            let selectedText = getSelectedText();
+            if (selectedText && typeof selectedText === 'string') {
+
+                let _eve = { pageX: event.pageX, pageY: event.pageY, clientX: event.clientX, clientY: event.clientY }
+
+                let textMenuObject = { selectedText: selectedText, eventObject: _eve, isFrame: true }
+
+                parentEpml.request('openCopyTextMenu', textMenuObject)
+            }
+        }
+
+        checkSelectedTextAndShowMenu()
     }
 
     isEmptyArray(arr) {
