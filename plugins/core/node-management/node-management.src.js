@@ -577,8 +577,10 @@ class NodeManagement extends LitElement {
 
     let configLoaded = false;
     parentEpml.ready().then(() => {
-      parentEpml.subscribe("config", (c) => {
+      parentEpml.subscribe("config", async c => {
+
         if (!configLoaded) {
+
           setTimeout(getNodeUpTime, 1);
           setTimeout(updatePeers, 1);
           setTimeout(this.updateMintingAccounts, 1);
@@ -586,10 +588,23 @@ class NodeManagement extends LitElement {
           configLoaded = true;
         }
         this.config = JSON.parse(c);
-      });
+      })
+      parentEpml.subscribe('copy_menu_switch', async value => {
+
+        if (value === 'false' && window.getSelection().toString().length !== 0) {
+
+          this.clearSelection()
+        }
+      })
     });
 
     parentEpml.imReady();
+  }
+
+  clearSelection() {
+
+    window.getSelection().removeAllRanges()
+    window.parent.getSelection().removeAllRanges()
   }
 
   isEmptyArray(arr) {

@@ -1,6 +1,6 @@
 {
   "name": "qortal-ui-plugins",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "main": "default-plugins.js",
   "repository": "https://github.com/QORT/qortal-ui-plugins.git",
   "author": "QORTAL <admin@qortal.org>",

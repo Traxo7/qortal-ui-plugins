@@ -142,7 +142,7 @@ class GroupManagement extends LitElement {
                         <vaadin-grid-column path="groupName"></vaadin-grid-column>
                         <vaadin-grid-column header="Description" path="description"></vaadin-grid-column>
                         <vaadin-grid-column path="owner"></vaadin-grid-column>
-                        <vaadin-grid-column header="Action" .renderer=${(root, column, data) => {
+                        <vaadin-grid-column width="9.8rem" flex-grow="0" header="Action" .renderer=${(root, column, data) => {
                 render(html`<mwc-button @click=${() => this.joinGroup(data.item)}><mwc-icon>queue</mwc-icon>Join</mwc-button>`, root)
             }}></vaadin-grid-column>
                     </vaadin-grid>
@@ -157,10 +157,10 @@ class GroupManagement extends LitElement {
                     <vaadin-grid id="joinedGroupsGrid" style="height:auto;" ?hidden="${this.isEmptyArray(this.joinedGroups)}" aria-label="Joined Groups" .items="${this.joinedGroups}" height-by-rows>
                         <vaadin-grid-column header="Name" path="groupName"></vaadin-grid-column>
                         <vaadin-grid-column header="Description" path="description"></vaadin-grid-column>
-                        <vaadin-grid-column header="Role" .renderer=${(root, column, data) => {
+                        <vaadin-grid-column width="9.8rem" flex-grow="0" header="Role" .renderer=${(root, column, data) => {
                 render(html`${this.renderRole(data.item)}`, root)
             }}></vaadin-grid-column>
-                        <vaadin-grid-column header="Action" .renderer=${(root, column, data) => {
+                        <vaadin-grid-column width="9.8rem" flex-grow="0" header="Action" .renderer=${(root, column, data) => {
                 render(html`${this.renderManageButton(data.item)}`, root)
             }}></vaadin-grid-column>
                     </vaadin-grid>
@@ -510,6 +510,13 @@ class GroupManagement extends LitElement {
                 }
                 this.config = JSON.parse(c)
             })
+            parentEpml.subscribe('copy_menu_switch', async value => {
+
+                if (value === 'false' && window.getSelection().toString().length !== 0) {
+
+                    this.clearSelection()
+                }
+            })
         })
 
 
@@ -686,6 +693,12 @@ class GroupManagement extends LitElement {
         validateReceiver()
 
         this.resetDefaultSettings()
+    }
+
+    clearSelection() {
+
+        window.getSelection().removeAllRanges()
+        window.parent.getSelection().removeAllRanges()
     }
 
     isEmptyArray(arr) {

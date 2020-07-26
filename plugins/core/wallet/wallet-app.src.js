@@ -209,6 +209,15 @@ class WalletApp extends LitElement {
                 this.updateAccountBalance()
             })
 
+            parentEpml.subscribe('copy_menu_switch', async value => {
+
+                if (value === 'false' && this.isTextMenuOpen === true) {
+
+                    this.clearSelection()
+                    this.isTextMenuOpen = false
+                }
+            })
+
         })
     }
 
@@ -362,13 +371,8 @@ class WalletApp extends LitElement {
 
     clearSelection() {
 
-        if (window.getSelection) {
-
-            window.getSelection().removeAllRanges()
-        } else if (document.selection) {
-
-            document.selection.empty()
-        }
+        window.getSelection().removeAllRanges()
+        window.parent.getSelection().removeAllRanges()
     }
 
     firstUpdated() {
@@ -388,8 +392,6 @@ class WalletApp extends LitElement {
             if (this.isTextMenuOpen) {
 
                 parentEpml.request('closeCopyTextMenu', null)
-                this.clearSelection()
-                this.isTextMenuOpen = false
             }
         });
 
@@ -408,8 +410,6 @@ class WalletApp extends LitElement {
             url: `/transactions/search?address=${this.selectedAddress.address}&confirmationStatus=BOTH&limit=20&reverse=true`
         }).then(res => {
             this.transactions = res
-            // I made the API call return a reversed result so I can reduce complexity... 
-            // this.transactions.reverse() // Not needed
             this.updateAccountTransactionTimeout = setTimeout(() => this.updateAccountTransactions(), 5000)
         })
     }

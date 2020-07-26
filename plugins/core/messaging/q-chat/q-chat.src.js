@@ -423,12 +423,15 @@ class Chat extends LitElement {
         window.addEventListener("click", () => {
 
             parentEpml.request('closeCopyTextMenu', null)
+            parentEpml.request('closeFramePasteMenu', null)
         });
 
         window.onkeyup = (e) => {
             if (e.keyCode === 27) {
 
                 parentEpml.request('closeCopyTextMenu', null)
+                parentEpml.request('closeFramePasteMenu', null)
+
             }
         }
 
@@ -456,6 +459,13 @@ class Chat extends LitElement {
                 url: `/addresses/balance/${window.parent.reduxStore.getState().app.selectedAddress.address}`
             }).then(res => {
                 this.balance = res
+            })
+            parentEpml.subscribe('copy_menu_switch', async value => {
+
+                if (value === 'false' && window.getSelection().toString().length !== 0) {
+
+                    this.clearSelection()
+                }
             })
         })
 
@@ -644,6 +654,12 @@ class Chat extends LitElement {
     _textArea(e) {
 
         if (e.keyCode === 13 && !e.shiftKey) this._sendMessage()
+    }
+
+    clearSelection() {
+
+        window.getSelection().removeAllRanges()
+        window.parent.getSelection().removeAllRanges()
     }
 
     onPageNavigation(pageUrl) {

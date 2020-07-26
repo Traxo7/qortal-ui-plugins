@@ -1,4 +1,5 @@
 import { LitElement, html, css } from 'lit-element'
+import { render } from 'lit-html'
 import { Epml } from '../../../epml.js'
 
 import '@material/mwc-icon'
@@ -25,9 +26,7 @@ class RewardShare extends LitElement {
             removeRewardShareLoading: { type: Boolean },
             rewardSharePercentage: { type: Number },
             error: { type: Boolean },
-            message: { type: String },
-            removeError: { type: Boolean },
-            removeMessage: { type: String }
+            message: { type: String }
         }
     }
 
@@ -50,6 +49,10 @@ class RewardShare extends LitElement {
             h2, h3, h4, h5 {
                 color:#333;
                 font-weight: 400;
+            }
+
+            .red {
+                --mdc-theme-primary: #F44336;
             }
         `
     }
@@ -78,6 +81,9 @@ class RewardShare extends LitElement {
                     <vaadin-grid-column width="7.8rem" flex-grow="0" path="sharePercent"></vaadin-grid-column>
                     <vaadin-grid-column path="recipient"></vaadin-grid-column>
                     <vaadin-grid-column path="rewardSharePublicKey"></vaadin-grid-column>
+                    <vaadin-grid-column width="9.8rem" flex-grow="0" header="Action" .renderer=${(root, column, data) => {
+                render(html`${this.renderRemoveRewardShareButton(data.item)}`, root)
+            }}></vaadin-grid-column>
                 </vaadin-grid>
 
                 <mwc-dialog id="createRewardShareDialog" scrimClickAction="${this.createRewardShareLoading ? '' : 'close'}">
@@ -129,40 +135,6 @@ class RewardShare extends LitElement {
                     </mwc-button>
                 </mwc-dialog>
 
-                <!-- Remove Minting Account Dialog -->
-                <mwc-dialog id="removeRewardShareDialog" scrimClickAction="${this.removeRewardShareLoading ? '' : 'close'}">
-                    <div>Type the Recipient Public Key to stop sponsoring this account.</div>
-                    <br>
-                    <mwc-textfield style="width:100%;" ?disabled="${this.removeRewardShareLoading}" label="Recipient Public Key" id="myRecipientPublicKey"></mwc-textfield>
-                    <div style="text-align:right; height:36px;">
-                        <span ?hidden="${!this.removeRewardShareLoading}">
-                            <!-- loading message -->
-                            Removing &nbsp;
-                            <paper-spinner-lite
-                                style="margin-top:12px;"
-                                ?active="${this.removeRewardShareLoading}"
-                                alt="Removing Reward Share"></paper-spinner-lite>
-                        </span>
-                        <span ?hidden=${this.removeMessage === ''} style="${this.removeError ? 'color:red;' : ''}">
-                            ${this.removeMessage}
-                        </span>
-                    </div>
-                    <mwc-button
-                        ?disabled="${this.removeRewardShareLoading}"
-                        slot="primaryAction"
-                        @click=${this.removeRewardShare}
-                        >
-                        Remove
-                    </mwc-button>
-                    <mwc-button
-                        ?disabled="${this.removeRewardShareLoading}"
-                        slot="secondaryAction"
-                        dialogAction="cancel"
-                        class="red">
-                        Close
-                    </mwc-button>
-                </mwc-dialog>
-
                 ${this.isEmptyArray(this.rewardShares) ? html`
                     Account is not involved in any reward shares
                 `: ''}
@@ -170,22 +142,17 @@ class RewardShare extends LitElement {
         `
     }
 
-    getAccountRewardSharesGrid() {
+    renderRemoveRewardShareButton(rewardShareObject) {
 
-        const myGrid = this.shadowRoot.querySelector('#accountRewardSharesGrid')
+        if (rewardShareObject.mintingAccount === this.selectedAddress.address) {
 
-        myGrid.addEventListener('click', (e) => {
-
-            this.tempMintingAccount = myGrid.getEventContext(e).item
-            this.shadowRoot.querySelector('#removeRewardShareDialog').show()
-        })
+            return html`<mwc-button class="red" ?disabled=${this.removeRewardShareLoading} @click=${() => this.removeRewardShare(rewardShareObject)}><mwc-icon>create</mwc-icon>Remove</mwc-button>`
+        } else {
+            return ""
+        }
     }
 
-
     firstUpdated() {
-
-        // Call getAccountRewardSharesGrid
-        this.getAccountRewardSharesGrid()
 
         window.addEventListener("contextmenu", (event) => {
 
@@ -204,6 +171,8 @@ class RewardShare extends LitElement {
                 parentEpml.request('closeCopyTextMenu', null)
             }
         }
+
+        const textBox = this.shadowRoot.getElementById("recipientPublicKey")
 
         const updateRewardshares = () => {
 
@@ -232,9 +201,57 @@ class RewardShare extends LitElement {
                 }
                 this.config = JSON.parse(c)
             })
+            parentEpml.subscribe('copy_menu_switch', async value => {
+
+                if (value === 'false' && window.getSelection().toString().length !== 0) {
+
+                    this.clearSelection()
+                }
+            })
+            parentEpml.subscribe('frame_paste_menu_switch', async res => {
+
+                res = JSON.parse(res)
+                if (res.isOpen === false && this.isPasteMenuOpen === true) {
+
+                    this.pasteToTextBox(textBox)
+                    this.isPasteMenuOpen = false
+                }
+            })
         })
 
         parentEpml.imReady()
+
+        textBox.addEventListener('contextmenu', (event) => {
+
+            const getSelectedText = () => {
+                var text = "";
+                if (typeof window.getSelection != "undefined") {
+                    text = window.getSelection().toString();
+                } else if (typeof this.shadowRoot.selection != "undefined" && this.shadowRoot.selection.type == "Text") {
+                    text = this.shadowRoot.selection.createRange().text;
+                }
+                return text;
+            }
+
+            const checkSelectedTextAndShowMenu = () => {
+                let selectedText = getSelectedText();
+                if (selectedText && typeof selectedText === 'string') {
+                    // ...
+                } else {
+
+                    this.pasteMenu(event)
+                    this.isPasteMenuOpen = true
+
+                    // Prevent Default and Stop Event Bubbling
+                    event.preventDefault()
+                    event.stopPropagation()
+
+                }
+            }
+
+            checkSelectedTextAndShowMenu()
+
+        })
     }
 
     async createRewardShare(e) {
@@ -414,11 +431,8 @@ class RewardShare extends LitElement {
         this.createRewardShareLoading = false
     }
 
-    async removeRewardShare(e) {
+    async removeRewardShare(rewardShareObject) {
 
-        this.removeError = false
-        this.removeMessage = ''
-        const myRecipientPublicKey = this.shadowRoot.getElementById("myRecipientPublicKey").value
         const myPercentageShare = -1
 
         // Check for valid...^
@@ -440,8 +454,6 @@ class RewardShare extends LitElement {
             let lastRef = await getLastRef();
 
             let myTransaction = await makeTransactionRequest(lastRef)
-            this.removeError = false
-            this.removeMessage = ''
             getTxnRequestResponse(myTransaction)
 
         }
@@ -452,10 +464,11 @@ class RewardShare extends LitElement {
             let mylastRef = lastRef
 
             let myTxnrequest = await parentEpml.request('transaction', {
-                type: 38,
+                type: 381,
                 nonce: this.selectedAddress.nonce,
                 params: {
-                    recipientPublicKey: myRecipientPublicKey,
+                    rewardShareKeyPairPublicKey: rewardShareObject.rewardSharePublicKey,
+                    recipient: rewardShareObject.recipient,
                     percentageShare: myPercentageShare,
                     lastReference: mylastRef,
                 }
@@ -471,24 +484,41 @@ class RewardShare extends LitElement {
 
             if (txnResponse.success === false && txnResponse.message) {
 
-                this.removeError = true
-                this.removeMessage = txnResponse.message
+                this.removeRewardShareLoading = false
+                parentEpml.request('showSnackBar', txnResponse.message)
                 throw new Error(txnResponse)
             } else if (txnResponse.success === true && !txnResponse.data.error) {
 
-                this.removeMessage = 'Reward Share Removed Successfully!'
-                this.removeError = false
+                this.removeRewardShareLoading = false
+                parentEpml.request('showSnackBar', 'Reward Share Removed Successfully!')
             } else {
 
-                this.removeError = true
-                this.removeMessage = txnResponse.data.message
+                this.removeRewardShareLoading = false
+                parentEpml.request('showSnackBar', txnResponse.data.message)
                 throw new Error(txnResponse)
             }
         }
 
         removeReceiver()
 
-        this.removeRewardShareLoading = false
+    }
+
+    pasteToTextBox(textBox) {
+
+        // Return focus to the window
+        window.focus()
+
+        navigator.clipboard.readText().then(clipboardText => {
+
+            textBox.value += clipboardText
+            textBox.focus()
+        });
+    }
+
+    pasteMenu(event) {
+
+        let eventObject = { pageX: event.pageX, pageY: event.pageY, clientX: event.clientX, clientY: event.clientY }
+        parentEpml.request('openFramePasteMenu', eventObject)
     }
 
     _textMenu(event) {
@@ -521,6 +551,12 @@ class RewardShare extends LitElement {
     isEmptyArray(arr) {
         if (!arr) { return true }
         return arr.length === 0
+    }
+
+    clearSelection() {
+
+        window.getSelection().removeAllRanges()
+        window.parent.getSelection().removeAllRanges()
     }
 }
 

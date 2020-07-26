@@ -28,7 +28,8 @@ class ChatPage extends LitElement {
             socketTimeout: { type: Number },
             messageSignature: { type: String }, // maybe use this as an ID for each message, but also considering its length
             _initialMessages: { type: Array },
-            isUserDown: { type: Boolean }
+            isUserDown: { type: Boolean },
+            isPasteMenuOpen: { type: Boolean }
         }
     }
 
@@ -119,6 +120,7 @@ class ChatPage extends LitElement {
         this.isLoadingMessages = true
         this.isLoading = false
         this.isUserDown = false
+        this.isPasteMenuOpen = false
     }
 
     render() {
@@ -601,6 +603,7 @@ class ChatPage extends LitElement {
         // TODO: Load and fetch messages from localstorage (maybe save messages to localstorage...)
 
         const textarea = this.shadowRoot.getElementById('messageBox')
+
         document.onkeypress = (e) => {
 
             if (textarea.matches(':focus')) {
@@ -661,9 +664,68 @@ class ChatPage extends LitElement {
             }).then(res => {
                 this.balance = res
             })
+            parentEpml.subscribe('frame_paste_menu_switch', async res => {
+
+                res = JSON.parse(res)
+                if (res.isOpen === false && this.isPasteMenuOpen === true) {
+
+                    this.pasteToTextBox(textarea)
+                    this.isPasteMenuOpen = false
+                }
+            })
         })
 
         parentEpml.imReady()
+
+        textarea.addEventListener('contextmenu', (event) => {
+
+            const getSelectedText = () => {
+                var text = "";
+                if (typeof window.getSelection != "undefined") {
+                    text = window.getSelection().toString();
+                } else if (typeof this.shadowRoot.selection != "undefined" && this.shadowRoot.selection.type == "Text") {
+                    text = this.shadowRoot.selection.createRange().text;
+                }
+                return text;
+            }
+
+            const checkSelectedTextAndShowMenu = () => {
+                let selectedText = getSelectedText();
+                if (selectedText && typeof selectedText === 'string') {
+                    // ...
+                } else {
+
+                    this.pasteMenu(event)
+                    this.isPasteMenuOpen = true
+
+                    // Prevent Default and Stop Event Bubbling
+                    event.preventDefault()
+                    event.stopPropagation()
+
+                }
+            }
+
+            checkSelectedTextAndShowMenu()
+
+        })
+    }
+
+    pasteToTextBox(textarea) {
+
+        // Return focus to the window
+        window.focus()
+
+        navigator.clipboard.readText().then(clipboardText => {
+
+            textarea.value += clipboardText
+            textarea.focus()
+        });
+    }
+
+    pasteMenu(event) {
+
+        let eventObject = { pageX: event.pageX, pageY: event.pageY, clientX: event.clientX, clientY: event.clientY }
+        parentEpml.request('openFramePasteMenu', eventObject)
     }
 
     isEmptyArray(arr) {

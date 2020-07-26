@@ -194,10 +194,23 @@ class NameRegistration extends LitElement {
                 }
                 this.config = JSON.parse(c)
             })
+            parentEpml.subscribe('copy_menu_switch', async value => {
+
+                if (value === 'false' && window.getSelection().toString().length !== 0) {
+
+                    this.clearSelection()
+                }
+            })
         })
 
 
         parentEpml.imReady()
+    }
+
+    clearSelection() {
+
+        window.getSelection().removeAllRanges()
+        window.parent.getSelection().removeAllRanges()
     }
 
     async registerName(e) {

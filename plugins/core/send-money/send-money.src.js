@@ -107,6 +107,7 @@ class SendMoneyPage extends LitElement {
             }
         `
     }
+
     render() {
         return html`
             <div id="sendMoneyWrapper" style="width:auto; padding:10px; background: #fff; height:100vh;">
@@ -216,6 +217,25 @@ class SendMoneyPage extends LitElement {
 
     textColor(color) {
         return color == 'light' ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.87)'
+    }
+
+    pasteToTextBox(elementId) {
+
+        // Return focus to the window
+        window.focus()
+
+        navigator.clipboard.readText().then(clipboardText => {
+
+            let element = this.shadowRoot.getElementById(elementId)
+            element.value += clipboardText
+            element.focus()
+        });
+    }
+
+    pasteMenu(event, elementId) {
+
+        let eventObject = { pageX: event.pageX, pageY: event.pageY, clientX: event.clientX, clientY: event.clientY, elementId }
+        parentEpml.request('openFramePasteMenu', eventObject)
     }
 
     async _sendMoney(e) {
@@ -405,6 +425,22 @@ class SendMoneyPage extends LitElement {
                 }
                 this.config = JSON.parse(c)
             })
+            parentEpml.subscribe('copy_menu_switch', async value => {
+
+                if (value === 'false' && window.getSelection().toString().length !== 0) {
+
+                    this.clearSelection()
+                }
+            })
+            parentEpml.subscribe('frame_paste_menu_switch', async res => {
+
+                res = JSON.parse(res)
+                if (res.isOpen === false && this.isPasteMenuOpen === true) {
+
+                    this.pasteToTextBox(res.elementId)
+                    this.isPasteMenuOpen = false
+                }
+            })
         })
     }
 
@@ -427,6 +463,81 @@ class SendMoneyPage extends LitElement {
                 parentEpml.request('closeCopyTextMenu', null)
             }
         }
+
+
+        // TODO: Rewrite the context menu event listener to support more elements (for now, I'll do write everything out manually )
+
+        this.shadowRoot.getElementById("amountInput").addEventListener('contextmenu', (event) => {
+
+            const getSelectedText = () => {
+                var text = "";
+                if (typeof window.getSelection != "undefined") {
+                    text = window.getSelection().toString();
+                } else if (typeof this.shadowRoot.selection != "undefined" && this.shadowRoot.selection.type == "Text") {
+                    text = this.shadowRoot.selection.createRange().text;
+                }
+                return text;
+            }
+
+            const checkSelectedTextAndShowMenu = () => {
+                let selectedText = getSelectedText();
+                if (selectedText && typeof selectedText === 'string') {
+                    // ...
+                } else {
+
+                    this.pasteMenu(event, 'amountInput')
+                    this.isPasteMenuOpen = true
+
+                    // Prevent Default and Stop Event Bubbling
+                    event.preventDefault()
+                    event.stopPropagation()
+
+                }
+            }
+
+            checkSelectedTextAndShowMenu()
+
+        })
+
+        this.shadowRoot.getElementById("recipient").addEventListener('contextmenu', (event) => {
+
+            const getSelectedText = () => {
+                var text = "";
+                if (typeof window.getSelection != "undefined") {
+                    text = window.getSelection().toString();
+                } else if (typeof this.shadowRoot.selection != "undefined" && this.shadowRoot.selection.type == "Text") {
+                    text = this.shadowRoot.selection.createRange().text;
+                }
+                return text;
+            }
+
+            const checkSelectedTextAndShowMenu = () => {
+                let selectedText = getSelectedText();
+                if (selectedText && typeof selectedText === 'string') {
+                    // ...
+                } else {
+
+                    this.pasteMenu(event, 'recipient')
+                    this.isPasteMenuOpen = true
+
+                    // Prevent Default and Stop Event Bubbling
+                    event.preventDefault()
+                    event.stopPropagation()
+
+                }
+            }
+
+            checkSelectedTextAndShowMenu()
+
+        })
+
+
+    }
+
+    clearSelection() {
+
+        window.getSelection().removeAllRanges()
+        window.parent.getSelection().removeAllRanges()
     }
 }
 
