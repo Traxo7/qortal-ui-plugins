@@ -652,7 +652,7 @@ class TradePortal extends LitElement {
                 fundingQortAmount: fundingQortAmount,
                 bitcoinAmount: parseFloat(sellTotalInput),
                 tradeTimeout: 10080,
-                receiveAddress: "n3NkSZqoPMCQN5FENxUBw4qVATbytH6FDK" // this.selectedAddress.btcWallet.address
+                receivingAddress: "n3NkSZqoPMCQN5FENxUBw4qVATbytH6FDK" // this.selectedAddress.btcWallet.address
             })
 
             return response
