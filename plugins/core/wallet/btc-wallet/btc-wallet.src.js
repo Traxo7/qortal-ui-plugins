@@ -175,7 +175,7 @@ class BTCWallet extends LitElement {
                 <div ?hidden="${this.loading}">
                     <div id="topbar" style="background: ; color: ; padding: 20px;">
                         <span class="mono weight-1300">
-                            ${this.selectedBtcWallet.address}
+                            ${this.selectedBtcWallet._taddress}
                         </span>
                         <br>
                         <div class="layout horizontal wrap">
