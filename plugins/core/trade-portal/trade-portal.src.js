@@ -641,6 +641,7 @@ class TradePortal extends LitElement {
 
         const sellAmountInput = this.shadowRoot.getElementById('sellAmountInput').value
         const sellPriceInput = this.shadowRoot.getElementById('sellPriceInput').value
+        const sellTotalInput = this.shadowRoot.getElementById('sellTotalInput').value
         const fundingQortAmount = parseFloat(sellAmountInput) + 1
 
         const makeRequest = async () => {
@@ -649,7 +650,7 @@ class TradePortal extends LitElement {
                 creatorPublicKey: this.selectedAddress.base58PublicKey,
                 qortAmount: parseFloat(sellAmountInput),
                 fundingQortAmount: fundingQortAmount,
-                bitcoinAmount: parseFloat(sellPriceInput),
+                bitcoinAmount: parseFloat(sellTotalInput),
                 tradeTimeout: 10080,
                 receiveAddress: "n3NkSZqoPMCQN5FENxUBw4qVATbytH6FDK" // this.selectedAddress.btcWallet.address
             })
