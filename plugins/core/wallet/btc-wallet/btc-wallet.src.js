@@ -1,6 +1,6 @@
 import { LitElement, html, css } from 'lit-element'
 import { render } from 'lit-html'
-import { Epml } from '../../../epml.js'
+import { Epml } from '../../../../epml.js'
 
 import '@material/mwc-icon'
 import '@material/mwc-button'
@@ -12,46 +12,15 @@ import '@vaadin/vaadin-grid/theme/material/all-imports.js'
 
 import '@github/time-elements'
 
-const TX_TYPES = {
-    1: 'Genesis',
-    2: 'Payment',
-
-    3: 'Name registration',
-    4: 'Name update',
-    5: 'Sell name',
-    6: 'Cancel sell name',
-    7: 'Buy name',
-
-    8: 'Create poll',
-    9: 'Vote in poll',
-
-    10: 'Arbitrary',
-
-    11: 'Issue asset',
-    12: 'Transfer asset',
-    13: 'Create asset order',
-    14: 'Cancel asset order',
-    15: 'Multi-payment transaction',
-
-    16: 'Deploy AT',
-
-    17: 'Message',
-
-    18: 'Chat',
-    19: 'Supernode',
-    20: 'Airdrop'
-}
-
 const parentEpml = new Epml({ type: 'WINDOW', source: window.parent })
 
-class WalletApp extends LitElement {
+class BTCWallet extends LitElement {
     static get properties() {
         return {
             loading: { type: Boolean },
             transactions: { type: Array },
             lastBlock: { type: Object },
-            selectedAddress: { type: Object },
-            addressInfo: { type: Object },
+            selectedBtcWallet: { type: Object },
             balance: { type: Number },
             selectedTransaction: { type: Object },
             isTextMenuOpen: { type: Boolean }
@@ -170,20 +139,21 @@ class WalletApp extends LitElement {
         this.lastBlock = {
             height: 0
         }
-        this.selectedAddress = {}
+        this.selectedBtcWallet = {}
+        this.balance = 0.000
         this.selectedTransaction = {}
         this.isTextMenuOpen = false
 
         parentEpml.ready().then(() => {
 
             parentEpml.subscribe('selected_address', async selectedAddress => {
-                this.selectedAddress = {}
+                this.selectedBtcWallet = {}
                 selectedAddress = JSON.parse(selectedAddress)
                 if (!selectedAddress || Object.entries(selectedAddress).length === 0) return
-                this.selectedAddress = selectedAddress
+                this.selectedBtcWallet = selectedAddress.btcWallet
 
-                this.updateAccountTransactions()
-                this.updateAccountBalance()
+                // this.updateAccountTransactions()
+                // this.updateAccountBalance()
             })
 
             parentEpml.subscribe('copy_menu_switch', async value => {
@@ -205,14 +175,12 @@ class WalletApp extends LitElement {
                 <div ?hidden="${this.loading}">
                     <div id="topbar" style="background: ; color: ; padding: 20px;">
                         <span class="mono weight-1300">
-                            ${this.selectedAddress.address}
+                            ${this.selectedBtcWallet.address}
                         </span>
                         <br>
                         <div class="layout horizontal wrap">
                             <div>
-                                <span class="mono weight-100" style="font-size: 70px;">${this.floor(this.balance)}<span
-                                        style="font-size:24px; vertical-align: top; line-height:60px;">.${this.decimals(this.balance)}
-                                        QORT</span></span>
+                                <span class="mono weight-100" style="font-size: 40px;">${this.balance} BTC</span>
                                 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
                             </div>
                 
@@ -220,9 +188,6 @@ class WalletApp extends LitElement {
                     </div>
                 
                     <div id="contentDiv" style="margin: 8px;">
-                
-                
-                
                         <div class="layout horizontal">
                             <div style="padding-left:12px;" ?hidden="${!this.isEmptyArray(this.transactions)}">
                                 Address has no transactions yet. 
@@ -232,7 +197,7 @@ class WalletApp extends LitElement {
                                 <vaadin-grid-column width="4.4rem" header="Type" .renderer=${(root, column, data) => {
                 render(html`
                                 ${data.item.type} 
-                                    ${data.item.creatorAddress === this.selectedAddress.address ? html`<span class="color-out">OUT</span>` : html`<span class="color-in">IN</span>`}
+                                    ${data.item.creatorAddress === this.selectedBtcWallet.address ? html`<span class="color-out">OUT</span>` : html`<span class="color-in">IN</span>`}
 
                 `, root)
             }}>
@@ -304,6 +269,7 @@ class WalletApp extends LitElement {
                     </div>
                 </div>
             </div>
+        </div>
         `
     }
 
@@ -381,44 +347,34 @@ class WalletApp extends LitElement {
 
     }
 
-    updateAccountTransactions() {
-        clearTimeout(this.updateAccountTransactionTimeout)
-        parentEpml.request('apiCall', {
-            url: `/transactions/search?address=${this.selectedAddress.address}&confirmationStatus=BOTH&limit=20&reverse=true`
-        }).then(res => {
-            this.transactions = res
-            this.updateAccountTransactionTimeout = setTimeout(() => this.updateAccountTransactions(), 5000)
-        })
-    }
+    // updateAccountTransactions() {
+    //     clearTimeout(this.updateAccountTransactionTimeout)
+    //     parentEpml.request('apiCall', {
+    //         url: `/transactions/search?address=${this.selectedBtcWallet.address}&confirmationStatus=BOTH&limit=20&reverse=true`
+    //     }).then(res => {
+    //         this.transactions = res
+    //         this.updateAccountTransactionTimeout = setTimeout(() => this.updateAccountTransactions(), 5000)
+    //     })
+    // }
 
-    updateAccountInfo() {
-        clearTimeout(this.updateAccountInfoTimeout)
-        parentEpml.request('apiCall', {
-            url: `/addresses/${this.selectedAddress.address}`
-        }).then(res => {
-            this.addressInfo = res
 
-            this.updateAccountInfoTimeout = setTimeout(() => this.updateAccountInfo(), 4000)
-        })
-    }
+    // updateAccountBalance() {
 
-    updateAccountBalance() {
-
-        clearTimeout(this.updateAccountBalanceTimeout)
-        parentEpml.request('apiCall', {
-            url: `/addresses/balance/${this.selectedAddress.address}`
-        }).then(res => {
-            this.balance = res
-            this.updateAccountBalanceTimeout = setTimeout(() => this.updateAccountBalance(), 5000)
-        })
-    }
+    //     clearTimeout(this.updateAccountBalanceTimeout)
+    //     parentEpml.request('apiCall', {
+    //         url: `/addresses/balance/${this.selectedBtcWallet.address}`
+    //     }).then(res => {
+    //         this.balance = res
+    //         this.updateAccountBalanceTimeout = setTimeout(() => this.updateAccountBalance(), 5000)
+    //     })
+    // }
 
     showTransactionDetails(myTransaction, allTransactions) {
 
         allTransactions.forEach(transaction => {
             if (myTransaction.signature === transaction.signature) {
                 // Do something...
-                let txnFlow = myTransaction.creatorAddress === this.selectedAddress.address ? "OUT" : "IN";
+                let txnFlow = myTransaction.creatorAddress === this.selectedBtcWallet.address ? "OUT" : "IN";
                 this.selectedTransaction = { ...transaction, txnFlow };
                 if (this.selectedTransaction.signature.length != 0) {
                     this.shadowRoot.querySelector('#showTransactionDetailsDialog').show()
@@ -431,10 +387,12 @@ class WalletApp extends LitElement {
         if (!arr) { return true }
         return arr.length === 0
     }
+
     floor(num) {
         num = parseFloat(num)
         return isNaN(num) ? 0 : this._format(Math.floor(num))
     }
+
     decimals(num) {
         num = parseFloat(num) // So that conversion to string can get rid of insignificant zeros
         // return isNaN(num) ? 0 : (num + "").split(".")[1]
@@ -442,7 +400,7 @@ class WalletApp extends LitElement {
     }
 
     sendOrRecieve(tx) {
-        return tx.sender == this.selectedAddress.address
+        return tx.sender == this.selectedBtcWallet.address
     }
 
     senderOrRecipient(tx) {
@@ -451,10 +409,6 @@ class WalletApp extends LitElement {
 
     txColor(tx) {
         return this.sendOrRecieve(tx) ? 'red' : 'green'
-    }
-
-    getTxType(type) {
-        return TX_TYPES[type]
     }
 
     subtract(num1, num2) {
@@ -477,4 +431,4 @@ class WalletApp extends LitElement {
     }
 }
 
-window.customElements.define('wallet-app', WalletApp)
+window.customElements.define('btc-wallet', BTCWallet)
