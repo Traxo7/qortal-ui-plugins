@@ -585,7 +585,7 @@ class TradePortal extends LitElement {
             // Message Event
             socket.onmessage = (e) => {
 
-                console.log(JSON.parse(e.data));
+                // console.log(JSON.parse(e.data));
 
                 this.openOrders = JSON.parse(e.data)
             }
