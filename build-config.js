@@ -68,12 +68,20 @@ const generateForPlugins = () => {
       out: "plugins/core/main.js",
     },
     {
+      in: "plugins/core/trade-portal/trade-portal.src.js",
+      out: "plugins/core/trade-portal/trade-portal.js",
+    },
+    {
       in: "plugins/core/send-money/send-money.src.js",
       out: "plugins/core/send-money/send-money.js",
     },
     {
       in: "plugins/core/wallet/wallet-app.src.js",
       out: "plugins/core/wallet/wallet-app.js",
+    },
+    {
+      in: "plugins/core/wallet/btc-wallet/btc-wallet.src.js",
+      out: "plugins/core/wallet/btc-wallet/btc-wallet.js",
     },
     {
       in: "plugins/core/reward-share/reward-share.src.js",

@@ -16,13 +16,7 @@ class SendMoneyPage extends LitElement {
             sendMoneyLoading: { type: Boolean },
             btnDisable: { type: Boolean },
             data: { type: Object },
-            addressesInfo: { type: Object },
             selectedAddress: { type: Object },
-            selectedAddressInfo: { type: Object },
-            addressesUnconfirmedTransactions: { type: Object },
-            addressInfoStreams: { type: Object },
-            unconfirmedTransactionStreams: { type: Object },
-            maxWidth: { type: String },
             recipient: { type: String },
             isValidAmount: { type: Boolean },
             balance: { type: Number }
@@ -132,7 +126,7 @@ class SendMoneyPage extends LitElement {
                             id="amountInput"
                             required
                             label="Amount (qort)"
-                            @input=${() => { this._checkAmount() }}
+                            @input=${(e) => { this._checkAmount(e) }}
                             type="number" 
                             auto-validate="false"
                             value="${this.amount}">
@@ -151,9 +145,7 @@ class SendMoneyPage extends LitElement {
 
                     <div class="buttons" >
                         <div>
-                            <mwc-button ?disabled=${this.btnDisable} style="width:100%;" raised autofocus @click=${e => this._sendMoney(e)}>Send &nbsp;
-                                <iron-icon icon="send"></iron-icon>
-                            </mwc-button>
+                            <mwc-button ?disabled=${this.btnDisable} style="width:100%;" raised icon="send" @click=${e => this._sendMoney(e)}>Send &nbsp;</mwc-button>
                         </div>
                     </div>
                     
@@ -167,53 +159,98 @@ class SendMoneyPage extends LitElement {
         return Math.floor(num)
     }
 
+    // Helper Functions (Re-Used in Most part of the UI )
+
+    /**
+    * Check and Validate Amount Helper Function
+    * @param { Event } e
+    *
+    * @description Gets called oninput in an input element
+    */
+
     _checkAmount(e) {
-        this.amount = this.shadowRoot.getElementById('amountInput').value
 
-        if (this.amount.toString()[0] === '-') {
+        const targetAmount = e.target.value
+        const target = e.target
 
-            this.isValidAmount = false
-            this.btnDisable = true
-            this.shadowRoot.getElementById('amountInput').invalid = true
-            this.shadowRoot.getElementById('amountInput').errorMessage = "Cannot Send Negative Amount!"
-        } else if (this.amount.toString() === '-') {
+        console.log("Length: ", targetAmount.length);
+        console.log("Value: ", targetAmount);
 
-            this.isValidAmount = false
-            this.btnDisable = true
-            this.shadowRoot.getElementById('amountInput').invalid = true
-            this.shadowRoot.getElementById('amountInput').errorMessage = "Invalid Amount!"
-        }
-        else if (this.amount.toString().includes('.') === true) {
 
-            let myAmount = this.amount.toString().split('.')
-            if (myAmount[1].length <= 8) {
-
-                this.isValidAmount = true
-                this.btnDisable = false
-                this.shadowRoot.getElementById('amountInput').invalid = false
-                this.shadowRoot.getElementById('amountInput').errorMessage = ""
-            } else {
-
-                this.isValidAmount = false
-                this.btnDisable = true
-                this.shadowRoot.getElementById('amountInput').invalid = true
-                this.shadowRoot.getElementById('amountInput').errorMessage = "Invalid Amount!"
-            }
-        }
-        else if ((parseFloat(this.amount) + parseFloat(0.001)) > parseFloat(this.balance)) {
+        if (targetAmount.length === 0) {
 
             this.isValidAmount = false
             this.btnDisable = true
-            this.shadowRoot.getElementById('amountInput').invalid = true
-            this.shadowRoot.getElementById('amountInput').errorMessage = "Insufficient Funds!"
+
+            // Quick Hack to lose and regain focus inorder to display error message without user having to click outside the input field
+            e.target.blur()
+            e.target.focus()
+
+            e.target.invalid = true
+            e.target.validationMessage = "Invalid Amount!"
+
+        } else if ((parseFloat(targetAmount) + parseFloat(0.001)) > parseFloat(this.balance)) {
+
+            this.isValidAmount = false
+            this.btnDisable = true
+
+            e.target.blur()
+            e.target.focus()
+
+            e.target.invalid = true
+            e.target.validationMessage = "Insufficient Funds!"
         } else {
 
-            this.isValidAmount = true
             this.btnDisable = false
-            this.shadowRoot.getElementById('amountInput').invalid = false
-            this.shadowRoot.getElementById('amountInput').errorMessage = ""
         }
+
+        e.target.blur()
+        e.target.focus()
+
+        e.target.validityTransform = (newValue, nativeValidity) => {
+
+
+            if (newValue.includes('-') === true) {
+
+                console.log('contain ------');
+
+                this.btnDisable = true
+                target.validationMessage = "Invalid Amount!"
+
+                return {
+                    valid: false
+                }
+            } else if (!nativeValidity.valid) {
+
+                if (newValue.includes('.') === true) {
+
+                    let myAmount = newValue.split('.')
+                    if (myAmount[1].length > 8) {
+
+                        this.btnDisable = true
+                        target.validationMessage = "Invalid Amount!"
+                    } else {
+
+                        return {
+                            valid: true
+                        }
+                    }
+                }
+            } else {
+
+                this.btnDisable = false
+            }
+        }
+
+        // else {
+
+        //     this.isValidAmount = true
+        //     this.btnDisable = false
+        //     e.target.invalid = false
+        //     e.target.validationMessage = ""
+        // }
     }
+
 
     textColor(color) {
         return color == 'light' ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.87)'
@@ -244,6 +281,33 @@ class SendMoneyPage extends LitElement {
 
         this.sendMoneyLoading = true
         this.btnDisable = true
+
+        if ((parseFloat(amount) + parseFloat(0.001)) > parseFloat(this.balance)) {
+
+            this.sendMoneyLoading = false
+            this.btnDisable = false
+
+            parentEpml.request('showSnackBar', "Insufficient Funds!")
+            return false
+        }
+
+        if ((parseFloat(amount)) <= 0) {
+
+            this.sendMoneyLoading = false
+            this.btnDisable = false
+
+            parentEpml.request('showSnackBar', "Invalid Amount!")
+            return false
+        }
+
+        if (recipient.length === 0) {
+
+            this.sendMoneyLoading = false
+            this.btnDisable = false
+
+            parentEpml.request('showSnackBar', "Receiver cannot be empty!")
+            return false
+        }
 
         const getLastRef = async () => {
             let myRef = await parentEpml.request('apiCall', {
@@ -388,22 +452,10 @@ class SendMoneyPage extends LitElement {
     constructor() {
         super()
         this.recipient = ''
-        this.addresses = []
         this.errorMessage = ''
         this.sendMoneyLoading = false
         this.btnDisable = false
-        this.data = {}
-        this.addressesInfo = {}
         this.selectedAddress = {}
-        this.selectedAddressInfo = {
-            nativeBalance: {
-                total: {}
-            }
-        }
-        this.addressesUnconfirmedTransactions = {}
-        this.addressInfoStreams = {}
-        this.unconfirmedTransactionStreams = {}
-        this.maxWidth = '600'
         this.amount = 0
         this.isValidAmount = false
 

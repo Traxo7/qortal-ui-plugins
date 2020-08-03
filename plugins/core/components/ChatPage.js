@@ -424,6 +424,8 @@ class ChatPage extends LitElement {
                 initGroup(groupChatId)
             }
 
+        } else {
+            // ... Render a nice "Error, Go Back" component.
         }
 
         // Add to the messages... TODO: Save messages to localstorage and fetch from it to make it persistent... 
@@ -535,7 +537,6 @@ class ChatPage extends LitElement {
             if (response === true) {
                 messageBox.value = ""
                 this.isLoading = false
-                // messageBox.focus()
             } else if (response.error) {
                 parentEpml.request('showSnackBar', response.message)
                 this.isLoading = false
