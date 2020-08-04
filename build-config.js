@@ -1,7 +1,6 @@
 const babel = require("rollup-plugin-babel");
 const resolve = require("rollup-plugin-node-resolve");
 const replace = require('rollup-plugin-replace')
-const builtins = require("rollup-plugin-node-builtins");
 const globals = require("rollup-plugin-node-globals");
 const commonjs = require("rollup-plugin-commonjs");
 const progress = require("rollup-plugin-progress");
@@ -33,7 +32,7 @@ const generateRollupConfig = (inputFile, outputFile) => {
           }),
         }),
         resolve({
-          preferBuiltins: true,
+          preferBuiltins: false,
           mainFields: ['module', 'browser']
         }),
         replace({
@@ -41,7 +40,6 @@ const generateRollupConfig = (inputFile, outputFile) => {
         }),
         commonjs(),
         globals(),
-        builtins(),
         progress(),
         babel({
           exclude: "node_modules/**",

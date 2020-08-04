@@ -834,8 +834,8 @@ class TradePortal extends LitElement {
 
             if (response === true) {
 
-                this.isBuyLoading = true
-                this.buyBtnDisable = false
+                this.isBuyLoading = false
+                this.buyBtnDisable = true
 
 
                 this.shadowRoot.getElementById('buyAmountInput').value = this.initialAmount
@@ -845,8 +845,8 @@ class TradePortal extends LitElement {
 
             } else {
 
-                this.isBuyLoading = true
-                this.buyBtnDisable = true
+                this.isBuyLoading = false
+                this.buyBtnDisable = false
 
                 parentEpml.request('showSnackBar', "Failed to Create Trade. Try again!");
             }
