@@ -666,12 +666,12 @@ class TradePortal extends LitElement {
             // Add to my historic trades
             this.shadowRoot.querySelector('#myHistoricTradesGrid').push('items', offer)
 
-            // Remove from my open order when trade is redeemed
-            if (this._myOpenOrdersStorage.length !== 0) {
+            // // Remove from my open order when trade is redeemed
+            // if (this._myOpenOrdersStorage.length !== 0) {
 
-                this._myOpenOrdersStorage = this.shadowRoot.querySelector('#myOpenOrdersGrid').items.filter(myOpenOrder => myOpenOrder.qortalAtAddress !== offer.qortalAtAddress)
-                this.myOpenOrders = [...this._myOpenOrdersStorage]
-            }
+            //     this._myOpenOrdersStorage = this.shadowRoot.querySelector('#myOpenOrdersGrid').items.filter(myOpenOrder => myOpenOrder.qortalAtAddress !== offer.qortalAtAddress)
+            //     this.myOpenOrders = [...this._myOpenOrdersStorage]
+            // }
         } else if (offer.partnerQortalReceivingAddress === this.selectedAddress.address) {
 
             // Check and Update BTC Wallet Balance
