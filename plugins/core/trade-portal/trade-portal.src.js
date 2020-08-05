@@ -31,6 +31,8 @@ class TradePortal extends LitElement {
             _openOrdersStorage: { type: Array },
             _myOrdersStorage: { type: Array },
             tradeOffersSocketCounter: { type: Number },
+            isCancelLoading: { type: Boolean },
+            cancelBtnDisable: { type: Boolean },
         }
     }
 
@@ -147,6 +149,10 @@ class TradePortal extends LitElement {
                 flex-flow: column;
                 justify-content: space-evenly;
                 min-height: inherit;
+            }
+
+            .cancel {
+                --mdc-theme-primary: rgb(255, 89, 89);
             }
 
             .border-wrapper {
@@ -285,6 +291,8 @@ class TradePortal extends LitElement {
         this._myOrdersStorage = []
         this._openOrdersStorage = []
         this.tradeOffersSocketCounter = 0
+        this.isCancelLoading = false
+        this.cancelBtnDisable = false
     }
 
     // TODO: Spllit this large chunk of code into individual components
@@ -488,7 +496,7 @@ class TradePortal extends LitElement {
                 render(html`${dateString}`, root)
             }}>
                                 </vaadin-grid-column>
-                                        <vaadin-grid-column header="Status" path="tradeState"></vaadin-grid-column>
+                                        <vaadin-grid-column header="Status" path="_tradeState"></vaadin-grid-column>
                                         <vaadin-grid-column header="Price (BTC)" .renderer=${(root, column, data) => {
                 const price = this.round(parseFloat(data.item.bitcoinAmount) / parseFloat(data.item.qortAmount))
                 render(html`${price}`, root)
@@ -496,6 +504,9 @@ class TradePortal extends LitElement {
                                 </vaadin-grid-column>
                                         <vaadin-grid-column header="Amount (QORT)" path="qortAmount"></vaadin-grid-column>
                                         <vaadin-grid-column header="Total (BTC)" path="bitcoinAmount"></vaadin-grid-column>
+                                        <vaadin-grid-column width="5rem" flex-grow="0" header="Action" .renderer=${(root, column, data) => {
+                render(html`${this.renderCancelButton(data.item)}`, root)
+            }}></vaadin-grid-column>
                                     </vaadin-grid>
                                 </div>
                             </div>
@@ -542,8 +553,6 @@ class TradePortal extends LitElement {
         // call getOpenOrdersGrid
         this.getOpenOrdersGrid()
 
-        this.initSocket()
-
         window.addEventListener("contextmenu", (event) => {
 
             event.preventDefault();
@@ -564,6 +573,10 @@ class TradePortal extends LitElement {
 
         let configLoaded = false
         parentEpml.ready().then(() => {
+
+            // Init Socket
+            this.initSocket()
+
             parentEpml.subscribe('selected_address', async selectedAddress => {
                 this.selectedAddress = {}
                 selectedAddress = JSON.parse(selectedAddress)
@@ -616,23 +629,6 @@ class TradePortal extends LitElement {
 
     }
 
-
-    // This is not being used now... 
-    // gethistoricTradesGrid() {
-
-    //     const myGrid = this.shadowRoot.querySelector('#historicTradesGrid')
-
-    //     myGrid.addEventListener('click', (e) => {
-    //         let myItem = myGrid.getEventContext(e).item
-
-    //         if (myItem !== undefined) {
-    //             this.fillBuyForm(myItem)
-    //         }
-    //     }, { passive: true })
-
-    // }
-
-
     processOfferingTrade(offer) {
         // ...
 
@@ -651,9 +647,8 @@ class TradePortal extends LitElement {
     }
 
     processRedeemedTrade(offer) {
-        //...
 
-        // If trade is mine, remove it from my open orders, add it to my historic trades and also add it to historic trades
+        // If trade is mine, add it to my historic trades and also add it to historic trades
         if (offer.qortalCreator === this.selectedAddress.address) {
 
             // Check and Update BTC Wallet Balance
@@ -664,13 +659,6 @@ class TradePortal extends LitElement {
 
             // Add to my historic trades
             this.shadowRoot.querySelector('#myHistoricTradesGrid').push('items', offer)
-
-            // // Remove from my open order when trade is redeemed
-            // if (this._myOrdersStorage.length !== 0) {
-
-            //     this._myOrdersStorage = this.shadowRoot.querySelector('#myOrdersGrid').items.filter(myOpenOrder => myOpenOrder.qortalAtAddress !== offer.qortalAtAddress)
-            //     this.myOrders = [...this._myOrdersStorage]
-            // }
         } else if (offer.partnerQortalReceivingAddress === this.selectedAddress.address) {
 
             // Check and Update BTC Wallet Balance
@@ -688,7 +676,6 @@ class TradePortal extends LitElement {
     }
 
     processTradingTrade(offer) {
-        // ...
 
         // Remove from open market orders
         if (this.tradeOffersSocketCounter > 1) {
@@ -702,13 +689,36 @@ class TradePortal extends LitElement {
     }
 
     processRefundedTrade(offer) {
-        // ...
+
+        if (offer.qortalCreator === this.selectedAddress.address) {
+
+            // Check and Update BTC Wallet Balance
+            if (this.tradeOffersSocketCounter > 1) {
+
+                this.updateBTCAccountBalance()
+            }
+
+            // Add to my historic trades
+            this.shadowRoot.querySelector('#myHistoricTradesGrid').push('items', offer)
+        }
     }
 
     processCancelledTrade(offer) {
-        // ...
 
+        if (offer.qortalCreator === this.selectedAddress.address) {
 
+            // Check and Update BTC Wallet Balance
+            if (this.tradeOffersSocketCounter > 1) {
+
+                this.updateBTCAccountBalance()
+            }
+
+            // Add to my historic trades
+            this.shadowRoot.querySelector('#myHistoricTradesGrid').push('items', offer)
+        }
+
+        this._openOrdersStorage = this._openOrdersStorage.filter(openOrder => openOrder.qortalAtAddress !== offer.qortalAtAddress)
+        this.openOrders = [...this._openOrdersStorage]
     }
 
     processTradeOffers(offers) {
@@ -797,13 +807,13 @@ class TradePortal extends LitElement {
                     this.changeTradeBotState(state, 'PENDING')
                 } else if (state.tradeState == 'BOB_WAITING_FOR_MESSAGE') {
 
-                    this.changeTradeBotState(state, 'ICON HERE')
+                    this.changeTradeBotState(state, 'LISTED')
                 } else if (state.tradeState == 'BOB_WAITING_FOR_P2SH_B') {
 
-                    this.changeTradeBotState(state, 'ICON HERE')
+                    this.changeTradeBotState(state, 'TRADING')
                 } else if (state.tradeState == 'BOB_WAITING_FOR_AT_REDEEM') {
 
-                    this.changeTradeBotState(state, 'ICON HERE')
+                    this.changeTradeBotState(state, 'TRADING')
                 } else if (state.tradeState == 'BOB_DONE') {
 
                     this.handleCompletedState(state)
@@ -812,22 +822,22 @@ class TradePortal extends LitElement {
                     this.handleCompletedState(state)
                 } else if (state.tradeState == 'ALICE_WAITING_FOR_P2SH_A') {
 
-                    this.changeTradeBotState(state, 'ICON HERE')
+                    this.changeTradeBotState(state, 'PENDING')
                 } else if (state.tradeState == 'ALICE_WAITING_FOR_AT_LOCK') {
 
-                    this.changeTradeBotState(state, 'ICON HERE')
+                    this.changeTradeBotState(state, 'TRADING')
                 } else if (state.tradeState == 'ALICE_WATCH_P2SH_B') {
 
-                    this.changeTradeBotState(state, 'ICON HERE')
+                    this.changeTradeBotState(state, 'TRADING')
                 } else if (state.tradeState == 'ALICE_DONE') {
 
                     this.handleCompletedState(state)
                 } else if (state.tradeState == 'ALICE_REFUNDING_B') {
 
-                    this.changeTradeBotState(state, 'ICON HERE')
+                    this.changeTradeBotState(state, 'REFUNDING')
                 } else if (state.tradeState == 'ALICE_REFUNDING_A') {
 
-                    this.changeTradeBotState(state, 'ICON HERE')
+                    this.changeTradeBotState(state, 'REFUNDING')
                 } else if (state.tradeState == 'ALICE_REFUNDED') {
 
                     this.handleCompletedState(state)
@@ -843,7 +853,7 @@ class TradePortal extends LitElement {
 
             const stateItem = {
                 ...state,
-                tradeState: tradeState
+                _tradeState: tradeState
             }
 
             this._myOrdersStorage = this._myOrdersStorage.concat(stateItem)
@@ -871,7 +881,7 @@ class TradePortal extends LitElement {
     handleCompletedState(state) {
 
         this._myOrdersStorage = this._myOrdersStorage.filter(myOrder => myOrder.atAddress !== state.atAddress)
-        this.openOrders = [...this._openOrdersStorage]
+        this.myOrders = [...this._myOrdersStorage]
     }
 
     initSocket() {
@@ -1007,7 +1017,6 @@ class TradePortal extends LitElement {
     }
 
     async sellAction() {
-        // ...
 
         this.isSellLoading = true
         this.sellBtnDisable = true
@@ -1069,7 +1078,6 @@ class TradePortal extends LitElement {
     }
 
     async buyAction() {
-        // ...
 
         this.isBuyLoading = true
         this.buyBtnDisable = true
@@ -1123,6 +1131,54 @@ class TradePortal extends LitElement {
 
     }
 
+    async cancelAction(state) {
+
+        this.isCancelLoading = true
+        this.cancelBtnDisable = true
+
+        const makeRequest = async () => {
+
+            const response = await parentEpml.request('deleteTradeOffer', {
+                atAddress: state.atAddress,
+                tradeKeyPair: {
+                    publicKey: state.tradeNativePublicKey,
+                    privateKey: new Uint8Array(window.parent.Base58.decode(state.tradePrivateKey))
+                }
+            })
+
+            return response
+        }
+
+        const manageResponse = (response) => {
+
+            if (response === true) {
+
+                this.isCancelLoading = false
+                this.cancelBtnDisable = false
+
+                parentEpml.request('showSnackBar', "Trade Cancelled!");
+
+            } else if (response === false) {
+
+                this.isCancelLoading = false
+                this.cancelBtnDisable = false
+
+                parentEpml.request('showSnackBar', "Failed to Cancel Trade. Try again!");
+            } else {
+
+                this.isCancelLoading = false
+                this.cancelBtnDisable = false
+
+                parentEpml.request('showSnackBar', `Failed to Cancel Trade. ERROR_CODE: ${response}`);
+            }
+        }
+
+        // Call makeRequest
+        const res = await makeRequest()
+        manageResponse(res)
+
+    }
+
     updateAccountBalance() {
 
         clearTimeout(this.updateAccountBalanceTimeout)
@@ -1144,6 +1200,18 @@ class TradePortal extends LitElement {
         }).then(res => {
             this.btcBalance = (Number(res) / 1e8).toFixed(8)
         })
+    }
+
+
+    renderCancelButton(stateItem) {
+
+        if (stateItem.tradeState == 'BOB_WAITING_FOR_AT_CONFIRM') {
+            return html`<mwc-button ?disabled=${this.cancelBtnDisable} class="cancel" @click=${() => this.cancelAction(stateItem)}>${this.isCancelLoading === false ? "CANCEL" : html`<paper-spinner-lite active></paper-spinner-lite>`}</mwc-button>`
+        } else if (stateItem.tradeState == 'BOB_WAITING_FOR_MESSAGE') {
+            return html`<mwc-button ?disabled=${this.cancelBtnDisable} class="cancel" @click=${() => this.cancelAction(stateItem)}>${this.isCancelLoading === false ? "CANCEL" : html`<paper-spinner-lite active></paper-spinner-lite>`}</mwc-button>`
+        } else {
+            return ''
+        }
     }
 
 
