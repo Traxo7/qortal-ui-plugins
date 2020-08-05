@@ -26,10 +26,10 @@ class TradePortal extends LitElement {
             initialAmount: { type: Number },
             openOrders: { type: Array },
             historicTrades: { type: Array },
-            myOpenOrders: { type: Array },
+            myOrders: { type: Array },
             myHistoricTrades: { type: Array },
             _openOrdersStorage: { type: Array },
-            _myOpenOrdersStorage: { type: Array },
+            _myOrdersStorage: { type: Array },
             socketConnectionCounter: { type: Number },
         }
     }
@@ -280,9 +280,9 @@ class TradePortal extends LitElement {
         this.initialAmount = 0
         this.openOrders = []
         this.historicTrades = []
-        this.myOpenOrders = []
+        this.myOrders = []
         this.myHistoricTrades = []
-        this._myOpenOrdersStorage = []
+        this._myOrdersStorage = []
         this._openOrdersStorage = []
         this.socketConnectionCounter = 0
     }
@@ -482,7 +482,7 @@ class TradePortal extends LitElement {
                             <div class="box">
                                 <header>MY ORDERS</header>
                                 <div class="border-wrapper">
-                                    <vaadin-grid theme="compact column-borders row-stripes wrap-cell-content" id="myOpenOrdersGrid" aria-label="My Open Orders" .items="${this.myOpenOrders}">
+                                    <vaadin-grid theme="compact column-borders row-stripes wrap-cell-content" id="myOrdersGrid" aria-label="My Open Orders" .items="${this.myOrders}">
                                         <vaadin-grid-column width="2rem" header="Date" .renderer=${(root, column, data) => {
                 const dateString = new Date(data.item.timestamp).toLocaleString()
                 render(html`${dateString}`, root)
@@ -640,9 +640,8 @@ class TradePortal extends LitElement {
         // if (offer.qortalCreator === this.selectedAddress.address) {
         //     // ...
 
-        //     this._myOpenOrdersStorage = this._myOpenOrdersStorage.concat(offer)
-        //     this.myOpenOrders = [...this._myOpenOrdersStorage]
-        //     // this._myOpenOrdersStorage = [...this.myOpenOrders]
+        //     this._myOrdersStorage = this._myOrdersStorage.concat(offer)
+        //     this.myOrders = [...this._myOrdersStorage]
         // }
 
         // Add to open market orders
@@ -667,10 +666,10 @@ class TradePortal extends LitElement {
             this.shadowRoot.querySelector('#myHistoricTradesGrid').push('items', offer)
 
             // // Remove from my open order when trade is redeemed
-            // if (this._myOpenOrdersStorage.length !== 0) {
+            // if (this._myOrdersStorage.length !== 0) {
 
-            //     this._myOpenOrdersStorage = this.shadowRoot.querySelector('#myOpenOrdersGrid').items.filter(myOpenOrder => myOpenOrder.qortalAtAddress !== offer.qortalAtAddress)
-            //     this.myOpenOrders = [...this._myOpenOrdersStorage]
+            //     this._myOrdersStorage = this.shadowRoot.querySelector('#myOrdersGrid').items.filter(myOpenOrder => myOpenOrder.qortalAtAddress !== offer.qortalAtAddress)
+            //     this.myOrders = [...this._myOrdersStorage]
             // }
         } else if (offer.partnerQortalReceivingAddress === this.selectedAddress.address) {
 
@@ -697,20 +696,20 @@ class TradePortal extends LitElement {
         if (offer.qortalCreator === this.selectedAddress.address) {
             // ... A Sell
 
-            if (this._myOpenOrdersStorage.length === 0) {
+            if (this._myOrdersStorage.length === 0) {
 
-                this._myOpenOrdersStorage = this._myOpenOrdersStorage.concat(offer)
-                this.myOpenOrders = [...this._myOpenOrdersStorage]
+                this._myOrdersStorage = this._myOrdersStorage.concat(offer)
+                this.myOrders = [...this._myOrdersStorage]
             } else {
 
-                this._myOpenOrdersStorage = this._myOpenOrdersStorage.map(myOpenOrder => {
+                this._myOrdersStorage = this._myOrdersStorage.map(myOpenOrder => {
                     if (myOpenOrder.qortalAtAddress === offer.qortalAtAddress) {
                         return offer
                     } else {
                         return myOpenOrder
                     }
                 })
-                this.myOpenOrders = [...this._myOpenOrdersStorage]
+                this.myOrders = [...this._myOrdersStorage]
             }
 
         }
@@ -718,8 +717,8 @@ class TradePortal extends LitElement {
         // else if (offer.partnerQortalReceivingAddress === this.selectedAddress.address) {
         //     //... A Buy
 
-        //     this._myOpenOrdersStorage = this._myOpenOrdersStorage.concat(offer)
-        //     this.myOpenOrders = [...this._myOpenOrdersStorage]
+        //     this._myOrdersStorage = this._myOrdersStorage.concat(offer)
+        //     this.myOrders = [...this._myOrdersStorage]
 
         //     // Check and Update BTC Wallet Balance
         //     this.updateBTCAccountBalance()
@@ -874,7 +873,7 @@ class TradePortal extends LitElement {
                 }
 
                 // Append Order to My Open Orders
-                this.shadowRoot.querySelector('#myOpenOrdersGrid').push('items', tradeItem)
+                this.shadowRoot.querySelector('#myOrdersGrid').push('items', tradeItem)
             } else {
 
                 this.isSellLoading = false
