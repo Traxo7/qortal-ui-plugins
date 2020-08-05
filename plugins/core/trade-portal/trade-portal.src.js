@@ -16,7 +16,8 @@ class TradePortal extends LitElement {
         return {
             selectedAddress: { type: Object },
             config: { type: Object },
-            qortBalance: { type: Number },
+            qortBalance: { type: String },
+            btcBalance: { type: String },
             sellBtnDisable: { type: Boolean },
             isSellLoading: { type: Boolean },
             isBuyLoading: { type: Boolean },
@@ -267,7 +268,8 @@ class TradePortal extends LitElement {
         super()
         this.selectedAddress = {}
         this.config = {}
-        this.qortBalance = 0
+        this.qortBalance = '0'
+        this.btcBalance = '0'
         this.sellBtnDisable = false
         this.isSellLoading = false
         this.buyBtnDisable = true
@@ -280,6 +282,8 @@ class TradePortal extends LitElement {
         this._myOpenOrdersStorage = []
         this._openOrdersStorage = []
     }
+
+    // TODO: Spllit this large chunk of code into individual components
 
     render() {
         return html`
@@ -302,7 +306,7 @@ class TradePortal extends LitElement {
                             <div class="box">
                                 <header>OPEN MARKET SELL ORDERS</header>
                                 <div class="border-wrapper">
-                                    <vaadin-grid id="openOrdersGrid" aria-label="Open Orders" .items="${this.openOrders}">
+                                    <vaadin-grid theme="compact column-borders row-stripes wrap-cell-content" id="openOrdersGrid" aria-label="Open Orders" .items="${this.openOrders}">
                                         <vaadin-grid-column header="Amount (QORT)" path="qortAmount"></vaadin-grid-column>
                                         <vaadin-grid-column width="2rem" header="Price (BTC)" .renderer=${(root, column, data) => {
                 const price = this.round(parseFloat(data.item.btcAmount) / parseFloat(data.item.qortAmount))
@@ -356,7 +360,7 @@ class TradePortal extends LitElement {
                                             id="buyTotalInput"
                                             required
                                             readOnly
-                                            label="Total (QORT)"
+                                            label="Total (BTC)"
                                             placeholder="0.0000"
                                             type="text" 
                                             auto-validate="false"
@@ -376,7 +380,7 @@ class TradePortal extends LitElement {
                                         </mwc-textfield>
                                         </p>
 
-                                        <span class="you-have">You have: ${this.qortBalance} QORT</span>
+                                        <span class="you-have">You have: ${this.btcBalance} BTC</span>
 
                                         <div class="buttons" >
                                             <div>
@@ -447,7 +451,7 @@ class TradePortal extends LitElement {
                             <div class="box">
                                 <header>HISTORIC TRADES (24 hours)</header>
                                 <div class="border-wrapper">
-                                    <vaadin-grid id="historicTradesGrid" aria-label="Historic Trades" .items="${this.historicTrades}">
+                                    <vaadin-grid theme="compact column-borders row-stripes wrap-cell-content" id="historicTradesGrid" aria-label="Historic Trades" .items="${this.historicTrades}">
                                         <vaadin-grid-column header="Amount (QORT)" path="qortAmount"></vaadin-grid-column>
                                         <vaadin-grid-column width="2rem" header="Price (BTC)" .renderer=${(root, column, data) => {
                 const price = this.round(parseFloat(data.item.btcAmount) / parseFloat(data.item.qortAmount))
@@ -466,7 +470,7 @@ class TradePortal extends LitElement {
                             <div class="box">
                                 <header>MY OPEN ORDERS</header>
                                 <div class="border-wrapper">
-                                    <vaadin-grid id="myOpenOrdersGrid" aria-label="My Open Orders" .items="${this.myOpenOrders}">
+                                    <vaadin-grid theme="compact column-borders row-stripes wrap-cell-content" id="myOpenOrdersGrid" aria-label="My Open Orders" .items="${this.myOpenOrders}">
                                         <vaadin-grid-column width="2rem" header="Date" .renderer=${(root, column, data) => {
                 const dateString = new Date(data.item.timestamp).toLocaleString()
                 render(html`${dateString}`, root)
@@ -488,7 +492,7 @@ class TradePortal extends LitElement {
                             <div class="box">
                                 <header>MY HISTORIC TRADES</header>
                                 <div class="border-wrapper">
-                                    <vaadin-grid id="myHistoricTradesGrid" aria-label="My Open Orders" .items="${this.myHistoricTrades}">
+                                    <vaadin-grid theme="compact column-borders row-stripes wrap-cell-content" id="myHistoricTradesGrid" aria-label="My Open Orders" .items="${this.myHistoricTrades}">
                                         <vaadin-grid-column width="2rem" header="Date" .renderer=${(root, column, data) => {
                 const dateString = new Date(data.item.timestamp).toLocaleString()
                 render(html`${dateString}`, root)
@@ -520,6 +524,8 @@ class TradePortal extends LitElement {
 
     firstUpdated() {
 
+        // Check BTC Wallet Balance
+        this.updateBTCAccountBalance()
 
         // call getOpenOrdersGrid
         this.getOpenOrdersGrid()
@@ -576,7 +582,7 @@ class TradePortal extends LitElement {
     fillBuyForm(sellerRequest) {
 
         this.shadowRoot.getElementById('buyAmountInput').value = parseFloat(sellerRequest.qortAmount)
-        this.shadowRoot.getElementById('buyPriceInput').value = parseFloat(sellerRequest.btcAmount) / parseFloat(sellerRequest.qortAmount)
+        this.shadowRoot.getElementById('buyPriceInput').value = this.round(parseFloat(sellerRequest.btcAmount) / parseFloat(sellerRequest.qortAmount))
         this.shadowRoot.getElementById('buyTotalInput').value = parseFloat(sellerRequest.btcAmount)
         this.shadowRoot.getElementById('qortalAtAddress').value = sellerRequest.qortalAtAddress
 
@@ -624,62 +630,81 @@ class TradePortal extends LitElement {
 
             this._myOpenOrdersStorage = this._myOpenOrdersStorage.concat(offer)
             this.myOpenOrders = [...this._myOpenOrdersStorage]
-            this._myOpenOrdersStorage = [...this.myOpenOrders]
-
-            this._openOrdersStorage = this._openOrdersStorage.concat(offer)
-            this.shadowRoot.querySelector('#openOrdersGrid').push('items', offer)
-        } else {
-            //...
-
-            this.shadowRoot.querySelector('#openOrdersGrid').push('items', offer)
+            // this._myOpenOrdersStorage = [...this.myOpenOrders]
         }
+
+        // Add to open market orders
+        this._openOrdersStorage = this._openOrdersStorage.concat(offer)
+        this.shadowRoot.querySelector('#openOrdersGrid').push('items', offer)
+
     }
 
     processRedeemedTrade(offer) {
         //...
 
+        console.log('I am redeemed: ', offer);
+
         // If trade is mine, remove it from my open orders, add it to my historic trades and also add it to historic trades
-        if (offer.qortalCreator == this.selectedAddress.address) {
+        if (offer.qortalCreator === this.selectedAddress.address) {
             // ...
 
-            this.shadowRoot.querySelector('#historicTradesGrid').push('items', offer)
             this.shadowRoot.querySelector('#myHistoricTradesGrid').push('items', offer)
-        } else {
+
+
+            // Remove from my open order when trade is redeemed
+            if (this._myOpenOrdersStorage.length !== 0) {
+
+                this._myOpenOrdersStorage = this.shadowRoot.querySelector('#myOpenOrdersGrid').items.filter(myOpenOrder => myOpenOrder.qortalAtAddress !== offer.qortalAtAddress)
+                this.myOpenOrders = [...this._myOpenOrdersStorage]
+            }
+        } else if (offer.partnerQortalReceivingAddress === this.selectedAddress.address) {
             //...
 
-            this.shadowRoot.querySelector('#historicTradesGrid').push('items', offer)
+            this.shadowRoot.querySelector('#myHistoricTradesGrid').push('items', offer)
         }
+
+        // Add to historic trades
+        this.shadowRoot.querySelector('#historicTradesGrid').push('items', offer)
     }
 
     processTradingTrade(offer) {
         // ...
 
-        // If I am the creator of the trade (buy or sell), update my open orders, remove it from open market orders
-        if (offer.qortalCreator === this.selectedAddress.address) {
-            // ...
+        console.log('I am trading: ', offer);
 
-            this._myOpenOrdersStorage = this._myOpenOrdersStorage.map(myOpenOrder => {
-                if (myOpenOrder.qortalAtAddress === offer.qortalAtAddress) {
-                    return offer
-                } else {
-                    return myOpenOrder
-                }
-            })
+        // If I am the creator of the trade (buy or sell), update my open orders, remove the order from open market orders
+        if (offer.qortalCreator === this.selectedAddress.address) {
+            // ... A Sell
+
+            if (this._myOpenOrdersStorage.length === 0) {
+
+                this._myOpenOrdersStorage = this._myOpenOrdersStorage.concat(offer)
+                this.myOpenOrders = [...this._myOpenOrdersStorage]
+            } else {
+
+                this._myOpenOrdersStorage = this._myOpenOrdersStorage.map(myOpenOrder => {
+                    if (myOpenOrder.qortalAtAddress === offer.qortalAtAddress) {
+                        return offer
+                    } else {
+                        return myOpenOrder
+                    }
+                })
+                this.myOpenOrders = [...this._myOpenOrdersStorage]
+            }
+
+        } else if (offer.partnerQortalReceivingAddress === this.selectedAddress.address) {
+            //... A Buy
+
+            this._myOpenOrdersStorage = this._myOpenOrdersStorage.concat(offer)
             this.myOpenOrders = [...this._myOpenOrdersStorage]
 
-            // this._myOpenOrdersStorage
-
-            this._openOrdersStorage = this._openOrdersStorage.filter(openOrder => offer.qortalAtAddress !== openOrder.qortalAtAddress)
-            this.openOrders = [...this._openOrdersStorage]
-
+            // Check and Update BTC Wallet Balance
+            this.updateBTCAccountBalance()
         }
 
-        // else if (offer.qortalCreator === this.selectedAddress.address) {
-        //     //...
-
-        //     this.shadowRoot.querySelector('#openOrdersGrid').push('items', offer)
-        // }
-
+        // Remove from open market orders TODO: How to determine a buy or sell ?
+        this._openOrdersStorage = this._openOrdersStorage.filter(openOrder => openOrder.qortalAtAddress !== offer.qortalAtAddress)
+        this.openOrders = [...this._openOrdersStorage]
     }
 
     processRefundedTrade(offer) {
@@ -694,6 +719,7 @@ class TradePortal extends LitElement {
 
     processOffers(offers) {
 
+        console.log("TRADE OFFERS: ", offers);
 
         /** TRADE STATES or MODE
          *  - OFFERING
@@ -942,7 +968,7 @@ class TradePortal extends LitElement {
         const sellAmountInput = this.shadowRoot.getElementById('sellAmountInput').value
         // const sellPriceInput = this.shadowRoot.getElementById('sellPriceInput').value
         const sellTotalInput = this.shadowRoot.getElementById('sellTotalInput').value
-        const fundingQortAmount = parseFloat(sellAmountInput) + 1
+        const fundingQortAmount = parseFloat(sellAmountInput) + 1 // Set default AT fees for processing to 1 QORT
 
         const makeRequest = async () => {
 
@@ -979,10 +1005,6 @@ class TradePortal extends LitElement {
 
                 // Append Order to My Open Orders
                 this.shadowRoot.querySelector('#myOpenOrdersGrid').push('items', tradeItem)
-
-                console.log(this.myOpenOrders);
-                console.log(this._myOpenOrdersStorage);
-
             } else {
 
                 this.isSellLoading = false
@@ -1040,6 +1062,8 @@ class TradePortal extends LitElement {
                 this.shadowRoot.getElementById('buyTotalInput').value = this.initialAmount
                 this.shadowRoot.getElementById('qortalAtAddress').value = ''
 
+                parentEpml.request('showSnackBar', "Buy Order Successful! Trade in Progress...");
+
             } else {
 
                 this.isBuyLoading = false
@@ -1064,6 +1088,17 @@ class TradePortal extends LitElement {
             this.qortBalance = res
 
             this.updateAccountBalanceTimeout = setTimeout(() => this.updateAccountBalance(), 10000)
+        })
+    }
+
+    updateBTCAccountBalance() {
+
+        parentEpml.request('apiCall', {
+            url: `/crosschain/btc/walletbalance`,
+            method: "POST",
+            body: window.parent.reduxStore.getState().app.selectedAddress.btcWallet._tDerivedMasterPrivateKey
+        }).then(res => {
+            this.btcBalance = (Number(res) / 1e8).toFixed(8)
         })
     }
 
@@ -1100,7 +1135,7 @@ class TradePortal extends LitElement {
     }
 
     round(number) {
-        let result = (Math.floor(parseFloat(number) * 1e8) / 1e8).toFixed(8)
+        let result = (Math.round(parseFloat(number) * 1e8) / 1e8).toFixed(8)
         return result
     }
 }
