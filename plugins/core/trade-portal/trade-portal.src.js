@@ -642,7 +642,7 @@ class TradePortal extends LitElement {
     processRedeemedTrade(offer) {
         //...
 
-        console.log('I am redeemed: ', offer);
+        // console.log('I am redeemed: ', offer);
 
         // If trade is mine, remove it from my open orders, add it to my historic trades and also add it to historic trades
         if (offer.qortalCreator === this.selectedAddress.address) {
@@ -670,7 +670,7 @@ class TradePortal extends LitElement {
     processTradingTrade(offer) {
         // ...
 
-        console.log('I am trading: ', offer);
+        // console.log('I am trading: ', offer);
 
         // If I am the creator of the trade (buy or sell), update my open orders, remove the order from open market orders
         if (offer.qortalCreator === this.selectedAddress.address) {
@@ -719,7 +719,7 @@ class TradePortal extends LitElement {
 
     processOffers(offers) {
 
-        console.log("TRADE OFFERS: ", offers);
+        // console.log("TRADE OFFERS: ", offers);
 
         /** TRADE STATES or MODE
          *  - OFFERING
