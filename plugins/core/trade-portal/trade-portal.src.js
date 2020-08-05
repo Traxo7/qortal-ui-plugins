@@ -692,41 +692,35 @@ class TradePortal extends LitElement {
 
         // console.log('I am trading: ', offer);
 
-        // If I am the creator of the trade (buy or sell), update my open orders, remove the order from open market orders
-        if (offer.qortalCreator === this.selectedAddress.address) {
-            // ... A Sell
+        // // If I am the creator of the trade (buy or sell), update my open orders, remove the order from open market orders
+        // if (offer.qortalCreator === this.selectedAddress.address) {
 
-            if (this._myOrdersStorage.length === 0) {
+        //     if (this._myOrdersStorage.length === 0) {
 
-                this._myOrdersStorage = this._myOrdersStorage.concat(offer)
-                this.myOrders = [...this._myOrdersStorage]
-            } else {
+        //         this._myOrdersStorage = this._myOrdersStorage.concat(offer)
+        //         this.myOrders = [...this._myOrdersStorage]
+        //     } else {
 
-                this._myOrdersStorage = this._myOrdersStorage.map(myOpenOrder => {
-                    if (myOpenOrder.qortalAtAddress === offer.qortalAtAddress) {
-                        return offer
-                    } else {
-                        return myOpenOrder
-                    }
-                })
-                this.myOrders = [...this._myOrdersStorage]
-            }
-
-        }
-
-        // else if (offer.partnerQortalReceivingAddress === this.selectedAddress.address) {
-        //     //... A Buy
-
-        //     this._myOrdersStorage = this._myOrdersStorage.concat(offer)
-        //     this.myOrders = [...this._myOrdersStorage]
-
-        //     // Check and Update BTC Wallet Balance
-        //     this.updateBTCAccountBalance()
+        //         this._myOrdersStorage = this._myOrdersStorage.map(myOpenOrder => {
+        //             if (myOpenOrder.qortalAtAddress === offer.qortalAtAddress) {
+        //                 return offer
+        //             } else {
+        //                 return myOpenOrder
+        //             }
+        //         })
+        //         this.myOrders = [...this._myOrdersStorage]
+        //     }
         // }
 
-        // Remove from open market orders TODO: How to determine a buy or sell ?
-        this._openOrdersStorage = this._openOrdersStorage.filter(openOrder => openOrder.qortalAtAddress !== offer.qortalAtAddress)
-        this.openOrders = [...this._openOrdersStorage]
+        // Remove from open market orders
+        if (this.socketConnectionCounter > 1) {
+
+            // Check and Update BTC Wallet Balance
+            this.updateBTCAccountBalance()
+
+            this._openOrdersStorage = this._openOrdersStorage.filter(openOrder => openOrder.qortalAtAddress !== offer.qortalAtAddress)
+            this.openOrders = [...this._openOrdersStorage]
+        }
     }
 
     processRefundedTrade(offer) {
