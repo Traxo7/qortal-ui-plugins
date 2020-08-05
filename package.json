@@ -11,6 +11,7 @@
     "@material/mwc-button": "^0.17.2",
     "@material/mwc-dialog": "^0.17.2",
     "@material/mwc-icon": "^0.17.2",
+    "@material/mwc-icon-button": "0.17.2",
     "@material/mwc-slider": "^0.17.2",
     "@material/mwc-textfield": "^0.17.2",
     "@polymer/paper-progress": "^3.0.1",

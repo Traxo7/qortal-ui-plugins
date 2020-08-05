@@ -5,6 +5,7 @@ import { Epml } from '../../../epml.js'
 
 import '@material/mwc-button'
 import '@material/mwc-textfield'
+import '@material/mwc-icon-button'
 import '@polymer/paper-spinner/paper-spinner-lite.js'
 import '@vaadin/vaadin-grid/vaadin-grid.js'
 import '@vaadin/vaadin-grid/theme/material/all-imports.js'
@@ -28,7 +29,8 @@ class TradePortal extends LitElement {
             myOpenOrders: { type: Array },
             myHistoricTrades: { type: Array },
             _openOrdersStorage: { type: Array },
-            _myOpenOrdersStorage: { type: Array }
+            _myOpenOrdersStorage: { type: Array },
+            socketConnectionCounter: { type: Number },
         }
     }
 
@@ -66,6 +68,7 @@ class TradePortal extends LitElement {
                 display: flex;
                 flex: 0 1 auto;
                 align-items: center;
+                justify-content: space-between;
                 padding: 0px 15px;
                 font-size: 16px;
                 color: #fff;
@@ -281,6 +284,7 @@ class TradePortal extends LitElement {
         this.myHistoricTrades = []
         this._myOpenOrdersStorage = []
         this._openOrdersStorage = []
+        this.socketConnectionCounter = 0
     }
 
     // TODO: Spllit this large chunk of code into individual components
@@ -324,7 +328,11 @@ class TradePortal extends LitElement {
                         <div class="open-market-container">
                             <div class="buy-sell">
                                 <div class="box">
-                                    <header>BUY QORT</header>
+                                    <header>
+                                        <span>BUY QORT</span>
+                                        
+                                        <mwc-icon-button icon="clear_all" @click=${() => this.clearBuyForm()}></mwc-icon-button>
+                                    </header>
                                     <div class="card">
                                         <p>
                                             <mwc-textfield
@@ -391,7 +399,11 @@ class TradePortal extends LitElement {
                                 </div>
 
                                 <div class="box">
-                                    <header>SELL QORT</header>
+                                    <header>
+                                        <span>SELL QORT</span>
+
+                                        <mwc-icon-button icon="clear_all" @click=${() => this.clearSellForm()}></mwc-icon-button>
+                                    </header>
                                     <div class="card">
                                         <p>
                                             <mwc-textfield
@@ -468,7 +480,7 @@ class TradePortal extends LitElement {
                     <div id="third-trade-section">
                         <div class="my-open-orders">
                             <div class="box">
-                                <header>MY OPEN ORDERS</header>
+                                <header>MY ORDERS</header>
                                 <div class="border-wrapper">
                                     <vaadin-grid theme="compact column-borders row-stripes wrap-cell-content" id="myOpenOrdersGrid" aria-label="My Open Orders" .items="${this.myOpenOrders}">
                                         <vaadin-grid-column width="2rem" header="Date" .renderer=${(root, column, data) => {
@@ -642,14 +654,17 @@ class TradePortal extends LitElement {
     processRedeemedTrade(offer) {
         //...
 
-        // console.log('I am redeemed: ', offer);
-
         // If trade is mine, remove it from my open orders, add it to my historic trades and also add it to historic trades
         if (offer.qortalCreator === this.selectedAddress.address) {
-            // ...
 
+            // Check and Update BTC Wallet Balance
+            if (this.socketConnectionCounter > 1) {
+
+                this.updateBTCAccountBalance()
+            }
+
+            // Add to my historic trades
             this.shadowRoot.querySelector('#myHistoricTradesGrid').push('items', offer)
-
 
             // Remove from my open order when trade is redeemed
             if (this._myOpenOrdersStorage.length !== 0) {
@@ -658,8 +673,14 @@ class TradePortal extends LitElement {
                 this.myOpenOrders = [...this._myOpenOrdersStorage]
             }
         } else if (offer.partnerQortalReceivingAddress === this.selectedAddress.address) {
-            //...
 
+            // Check and Update BTC Wallet Balance
+            if (this.socketConnectionCounter > 1) {
+
+                this.updateBTCAccountBalance()
+            }
+
+            // Add to my historic trades
             this.shadowRoot.querySelector('#myHistoricTradesGrid').push('items', offer)
         }
 
@@ -692,15 +713,17 @@ class TradePortal extends LitElement {
                 this.myOpenOrders = [...this._myOpenOrdersStorage]
             }
 
-        } else if (offer.partnerQortalReceivingAddress === this.selectedAddress.address) {
-            //... A Buy
-
-            this._myOpenOrdersStorage = this._myOpenOrdersStorage.concat(offer)
-            this.myOpenOrders = [...this._myOpenOrdersStorage]
-
-            // Check and Update BTC Wallet Balance
-            this.updateBTCAccountBalance()
         }
+
+        // else if (offer.partnerQortalReceivingAddress === this.selectedAddress.address) {
+        //     //... A Buy
+
+        //     this._myOpenOrdersStorage = this._myOpenOrdersStorage.concat(offer)
+        //     this.myOpenOrders = [...this._myOpenOrdersStorage]
+
+        //     // Check and Update BTC Wallet Balance
+        //     this.updateBTCAccountBalance()
+        // }
 
         // Remove from open market orders TODO: How to determine a buy or sell ?
         this._openOrdersStorage = this._openOrdersStorage.filter(openOrder => openOrder.qortalAtAddress !== offer.qortalAtAddress)
@@ -721,7 +744,7 @@ class TradePortal extends LitElement {
 
         // console.log("TRADE OFFERS: ", offers);
 
-        /** TRADE STATES or MODE
+        /** TRADE OFFER STATES or MODE
          *  - OFFERING
          *  - REDEEMED
          *  - TRADING
@@ -753,8 +776,6 @@ class TradePortal extends LitElement {
 
         const startConnection = () => {
 
-            let initial = 0
-
             let socketTimeout
 
             let myNode = window.parent.reduxStore.getState().app.nodeConfig.knownNodes[window.parent.reduxStore.getState().app.nodeConfig.node]
@@ -777,26 +798,13 @@ class TradePortal extends LitElement {
             socket.onopen = () => {
 
                 setTimeout(pingSocket, 50)
+                this.socketConnectionCounter += 1
             }
 
             // Message Event
             socket.onmessage = (e) => {
 
-                // console.log(JSON.parse(e.data));
-
-                // this.openOrders = JSON.parse(e.data)
-
                 this.processOffers(JSON.parse(e.data))
-
-                // if (initial === 0) {
-
-                //     this.isLoadingMessages = true
-                //     this.processOffers(JSON.parse(e.data))
-                //     initial = initial + 1
-                // } else {
-
-                //     this.processMessages(JSON.parse(e.data), false)
-                // }
             }
 
             // Closed Event
@@ -819,144 +827,6 @@ class TradePortal extends LitElement {
         };
 
         startConnection()
-    }
-
-    // Helper Functions (Re-Used in Most part of the UI )
-    _checkSellAmount(e) {
-        const targetAmount = e.target.value
-        const target = e.target
-
-
-        if (targetAmount.length === 0) {
-
-            this.isValidAmount = false
-            this.sellBtnDisable = true
-
-            // Quick Hack to lose and regain focus inorder to display error message without user having to click outside the input field
-            e.target.blur()
-            e.target.focus()
-
-            e.target.invalid = true
-            e.target.validationMessage = "Invalid Amount!"
-        } else {
-
-            const sellAmountInput = this.shadowRoot.getElementById('sellAmountInput').value
-            const sellPriceInput = this.shadowRoot.getElementById('sellPriceInput').value
-
-            this.shadowRoot.getElementById('sellTotalInput').value = this.round(parseFloat(sellAmountInput) * parseFloat(sellPriceInput))
-            this.sellBtnDisable = false
-        }
-
-        e.target.blur()
-        e.target.focus()
-
-        e.target.validityTransform = (newValue, nativeValidity) => {
-
-
-            if (newValue.includes('-') === true) {
-
-                this.sellBtnDisable = true
-                target.validationMessage = "Invalid Amount!"
-
-                return {
-                    valid: false
-                }
-            } else if (!nativeValidity.valid) {
-
-                if (newValue.includes('.') === true) {
-
-                    let myAmount = newValue.split('.')
-                    if (myAmount[1].length > 8) {
-
-                        this.sellBtnDisable = true
-                        target.validationMessage = "Invalid Amount!"
-                    } else {
-
-                        const sellAmountInput = this.shadowRoot.getElementById('sellAmountInput').value
-                        const sellPriceInput = this.shadowRoot.getElementById('sellPriceInput').value
-
-                        this.shadowRoot.getElementById('sellTotalInput').value = this.round(parseFloat(sellAmountInput) * parseFloat(sellPriceInput))
-                        this.sellBtnDisable = false
-
-                        return {
-                            valid: true
-                        }
-                    }
-                }
-            } else {
-
-                const sellAmountInput = this.shadowRoot.getElementById('sellAmountInput').value
-                const sellPriceInput = this.shadowRoot.getElementById('sellPriceInput').value
-
-                this.shadowRoot.getElementById('sellTotalInput').value = this.round(parseFloat(sellAmountInput) * parseFloat(sellPriceInput))
-                this.sellBtnDisable = false
-            }
-        }
-    }
-
-    _checkBuyAmount(e) {
-        const targetAmount = e.target.value
-        const target = e.target
-
-        if (targetAmount.length === 0) {
-
-            this.isValidAmount = false
-            this.sellBtnDisable = true
-
-            e.target.blur()
-            e.target.focus()
-
-            e.target.invalid = true
-            e.target.validationMessage = "Invalid Amount!"
-        } else {
-
-            this.buyBtnDisable = false
-        }
-
-        e.target.blur()
-        e.target.focus()
-
-        e.target.validityTransform = (newValue, nativeValidity) => {
-
-
-            if (newValue.includes('-') === true) {
-
-                this.buyBtnDisable = true
-                target.validationMessage = "Invalid Amount!"
-
-                return {
-                    valid: false
-                }
-            } else if (!nativeValidity.valid) {
-
-                if (newValue.includes('.') === true) {
-
-                    let myAmount = newValue.split('.')
-                    if (myAmount[1].length > 8) {
-
-                        this.buyBtnDisable = true
-                        target.validationMessage = "Invalid Amount!"
-                    } else {
-
-                        this.buyBtnDisable = false
-
-                        return {
-                            valid: true
-                        }
-                    }
-                }
-            } else {
-
-                this.buyBtnDisable = false
-            }
-        }
-    }
-
-
-    clearSelection() {
-
-        window.getSelection().removeAllRanges()
-        window.parent.getSelection().removeAllRanges()
     }
 
     async sellAction() {
@@ -1102,6 +972,144 @@ class TradePortal extends LitElement {
         })
     }
 
+
+    // Helper Functions (Re-Used in Most part of the UI )
+    _checkSellAmount(e) {
+        const targetAmount = e.target.value
+        const target = e.target
+
+
+        if (targetAmount.length === 0) {
+
+            this.isValidAmount = false
+            this.sellBtnDisable = true
+
+            // Quick Hack to lose and regain focus inorder to display error message without user having to click outside the input field
+            e.target.blur()
+            e.target.focus()
+
+            e.target.invalid = true
+            e.target.validationMessage = "Invalid Amount!"
+        } else {
+
+            const sellAmountInput = this.shadowRoot.getElementById('sellAmountInput').value
+            const sellPriceInput = this.shadowRoot.getElementById('sellPriceInput').value
+
+            this.shadowRoot.getElementById('sellTotalInput').value = this.round(parseFloat(sellAmountInput) * parseFloat(sellPriceInput))
+            this.sellBtnDisable = false
+        }
+
+        e.target.blur()
+        e.target.focus()
+
+        e.target.validityTransform = (newValue, nativeValidity) => {
+
+
+            if (newValue.includes('-') === true) {
+
+                this.sellBtnDisable = true
+                target.validationMessage = "Invalid Amount!"
+
+                return {
+                    valid: false
+                }
+            } else if (!nativeValidity.valid) {
+
+                if (newValue.includes('.') === true) {
+
+                    let myAmount = newValue.split('.')
+                    if (myAmount[1].length > 8) {
+
+                        this.sellBtnDisable = true
+                        target.validationMessage = "Invalid Amount!"
+                    } else {
+
+                        const sellAmountInput = this.shadowRoot.getElementById('sellAmountInput').value
+                        const sellPriceInput = this.shadowRoot.getElementById('sellPriceInput').value
+
+                        this.shadowRoot.getElementById('sellTotalInput').value = this.round(parseFloat(sellAmountInput) * parseFloat(sellPriceInput))
+                        this.sellBtnDisable = false
+
+                        return {
+                            valid: true
+                        }
+                    }
+                }
+            } else {
+
+                const sellAmountInput = this.shadowRoot.getElementById('sellAmountInput').value
+                const sellPriceInput = this.shadowRoot.getElementById('sellPriceInput').value
+
+                this.shadowRoot.getElementById('sellTotalInput').value = this.round(parseFloat(sellAmountInput) * parseFloat(sellPriceInput))
+                this.sellBtnDisable = false
+            }
+        }
+    }
+
+    _checkBuyAmount(e) {
+        const targetAmount = e.target.value
+        const target = e.target
+
+        if (targetAmount.length === 0) {
+
+            this.isValidAmount = false
+            this.sellBtnDisable = true
+
+            e.target.blur()
+            e.target.focus()
+
+            e.target.invalid = true
+            e.target.validationMessage = "Invalid Amount!"
+        } else {
+
+            this.buyBtnDisable = false
+        }
+
+        e.target.blur()
+        e.target.focus()
+
+        e.target.validityTransform = (newValue, nativeValidity) => {
+
+
+            if (newValue.includes('-') === true) {
+
+                this.buyBtnDisable = true
+                target.validationMessage = "Invalid Amount!"
+
+                return {
+                    valid: false
+                }
+            } else if (!nativeValidity.valid) {
+
+                if (newValue.includes('.') === true) {
+
+                    let myAmount = newValue.split('.')
+                    if (myAmount[1].length > 8) {
+
+                        this.buyBtnDisable = true
+                        target.validationMessage = "Invalid Amount!"
+                    } else {
+
+                        this.buyBtnDisable = false
+
+                        return {
+                            valid: true
+                        }
+                    }
+                }
+            } else {
+
+                this.buyBtnDisable = false
+            }
+        }
+    }
+
+    clearSelection() {
+
+        window.getSelection().removeAllRanges()
+        window.parent.getSelection().removeAllRanges()
+    }
+
     _textMenu(event) {
 
         const getSelectedText = () => {
@@ -1127,6 +1135,25 @@ class TradePortal extends LitElement {
         }
 
         checkSelectedTextAndShowMenu()
+    }
+
+    clearBuyForm() {
+        // ...
+
+        this.shadowRoot.getElementById('buyAmountInput').value = this.initialAmount
+        this.shadowRoot.getElementById('buyPriceInput').value = this.initialAmount
+        this.shadowRoot.getElementById('buyTotalInput').value = this.initialAmount
+        this.shadowRoot.getElementById('qortalAtAddress').value = ''
+
+        this.buyBtnDisable = true
+    }
+
+    clearSellForm() {
+        // ...
+
+        this.shadowRoot.getElementById('sellAmountInput').value = this.initialAmount
+        this.shadowRoot.getElementById('sellPriceInput').value = this.initialAmount
+        this.shadowRoot.getElementById('sellTotalInput').value = this.initialAmount
     }
 
     isEmptyArray(arr) {
