@@ -2636,7 +2636,7 @@
                         </div>
                         <div class="historic-trades">
                             <div class="box">
-                                <header>HISTORIC TRADES (24 hours)</header>
+                                <header>HISTORIC MARKET TRADES (24 hours)</header>
                                 <div class="border-wrapper">
                                     <vaadin-grid theme="compact column-borders row-stripes wrap-cell-content" id="historicTradesGrid" aria-label="Historic Trades" .items="${this.historicTrades}">
                                         <vaadin-grid-column header="Amount (QORT)" path="qortAmount"></vaadin-grid-column>
