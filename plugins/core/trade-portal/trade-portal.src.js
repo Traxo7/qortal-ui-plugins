@@ -30,7 +30,7 @@ class TradePortal extends LitElement {
             myHistoricTrades: { type: Array },
             _openOrdersStorage: { type: Array },
             _myOrdersStorage: { type: Array },
-            socketConnectionCounter: { type: Number },
+            tradeOffersSocketCounter: { type: Number },
         }
     }
 
@@ -284,7 +284,7 @@ class TradePortal extends LitElement {
         this.myHistoricTrades = []
         this._myOrdersStorage = []
         this._openOrdersStorage = []
-        this.socketConnectionCounter = 0
+        this.tradeOffersSocketCounter = 0
     }
 
     // TODO: Spllit this large chunk of code into individual components
@@ -312,7 +312,7 @@ class TradePortal extends LitElement {
                                 <div class="border-wrapper">
                                     <vaadin-grid theme="compact column-borders row-stripes wrap-cell-content" id="openOrdersGrid" aria-label="Open Orders" .items="${this.openOrders}">
                                         <vaadin-grid-column header="Amount (QORT)" path="qortAmount"></vaadin-grid-column>
-                                        <vaadin-grid-column width="2rem" header="Price (BTC)" .renderer=${(root, column, data) => {
+                                        <vaadin-grid-column header="Price (BTC)" .renderer=${(root, column, data) => {
                 const price = this.round(parseFloat(data.item.btcAmount) / parseFloat(data.item.qortAmount))
                 render(html`${price}`, root)
             }}>
@@ -465,7 +465,7 @@ class TradePortal extends LitElement {
                                 <div class="border-wrapper">
                                     <vaadin-grid theme="compact column-borders row-stripes wrap-cell-content" id="historicTradesGrid" aria-label="Historic Trades" .items="${this.historicTrades}">
                                         <vaadin-grid-column header="Amount (QORT)" path="qortAmount"></vaadin-grid-column>
-                                        <vaadin-grid-column width="2rem" header="Price (BTC)" .renderer=${(root, column, data) => {
+                                        <vaadin-grid-column header="Price (BTC)" .renderer=${(root, column, data) => {
                 const price = this.round(parseFloat(data.item.btcAmount) / parseFloat(data.item.qortAmount))
                 render(html`${price}`, root)
             }}>
@@ -482,20 +482,20 @@ class TradePortal extends LitElement {
                             <div class="box">
                                 <header>MY ORDERS</header>
                                 <div class="border-wrapper">
-                                    <vaadin-grid theme="compact column-borders row-stripes wrap-cell-content" id="myOrdersGrid" aria-label="My Open Orders" .items="${this.myOrders}">
-                                        <vaadin-grid-column width="2rem" header="Date" .renderer=${(root, column, data) => {
+                                    <vaadin-grid theme="compact column-borders row-stripes wrap-cell-content" id="myOrdersGrid" aria-label="My Orders" .items="${this.myOrders}">
+                                        <vaadin-grid-column header="Date" .renderer=${(root, column, data) => {
                 const dateString = new Date(data.item.timestamp).toLocaleString()
                 render(html`${dateString}`, root)
             }}>
                                 </vaadin-grid-column>
-                                        <vaadin-grid-column header="Status" path="mode"></vaadin-grid-column>
-                                        <vaadin-grid-column width="2rem" header="Price (BTC)" .renderer=${(root, column, data) => {
-                const price = this.round(parseFloat(data.item.btcAmount) / parseFloat(data.item.qortAmount))
+                                        <vaadin-grid-column header="Status" path="tradeState"></vaadin-grid-column>
+                                        <vaadin-grid-column header="Price (BTC)" .renderer=${(root, column, data) => {
+                const price = this.round(parseFloat(data.item.bitcoinAmount) / parseFloat(data.item.qortAmount))
                 render(html`${price}`, root)
             }}>
                                 </vaadin-grid-column>
                                         <vaadin-grid-column header="Amount (QORT)" path="qortAmount"></vaadin-grid-column>
-                                        <vaadin-grid-column header="Total (BTC)" path="btcAmount"></vaadin-grid-column>
+                                        <vaadin-grid-column header="Total (BTC)" path="bitcoinAmount"></vaadin-grid-column>
                                     </vaadin-grid>
                                 </div>
                             </div>
@@ -505,13 +505,13 @@ class TradePortal extends LitElement {
                                 <header>MY HISTORIC TRADES</header>
                                 <div class="border-wrapper">
                                     <vaadin-grid theme="compact column-borders row-stripes wrap-cell-content" id="myHistoricTradesGrid" aria-label="My Open Orders" .items="${this.myHistoricTrades}">
-                                        <vaadin-grid-column width="2rem" header="Date" .renderer=${(root, column, data) => {
+                                        <vaadin-grid-column header="Date" .renderer=${(root, column, data) => {
                 const dateString = new Date(data.item.timestamp).toLocaleString()
                 render(html`${dateString}`, root)
             }}>
                                 </vaadin-grid-column>
                                         <vaadin-grid-column header="Status" path="mode"></vaadin-grid-column>
-                                        <vaadin-grid-column width="2rem" header="Price (BTC)" .renderer=${(root, column, data) => {
+                                        <vaadin-grid-column header="Price (BTC)" .renderer=${(root, column, data) => {
                 const price = this.round(parseFloat(data.item.btcAmount) / parseFloat(data.item.qortAmount))
                 render(html`${price}`, root)
             }}>
@@ -657,7 +657,7 @@ class TradePortal extends LitElement {
         if (offer.qortalCreator === this.selectedAddress.address) {
 
             // Check and Update BTC Wallet Balance
-            if (this.socketConnectionCounter > 1) {
+            if (this.tradeOffersSocketCounter > 1) {
 
                 this.updateBTCAccountBalance()
             }
@@ -674,7 +674,7 @@ class TradePortal extends LitElement {
         } else if (offer.partnerQortalReceivingAddress === this.selectedAddress.address) {
 
             // Check and Update BTC Wallet Balance
-            if (this.socketConnectionCounter > 1) {
+            if (this.tradeOffersSocketCounter > 1) {
 
                 this.updateBTCAccountBalance()
             }
@@ -690,30 +690,8 @@ class TradePortal extends LitElement {
     processTradingTrade(offer) {
         // ...
 
-        // console.log('I am trading: ', offer);
-
-        // // If I am the creator of the trade (buy or sell), update my open orders, remove the order from open market orders
-        // if (offer.qortalCreator === this.selectedAddress.address) {
-
-        //     if (this._myOrdersStorage.length === 0) {
-
-        //         this._myOrdersStorage = this._myOrdersStorage.concat(offer)
-        //         this.myOrders = [...this._myOrdersStorage]
-        //     } else {
-
-        //         this._myOrdersStorage = this._myOrdersStorage.map(myOpenOrder => {
-        //             if (myOpenOrder.qortalAtAddress === offer.qortalAtAddress) {
-        //                 return offer
-        //             } else {
-        //                 return myOpenOrder
-        //             }
-        //         })
-        //         this.myOrders = [...this._myOrdersStorage]
-        //     }
-        // }
-
         // Remove from open market orders
-        if (this.socketConnectionCounter > 1) {
+        if (this.tradeOffersSocketCounter > 1) {
 
             // Check and Update BTC Wallet Balance
             this.updateBTCAccountBalance()
@@ -733,9 +711,7 @@ class TradePortal extends LitElement {
 
     }
 
-    processOffers(offers) {
-
-        // console.log("TRADE OFFERS: ", offers);
+    processTradeOffers(offers) {
 
         /** TRADE OFFER STATES or MODE
          *  - OFFERING
@@ -765,9 +741,142 @@ class TradePortal extends LitElement {
         })
     }
 
+
+    /**
+     *  TradeBot Note by cat
+     * 
+     * trade-bot entry states:
+     *   - when you do /crosschain/tradebot/create,
+     *   - it returns unsigned DEPLOY_AT for you to sign & broadcast
+     *   - so initial trade-bot state is BOB_WAITING_FOR_AT_CONFIRM, because trade-bot is waiting for UI to sign & broadcast txn and for that txn to be confirmed into a block
+     *   - once that happens & Bob's trade-bot notices that DEPLOY_AT has confirmed (and hence AT created and running), then it switches to BOB_WAITING_FOR_MESSAGE
+     *   - which is Bob's trade-bot waiting for a message from Alice's trade-bot telling it (Bob's trade-bot) that Alice's trade-bot has funded P2SH-A and some other details
+     *   - when that message is sent, Bob's trade-bot processes that message and sends its own message to the AT (which switches it to TRADING mode)
+     *   - but the next state for Bob's trade-bot is to wait for Alice to spot AT is locked to her and for her to fund P2SH-B, hence BOB_WAITING_FOR_P2SH_B
+     *   - at this point, Bob's trade-bot finds P2SH-B on the bitcoin blockchain and can send secret-B to P2SH-B
+     *   - when this happens, Alice uses secret-B and secret-A to redeem the QORT from the AT, so until Alice does this, Bob's trade-bot state is BOB_WAITING_FOR_AT_REDEEM
+     *   - after Alice redeems QORT from AT, Bob can extract secret-A and capture the actual BTC funds from P2SH-A to his own bitcoin account and hence his trade-bot moves to BOB_DONE
+     *   - if anything goes wrong then refunds occur and Bob's trade-bot ends up at BOB_REFUNDED instead
+     *   - I think you can probably guess the corresponding meaning of states for Alice's point of view, but if not I can go through those too?
+     *   - Alice calls /crosschain/tradebot/respond which funds P2SH-A
+     *   - so her trade-bot waits for that to appear in bitcoin blockchain, so until then is ALICE_WAITING_FOR_P2SH_A
+     *   - once the P2SH-A funding confirms, Alice's trade-bot can MESSAGE Bob's trade-bot with the details and changes to ALICE_WAITING_FOR_AT_LOCK
+     *   - Bob's AT should then lock to trading with Alice (via those MESSAGEs above) and Alice's trade-bot notices this, (minimally) funds P2SH-B and waits until Bob 'spends' P2SH-B, hence ALICE_WATCH_P2SH_B
+     *   - if Bob spends P2SH-B, then Alice can send secret-B and secret-A to the AT, claim the QORT and she's ALICE_DONE
+     *   - if something goes wrong then her trade-bot needs to refund P2SH-B (if applicable) first (ALICE_REFUNDING_B)
+     *   - and when that's done refund P2SH-A (ALICE_REFUNDING_A)
+     *   - and when that's done her trade-bot ends up at ALICE_REFUNDED
+     * 
+     *   (PHEW)
+     */
+
+    processTradeBotStates(states) {
+
+        /** TRADEBOT STATES
+         *  - BOB_WAITING_FOR_AT_CONFIRM
+         *  - BOB_WAITING_FOR_MESSAGE
+         *  - BOB_WAITING_FOR_P2SH_B
+         *  - BOB_WAITING_FOR_AT_REDEEM
+         *  - BOB_DONE
+         *  - BOB_REFUNDED
+         *  - ALICE_WAITING_FOR_P2SH_A
+         *  - ALICE_WAITING_FOR_AT_LOCK
+         *  - ALICE_WATCH_P2SH_B
+         *  - ALICE_DONE
+         *  - ALICE_REFUNDING_B
+         *  - ALICE_REFUNDING_A
+         *  - ALICE_REFUNDED
+         */
+
+        states.forEach(state => {
+
+            if (state.creatorAddress === this.selectedAddress.address) {
+
+                if (state.tradeState == 'BOB_WAITING_FOR_AT_CONFIRM') {
+
+                    this.changeTradeBotState(state, 'PENDING')
+                } else if (state.tradeState == 'BOB_WAITING_FOR_MESSAGE') {
+
+                    this.changeTradeBotState(state, 'ICON HERE')
+                } else if (state.tradeState == 'BOB_WAITING_FOR_P2SH_B') {
+
+                    this.changeTradeBotState(state, 'ICON HERE')
+                } else if (state.tradeState == 'BOB_WAITING_FOR_AT_REDEEM') {
+
+                    this.changeTradeBotState(state, 'ICON HERE')
+                } else if (state.tradeState == 'BOB_DONE') {
+
+                    this.handleCompletedState(state)
+                } else if (state.tradeState == 'BOB_REFUNDED') {
+
+                    this.handleCompletedState(state)
+                } else if (state.tradeState == 'ALICE_WAITING_FOR_P2SH_A') {
+
+                    this.changeTradeBotState(state, 'ICON HERE')
+                } else if (state.tradeState == 'ALICE_WAITING_FOR_AT_LOCK') {
+
+                    this.changeTradeBotState(state, 'ICON HERE')
+                } else if (state.tradeState == 'ALICE_WATCH_P2SH_B') {
+
+                    this.changeTradeBotState(state, 'ICON HERE')
+                } else if (state.tradeState == 'ALICE_DONE') {
+
+                    this.handleCompletedState(state)
+                } else if (state.tradeState == 'ALICE_REFUNDING_B') {
+
+                    this.changeTradeBotState(state, 'ICON HERE')
+                } else if (state.tradeState == 'ALICE_REFUNDING_A') {
+
+                    this.changeTradeBotState(state, 'ICON HERE')
+                } else if (state.tradeState == 'ALICE_REFUNDED') {
+
+                    this.handleCompletedState(state)
+                }
+            }
+        })
+    }
+
+
+    changeTradeBotState(state, tradeState) {
+
+        if (this._myOrdersStorage.length === 0) {
+
+            const stateItem = {
+                ...state,
+                tradeState: tradeState
+            }
+
+            this._myOrdersStorage = this._myOrdersStorage.concat(stateItem)
+            this.myOrders = [...this._myOrdersStorage]
+        } else {
+
+            this._myOrdersStorage = this._myOrdersStorage.map(myOrder => {
+                if (myOrder.atAddress === state.atAddress) {
+
+                    const stateItem = {
+                        ...state,
+                        tradeState: tradeState
+                    }
+
+                    return stateItem
+                } else {
+                    return myOrder
+                }
+            })
+            this.myOrders = [...this._myOrdersStorage]
+        }
+    }
+
+    // ONLY USE FOR BOB_DONE, BOB_REFUNDED, ALICE_DONE, ALICE_REFUNDED
+    handleCompletedState(state) {
+
+        this._myOrdersStorage = this._myOrdersStorage.filter(myOrder => myOrder.atAddress !== state.atAddress)
+        this.openOrders = [...this._openOrdersStorage]
+    }
+
     initSocket() {
 
-        const startConnection = () => {
+        const initTradeOffersWebSocket = () => {
 
             let socketTimeout
 
@@ -791,24 +900,29 @@ class TradePortal extends LitElement {
             socket.onopen = () => {
 
                 setTimeout(pingSocket, 50)
-                this.socketConnectionCounter += 1
+                this.tradeOffersSocketCounter += 1
+                console.log(`[TRADE-OFFERS-SOCKET] ==>: CONNECTED`);
             }
 
             // Message Event
             socket.onmessage = (e) => {
 
-                this.processOffers(JSON.parse(e.data))
+                this.processTradeOffers(JSON.parse(e.data))
             }
 
             // Closed Event
             socket.onclose = () => {
                 clearTimeout(socketTimeout)
+                console.log(`[TRADE-OFFERS-SOCKET] ==>: CLOSED`);
+
+                // Restart Socket Connection
+                restartTradeOffersWebSocket()
             }
 
             // Error Event
             socket.onerror = (e) => {
                 clearTimeout(socketTimeout)
-                console.log(`[TRADE-SOCKET ==>: ${e.type}`);
+                console.log(`[TRADE-OFFERS-SOCKET] ==>: ${e.type}`);
             }
 
             const pingSocket = () => {
@@ -819,7 +933,77 @@ class TradePortal extends LitElement {
 
         };
 
-        startConnection()
+        const initTradeBotWebSocket = () => {
+
+            let socketTimeout
+
+            let myNode = window.parent.reduxStore.getState().app.nodeConfig.knownNodes[window.parent.reduxStore.getState().app.nodeConfig.node]
+            let nodeUrl = myNode.domain + ":" + myNode.port
+
+            let socketLink
+
+            if (window.parent.location.protocol === "https:") {
+
+                socketLink = `wss://${nodeUrl}/websockets/crosschain/tradebot`;
+            } else {
+
+                // Fallback to http
+                socketLink = `ws://${nodeUrl}/websockets/crosschain/tradebot`;
+            }
+
+            const socket = new WebSocket(socketLink);
+
+            // Open Connection
+            socket.onopen = () => {
+
+                setTimeout(pingSocket, 50)
+                console.log(`[TRADEBOT-SOCKET] ==>: CONNECTED`);
+            }
+
+            // Message Event
+            socket.onmessage = (e) => {
+
+                this.processTradeBotStates(JSON.parse(e.data))
+            }
+
+            // Closed Event
+            socket.onclose = () => {
+                clearTimeout(socketTimeout)
+                console.log(`[TRADEBOT-SOCKET] ==>: CLOSED`);
+
+                // Restart Socket Connection
+                restartTradeBotWebSocket()
+            }
+
+            // Error Event
+            socket.onerror = (e) => {
+                clearTimeout(socketTimeout)
+                console.log(`[TRADEBOT-SOCKET] ==>: ${e.type}`);
+            }
+
+            const pingSocket = () => {
+                socket.send('ping')
+
+                socketTimeout = setTimeout(pingSocket, 295000)
+            }
+
+        };
+
+        const restartTradeOffersWebSocket = () => {
+
+            setTimeout(() => initTradeOffersWebSocket(), 3000)
+        }
+
+        const restartTradeBotWebSocket = () => {
+
+            setTimeout(() => initTradeBotWebSocket(), 3000)
+        }
+
+        // Start TradeOffersWebSocket
+        initTradeOffersWebSocket()
+
+        // Start TradeBotWebSocket
+        initTradeBotWebSocket()
     }
 
     async sellAction() {
@@ -829,9 +1013,8 @@ class TradePortal extends LitElement {
         this.sellBtnDisable = true
 
         const sellAmountInput = this.shadowRoot.getElementById('sellAmountInput').value
-        // const sellPriceInput = this.shadowRoot.getElementById('sellPriceInput').value
         const sellTotalInput = this.shadowRoot.getElementById('sellTotalInput').value
-        const fundingQortAmount = parseFloat(sellAmountInput) + 1 // Set default AT fees for processing to 1 QORT
+        const fundingQortAmount = this.round(parseFloat(sellAmountInput) + 1) // Set default AT fees for processing to 1 QORT
 
         const makeRequest = async () => {
 
@@ -857,27 +1040,22 @@ class TradePortal extends LitElement {
                 this.shadowRoot.getElementById('sellAmountInput').value = this.initialAmount
                 this.shadowRoot.getElementById('sellPriceInput').value = this.initialAmount
                 this.shadowRoot.getElementById('sellTotalInput').value = this.initialAmount
-
-                const tradeItem = {
-                    timestamp: Date.now(),
-                    btcAmount: sellTotalInput,
-                    qortAmount: sellAmountInput,
-                    mode: 'PENDING',
-                    qortalCreator: this.selectedAddress.address
-                }
-
-                // Append Order to My Open Orders
-                this.shadowRoot.querySelector('#myOrdersGrid').push('items', tradeItem)
-            } else {
+            } else if (response === false) {
 
                 this.isSellLoading = false
                 this.sellBtnDisable = false
 
                 parentEpml.request('showSnackBar', "Failed to Create Trade. Try again!");
+            } else {
+
+                this.isSellLoading = false
+                this.sellBtnDisable = false
+
+                parentEpml.request('showSnackBar', `Failed to Create Trade. ERROR_CODE: ${response}`);
             }
         }
 
-        if ((parseFloat(fundingQortAmount) + parseFloat(0.002)) > parseFloat(this.qortBalance)) {
+        if ((this.round(parseFloat(fundingQortAmount) + parseFloat(0.002))) > parseFloat(this.qortBalance)) {
 
             this.isSellLoading = false
             this.sellBtnDisable = false
@@ -897,9 +1075,6 @@ class TradePortal extends LitElement {
         this.buyBtnDisable = true
 
         const qortalAtAddress = this.shadowRoot.getElementById('qortalAtAddress').value
-
-        console.log(qortalAtAddress);
-
 
         const makeRequest = async () => {
 
@@ -927,12 +1102,18 @@ class TradePortal extends LitElement {
 
                 parentEpml.request('showSnackBar', "Buy Order Successful! Trade in Progress...");
 
-            } else {
+            } else if (response === false) {
 
                 this.isBuyLoading = false
                 this.buyBtnDisable = false
 
                 parentEpml.request('showSnackBar', "Failed to Create Trade. Try again!");
+            } else {
+
+                this.isBuyLoading = false
+                this.buyBtnDisable = false
+
+                parentEpml.request('showSnackBar', `Failed to Create Trade. ERROR_CODE: ${response}`);
             }
         }
 
