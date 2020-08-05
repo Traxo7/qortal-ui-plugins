@@ -637,13 +637,13 @@ class TradePortal extends LitElement {
         // ...
 
         // If trade is mine, show it in my open orders and market open orders
-        if (offer.qortalCreator === this.selectedAddress.address) {
-            // ...
+        // if (offer.qortalCreator === this.selectedAddress.address) {
+        //     // ...
 
-            this._myOpenOrdersStorage = this._myOpenOrdersStorage.concat(offer)
-            this.myOpenOrders = [...this._myOpenOrdersStorage]
-            // this._myOpenOrdersStorage = [...this.myOpenOrders]
-        }
+        //     this._myOpenOrdersStorage = this._myOpenOrdersStorage.concat(offer)
+        //     this.myOpenOrders = [...this._myOpenOrdersStorage]
+        //     // this._myOpenOrdersStorage = [...this.myOpenOrders]
+        // }
 
         // Add to open market orders
         this._openOrdersStorage = this._openOrdersStorage.concat(offer)
