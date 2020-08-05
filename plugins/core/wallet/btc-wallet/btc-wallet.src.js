@@ -153,7 +153,7 @@ class BTCWallet extends LitElement {
                 this.selectedBtcWallet = selectedAddress.btcWallet
 
                 // this.updateAccountTransactions()
-                // this.updateAccountBalance()
+
             })
 
             parentEpml.subscribe('copy_menu_switch', async value => {
@@ -323,6 +323,9 @@ class BTCWallet extends LitElement {
         // Calls the getGridTransaction func..
         this.getGridTransaction()
 
+        // Check Wallet Balance
+        this.updateAccountBalance()
+
         window.addEventListener("contextmenu", (event) => {
 
             event.preventDefault();
@@ -358,16 +361,17 @@ class BTCWallet extends LitElement {
     // }
 
 
-    // updateAccountBalance() {
+    updateAccountBalance() {
 
-    //     clearTimeout(this.updateAccountBalanceTimeout)
-    //     parentEpml.request('apiCall', {
-    //         url: `/addresses/balance/${this.selectedBtcWallet.address}`
-    //     }).then(res => {
-    //         this.balance = res
-    //         this.updateAccountBalanceTimeout = setTimeout(() => this.updateAccountBalance(), 5000)
-    //     })
-    // }
+        parentEpml.request('apiCall', {
+            url: `/crosschain/btc/walletbalance`,
+            method: "POST",
+            body: window.parent.reduxStore.getState().app.selectedAddress.btcWallet._tDerivedMasterPrivateKey
+        }).then(res => {
+            this.balance = (Number(res) / 1e8).toFixed(8)
+
+        })
+    }
 
     showTransactionDetails(myTransaction, allTransactions) {
 
