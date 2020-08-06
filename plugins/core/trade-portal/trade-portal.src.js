@@ -28,10 +28,7 @@ class TradePortal extends LitElement {
             historicTrades: { type: Array },
             myOrders: { type: Array },
             myHistoricTrades: { type: Array },
-            _openOrdersStorage: { type: Array },
-            _myOrdersStorage: { type: Array },
             tradeOffersSocketCounter: { type: Number },
-            isCancelLoading: { type: Boolean },
             cancelBtnDisable: { type: Boolean },
         }
     }
@@ -288,10 +285,7 @@ class TradePortal extends LitElement {
         this.historicTrades = []
         this.myOrders = []
         this.myHistoricTrades = []
-        this._myOrdersStorage = []
-        this._openOrdersStorage = []
         this.tradeOffersSocketCounter = 0
-        this.isCancelLoading = false
         this.cancelBtnDisable = false
     }
 
@@ -308,7 +302,7 @@ class TradePortal extends LitElement {
                     <div id="first-trade-section">
                         <div class="trade-chart">
                             <div class="box">
-                                <header>CLOSED PRICE LINE CHART</header>
+                                <header>CLOSED PRICE LINE CHART ("COMING SOON")</header>
                                 <div class="card">
 
                                 </div>
@@ -319,13 +313,16 @@ class TradePortal extends LitElement {
                                 <header>OPEN MARKET SELL ORDERS</header>
                                 <div class="border-wrapper">
                                     <vaadin-grid theme="compact column-borders row-stripes wrap-cell-content" id="openOrdersGrid" aria-label="Open Orders" .items="${this.openOrders}">
-                                        <vaadin-grid-column header="Amount (QORT)" path="qortAmount"></vaadin-grid-column>
-                                        <vaadin-grid-column header="Price (BTC)" .renderer=${(root, column, data) => {
+                                        <vaadin-grid-column resizable header="Amount (QORT)" path="qortAmount"></vaadin-grid-column>
+                                        <vaadin-grid-column resizable header="Price (BTC)" .renderer=${(root, column, data) => {
                 const price = this.round(parseFloat(data.item.btcAmount) / parseFloat(data.item.qortAmount))
                 render(html`${price}`, root)
             }}>
                                 </vaadin-grid-column>
-                                        <vaadin-grid-column header="Total (BTC)" path="btcAmount"></vaadin-grid-column>
+                                        <vaadin-grid-column resizable header="Total (BTC)" .renderer=${(root, column, data) => {
+                render(html`<span> ${data.item.btcAmount} </span>`, root)
+            }}>
+                                        </vaadin-grid-column>
                                     </vaadin-grid>
                                 </div>
                             </div>
@@ -472,13 +469,16 @@ class TradePortal extends LitElement {
                                 <header>HISTORIC MARKET TRADES (24 hours)</header>
                                 <div class="border-wrapper">
                                     <vaadin-grid theme="compact column-borders row-stripes wrap-cell-content" id="historicTradesGrid" aria-label="Historic Trades" .items="${this.historicTrades}">
-                                        <vaadin-grid-column header="Amount (QORT)" path="qortAmount"></vaadin-grid-column>
-                                        <vaadin-grid-column header="Price (BTC)" .renderer=${(root, column, data) => {
+                                        <vaadin-grid-column resizable header="Amount (QORT)" path="qortAmount"></vaadin-grid-column>
+                                        <vaadin-grid-column resizable header="Price (BTC)" .renderer=${(root, column, data) => {
                 const price = this.round(parseFloat(data.item.btcAmount) / parseFloat(data.item.qortAmount))
                 render(html`${price}`, root)
             }}>
                                 </vaadin-grid-column>
-                                        <vaadin-grid-column header="Total (BTC)" path="btcAmount"></vaadin-grid-column>
+                                        <vaadin-grid-column resizable header="Total (BTC)" .renderer=${(root, column, data) => {
+                render(html`<span> ${data.item.btcAmount} </span>`, root)
+            }}>
+                                        </vaadin-grid-column>
                                     </vaadin-grid>
                                 </div>
                             </div>
@@ -491,20 +491,23 @@ class TradePortal extends LitElement {
                                 <header>MY ORDERS</header>
                                 <div class="border-wrapper">
                                     <vaadin-grid theme="compact column-borders row-stripes wrap-cell-content" id="myOrdersGrid" aria-label="My Orders" .items="${this.myOrders}">
-                                        <vaadin-grid-column header="Date" .renderer=${(root, column, data) => {
+                                        <vaadin-grid-column resizable header="Date" .renderer=${(root, column, data) => {
                 const dateString = new Date(data.item.timestamp).toLocaleString()
                 render(html`${dateString}`, root)
             }}>
                                 </vaadin-grid-column>
-                                        <vaadin-grid-column header="Status" path="_tradeState"></vaadin-grid-column>
-                                        <vaadin-grid-column header="Price (BTC)" .renderer=${(root, column, data) => {
+                                        <vaadin-grid-column resizable header="Status" .renderer=${(root, column, data) => {
+                render(html`<span id="${data.item.atAddress}"> ${data.item._tradeState} </span>`, root)
+            }}>
+                                        </vaadin-grid-column>
+                                        <vaadin-grid-column resizable header="Price (BTC)" .renderer=${(root, column, data) => {
                 const price = this.round(parseFloat(data.item.bitcoinAmount) / parseFloat(data.item.qortAmount))
                 render(html`${price}`, root)
             }}>
                                 </vaadin-grid-column>
-                                        <vaadin-grid-column header="Amount (QORT)" path="qortAmount"></vaadin-grid-column>
-                                        <vaadin-grid-column header="Total (BTC)" path="bitcoinAmount"></vaadin-grid-column>
-                                        <vaadin-grid-column width="5rem" flex-grow="0" header="Action" .renderer=${(root, column, data) => {
+                                        <vaadin-grid-column resizable header="Amount (QORT)" path="qortAmount"></vaadin-grid-column>
+                                        <vaadin-grid-column resizable header="Total (BTC)" path="bitcoinAmount"></vaadin-grid-column>
+                                        <vaadin-grid-column resizable width="5rem" flex-grow="0" header="Action" .renderer=${(root, column, data) => {
                 render(html`${this.renderCancelButton(data.item)}`, root)
             }}></vaadin-grid-column>
                                     </vaadin-grid>
@@ -516,19 +519,22 @@ class TradePortal extends LitElement {
                                 <header>MY HISTORIC TRADES</header>
                                 <div class="border-wrapper">
                                     <vaadin-grid theme="compact column-borders row-stripes wrap-cell-content" id="myHistoricTradesGrid" aria-label="My Open Orders" .items="${this.myHistoricTrades}">
-                                        <vaadin-grid-column header="Date" .renderer=${(root, column, data) => {
+                                        <vaadin-grid-column resizable header="Date" .renderer=${(root, column, data) => {
                 const dateString = new Date(data.item.timestamp).toLocaleString()
                 render(html`${dateString}`, root)
             }}>
                                 </vaadin-grid-column>
-                                        <vaadin-grid-column header="Status" path="mode"></vaadin-grid-column>
-                                        <vaadin-grid-column header="Price (BTC)" .renderer=${(root, column, data) => {
+                                        <vaadin-grid-column resizable header="Status" path="mode"></vaadin-grid-column>
+                                        <vaadin-grid-column resizable header="Price (BTC)" .renderer=${(root, column, data) => {
                 const price = this.round(parseFloat(data.item.btcAmount) / parseFloat(data.item.qortAmount))
                 render(html`${price}`, root)
             }}>
                                 </vaadin-grid-column>
-                                        <vaadin-grid-column header="Amount (QORT)" path="qortAmount"></vaadin-grid-column>
-                                        <vaadin-grid-column header="Total (BTC)" path="btcAmount"></vaadin-grid-column>
+                                        <vaadin-grid-column resizable header="Amount (QORT)" path="qortAmount"></vaadin-grid-column>
+                                        <vaadin-grid-column resizable header="Total (BTC)" .renderer=${(root, column, data) => {
+                render(html`<span> ${data.item.btcAmount} </span>`, root)
+            }}>
+                                        </vaadin-grid-column>
                                     </vaadin-grid>
                                 </div>
                             </div>
@@ -549,6 +555,12 @@ class TradePortal extends LitElement {
 
         // Check BTC Wallet Balance
         this.updateBTCAccountBalance()
+
+        // Set Trade Panes
+        this.openOrdersGrid = this.shadowRoot.getElementById('openOrdersGrid')
+        this.myOrdersGrid = this.shadowRoot.getElementById('myOrdersGrid')
+        this.historicTradesGrid = this.shadowRoot.getElementById('historicTradesGrid')
+        this.myHistoricTradesGrid = this.shadowRoot.getElementById('myHistoricTradesGrid')
 
         // call getOpenOrdersGrid
         this.getOpenOrdersGrid()
@@ -630,20 +642,19 @@ class TradePortal extends LitElement {
     }
 
     processOfferingTrade(offer) {
-        // ...
 
-        // If trade is mine, show it in my open orders and market open orders
-        // if (offer.qortalCreator === this.selectedAddress.address) {
-        //     // ...
+        const addOffer = () => {
+            this.openOrdersGrid.items.unshift(offer)
+            this.openOrdersGrid.clearCache();
+        }
 
-        //     this._myOrdersStorage = this._myOrdersStorage.concat(offer)
-        //     this.myOrders = [...this._myOrdersStorage]
-        // }
+        const initOffer = () => {
 
-        // Add to open market orders
-        this._openOrdersStorage = this._openOrdersStorage.concat(offer)
-        this.shadowRoot.querySelector('#openOrdersGrid').push('items', offer)
+            this.openOrdersGrid.items.push(offer)
+            this.openOrdersGrid.clearCache()
+        }
 
+        this.openOrdersGrid.items.length === 0 ? initOffer() : addOffer()
     }
 
     processRedeemedTrade(offer) {
@@ -658,7 +669,9 @@ class TradePortal extends LitElement {
             }
 
             // Add to my historic trades
-            this.shadowRoot.querySelector('#myHistoricTradesGrid').push('items', offer)
+
+            this.myHistoricTradesGrid.items.unshift(offer)
+            this.myHistoricTradesGrid.clearCache();
         } else if (offer.partnerQortalReceivingAddress === this.selectedAddress.address) {
 
             // Check and Update BTC Wallet Balance
@@ -668,11 +681,13 @@ class TradePortal extends LitElement {
             }
 
             // Add to my historic trades
-            this.shadowRoot.querySelector('#myHistoricTradesGrid').push('items', offer)
+            this.myHistoricTradesGrid.items.unshift(offer)
+            this.myHistoricTradesGrid.clearCache();
         }
 
         // Add to historic trades
-        this.shadowRoot.querySelector('#historicTradesGrid').push('items', offer)
+        this.historicTradesGrid.items.unshift(offer)
+        this.historicTradesGrid.clearCache();
     }
 
     processTradingTrade(offer) {
@@ -682,10 +697,15 @@ class TradePortal extends LitElement {
 
             // Check and Update BTC Wallet Balance
             this.updateBTCAccountBalance()
-
-            this._openOrdersStorage = this._openOrdersStorage.filter(openOrder => openOrder.qortalAtAddress !== offer.qortalAtAddress)
-            this.openOrders = [...this._openOrdersStorage]
         }
+
+        this.openOrdersGrid.items.forEach((item, index) => {
+            if (item.qortalAtAddress === offer.qortalAtAddress) {
+
+                this.openOrdersGrid.items.splice(index, 1)
+                this.openOrdersGrid.clearCache();
+            }
+        })
     }
 
     processRefundedTrade(offer) {
@@ -699,7 +719,8 @@ class TradePortal extends LitElement {
             }
 
             // Add to my historic trades
-            this.shadowRoot.querySelector('#myHistoricTradesGrid').push('items', offer)
+            this.myHistoricTradesGrid.items.unshift(offer)
+            this.myHistoricTradesGrid.clearCache()
         }
     }
 
@@ -714,11 +735,17 @@ class TradePortal extends LitElement {
             }
 
             // Add to my historic trades
-            this.shadowRoot.querySelector('#myHistoricTradesGrid').push('items', offer)
+            this.myHistoricTradesGrid.items.unshift(offer)
+            this.myHistoricTradesGrid.clearCache()
         }
 
-        this._openOrdersStorage = this._openOrdersStorage.filter(openOrder => openOrder.qortalAtAddress !== offer.qortalAtAddress)
-        this.openOrders = [...this._openOrdersStorage]
+        this.openOrdersGrid.items.forEach((item, index) => {
+            if (item.qortalAtAddress === offer.qortalAtAddress) {
+
+                this.openOrdersGrid.items.splice(index, 1)
+                this.openOrdersGrid.clearCache()
+            }
+        })
     }
 
     processTradeOffers(offers) {
@@ -782,6 +809,8 @@ class TradePortal extends LitElement {
 
     processTradeBotStates(states) {
 
+        // console.log('TRADE BOT STATES: ', states);
+
         /** TRADEBOT STATES
          *  - BOB_WAITING_FOR_AT_CONFIRM
          *  - BOB_WAITING_FOR_MESSAGE
@@ -797,6 +826,9 @@ class TradePortal extends LitElement {
          *  - ALICE_REFUNDING_A
          *  - ALICE_REFUNDED
          */
+
+        //  Reverse the states
+        states.reverse()
 
         states.forEach(state => {
 
@@ -849,39 +881,48 @@ class TradePortal extends LitElement {
 
     changeTradeBotState(state, tradeState) {
 
-        if (this._myOrdersStorage.length === 0) {
+        // Set Loading state
+        this.myOrdersGrid.loading = true
 
-            const stateItem = {
-                ...state,
-                _tradeState: tradeState
-            }
+        const stateItem = {
+            ...state,
+            _tradeState: tradeState
+        }
 
-            this._myOrdersStorage = this._myOrdersStorage.concat(stateItem)
-            this.myOrders = [...this._myOrdersStorage]
-        } else {
+        const item = this.myOrdersGrid.querySelector(`#${state.atAddress}`)
 
-            this._myOrdersStorage = this._myOrdersStorage.map(myOrder => {
-                if (myOrder.atAddress === state.atAddress) {
+        const addStateItem = () => {
 
-                    const stateItem = {
-                        ...state,
-                        tradeState: tradeState
-                    }
+            this.myOrdersGrid.loading = false
+            this.myOrdersGrid.items.unshift(stateItem)
+            this.myOrdersGrid.clearCache();
+        }
 
-                    return stateItem
-                } else {
-                    return myOrder
+        const updateStateItem = () => {
+
+            this.myOrdersGrid.items.forEach((item, index) => {
+                if (item.atAddress === state.atAddress) {
+
+                    this.myOrdersGrid.items.splice(index, 1)
+                    this.myOrdersGrid.items.unshift(stateItem)
+                    this.myOrdersGrid.clearCache();
                 }
             })
-            this.myOrders = [...this._myOrdersStorage]
         }
+
+        item ? updateStateItem() : addStateItem()
     }
 
     // ONLY USE FOR BOB_DONE, BOB_REFUNDED, ALICE_DONE, ALICE_REFUNDED
     handleCompletedState(state) {
 
-        this._myOrdersStorage = this._myOrdersStorage.filter(myOrder => myOrder.atAddress !== state.atAddress)
-        this.myOrders = [...this._myOrdersStorage]
+        this.myOrdersGrid.items.forEach((item, index) => {
+            if (item.atAddress === state.atAddress) {
+
+                this.myOrdersGrid.items.splice(index, 1)
+                this.myOrdersGrid.clearCache();
+            }
+        })
     }
 
     initSocket() {
@@ -1023,7 +1064,7 @@ class TradePortal extends LitElement {
 
         const sellAmountInput = this.shadowRoot.getElementById('sellAmountInput').value
         const sellTotalInput = this.shadowRoot.getElementById('sellTotalInput').value
-        const fundingQortAmount = this.round(parseFloat(sellAmountInput) + 1) // Set default AT fees for processing to 1 QORT
+        const fundingQortAmount = this.round(parseFloat(sellAmountInput) + 0.001) // Set default AT fees for processing to 0.001 QORT
 
         const makeRequest = async () => {
 
@@ -1033,7 +1074,7 @@ class TradePortal extends LitElement {
                 fundingQortAmount: fundingQortAmount,
                 bitcoinAmount: parseFloat(sellTotalInput),
                 tradeTimeout: 10080,
-                receivingAddress: this.selectedAddress.btcWallet._taddress
+                receivingAddress: this.selectedAddress.btcWallet.address
             })
 
             return response
@@ -1060,7 +1101,7 @@ class TradePortal extends LitElement {
                 this.isSellLoading = false
                 this.sellBtnDisable = false
 
-                parentEpml.request('showSnackBar', `Failed to Create Trade. ERROR_CODE: ${response}`);
+                parentEpml.request('showSnackBar', `Failed to Create Trade. ERROR_CODE: ${response.message}`);
             }
         }
 
@@ -1088,7 +1129,7 @@ class TradePortal extends LitElement {
 
             const response = await parentEpml.request('tradeBotRespondRequest', {
                 atAddress: qortalAtAddress,
-                xprv58: this.selectedAddress.btcWallet._tDerivedMasterPrivateKey,
+                xprv58: this.selectedAddress.btcWallet.derivedMasterPrivateKey,
                 receivingAddress: this.selectedAddress.address
             })
 
@@ -1108,7 +1149,7 @@ class TradePortal extends LitElement {
                 this.shadowRoot.getElementById('buyTotalInput').value = this.initialAmount
                 this.shadowRoot.getElementById('qortalAtAddress').value = ''
 
-                parentEpml.request('showSnackBar', "Buy Order Successful! Trade in Progress...");
+                parentEpml.request('showSnackBar', "Buy Request Successful!");
 
             } else if (response === false) {
 
@@ -1121,7 +1162,7 @@ class TradePortal extends LitElement {
                 this.isBuyLoading = false
                 this.buyBtnDisable = false
 
-                parentEpml.request('showSnackBar', `Failed to Create Trade. ERROR_CODE: ${response}`);
+                parentEpml.request('showSnackBar', `Failed to Create Trade. ERROR_CODE: ${response.message}`);
             }
         }
 
@@ -1133,17 +1174,15 @@ class TradePortal extends LitElement {
 
     async cancelAction(state) {
 
-        this.isCancelLoading = true
+        const button = this.shadowRoot.querySelector(`mwc-button#${state.atAddress}`)
+        button.innerHTML = `<paper-spinner-lite active></paper-spinner-lite>`
         this.cancelBtnDisable = true
 
         const makeRequest = async () => {
 
             const response = await parentEpml.request('deleteTradeOffer', {
-                atAddress: state.atAddress,
-                tradeKeyPair: {
-                    publicKey: state.tradeNativePublicKey,
-                    privateKey: new Uint8Array(window.parent.Base58.decode(state.tradePrivateKey))
-                }
+                creatorPublicKey: this.selectedAddress.base58PublicKey,
+                atAddress: state.atAddress
             })
 
             return response
@@ -1153,23 +1192,23 @@ class TradePortal extends LitElement {
 
             if (response === true) {
 
-                this.isCancelLoading = false
+                button.remove()
                 this.cancelBtnDisable = false
 
-                parentEpml.request('showSnackBar', "Trade Cancelled!");
+                parentEpml.request('showSnackBar', "Trade Cancelling In Progress!");
 
             } else if (response === false) {
 
-                this.isCancelLoading = false
+                button.innerHTML = 'CANCEL'
                 this.cancelBtnDisable = false
 
                 parentEpml.request('showSnackBar', "Failed to Cancel Trade. Try again!");
             } else {
 
-                this.isCancelLoading = false
+                button.innerHTML = 'CANCEL'
                 this.cancelBtnDisable = false
 
-                parentEpml.request('showSnackBar', `Failed to Cancel Trade. ERROR_CODE: ${response}`);
+                parentEpml.request('showSnackBar', `Failed to Cancel Trade. ERROR_CODE: ${response.message}`);
             }
         }
 
@@ -1196,7 +1235,7 @@ class TradePortal extends LitElement {
         parentEpml.request('apiCall', {
             url: `/crosschain/btc/walletbalance`,
             method: "POST",
-            body: window.parent.reduxStore.getState().app.selectedAddress.btcWallet._tDerivedMasterPrivateKey
+            body: window.parent.reduxStore.getState().app.selectedAddress.btcWallet.derivedMasterPrivateKey
         }).then(res => {
             this.btcBalance = (Number(res) / 1e8).toFixed(8)
         })
@@ -1205,10 +1244,8 @@ class TradePortal extends LitElement {
 
     renderCancelButton(stateItem) {
 
-        if (stateItem.tradeState == 'BOB_WAITING_FOR_AT_CONFIRM') {
-            return html`<mwc-button ?disabled=${this.cancelBtnDisable} class="cancel" @click=${() => this.cancelAction(stateItem)}>${this.isCancelLoading === false ? "CANCEL" : html`<paper-spinner-lite active></paper-spinner-lite>`}</mwc-button>`
-        } else if (stateItem.tradeState == 'BOB_WAITING_FOR_MESSAGE') {
-            return html`<mwc-button ?disabled=${this.cancelBtnDisable} class="cancel" @click=${() => this.cancelAction(stateItem)}>${this.isCancelLoading === false ? "CANCEL" : html`<paper-spinner-lite active></paper-spinner-lite>`}</mwc-button>`
+        if (stateItem.tradeState === 'BOB_WAITING_FOR_MESSAGE') {
+            return html`<mwc-button id="${stateItem.atAddress}" ?disabled=${this.cancelBtnDisable} class="cancel" @click=${(e) => this.cancelAction(stateItem)}>CANCEL</mwc-button>`
         } else {
             return ''
         }
