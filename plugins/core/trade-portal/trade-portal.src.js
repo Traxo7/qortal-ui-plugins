@@ -302,7 +302,7 @@ class TradePortal extends LitElement {
                     <div id="first-trade-section">
                         <div class="trade-chart">
                             <div class="box">
-                                <header>CLOSED PRICE LINE CHART</header>
+                                <header>CLOSED PRICE LINE CHART ("COMING SOON")</header>
                                 <div class="card">
 
                                 </div>
@@ -648,7 +648,13 @@ class TradePortal extends LitElement {
             this.openOrdersGrid.clearCache();
         }
 
-        this.openOrdersGrid.items.length === 0 ? this.openOrdersGrid.items.push(offer) : addOffer()
+        const initOffer = () => {
+
+            this.openOrdersGrid.items.push(offer)
+            this.openOrdersGrid.clearCache()
+        }
+
+        this.openOrdersGrid.items.length === 0 ? initOffer() : addOffer()
     }
 
     processRedeemedTrade(offer) {
@@ -697,6 +703,7 @@ class TradePortal extends LitElement {
             if (item.qortalAtAddress === offer.qortalAtAddress) {
 
                 this.openOrdersGrid.items.splice(index, 1)
+                this.openOrdersGrid.clearCache();
             }
         })
     }
@@ -713,6 +720,7 @@ class TradePortal extends LitElement {
 
             // Add to my historic trades
             this.myHistoricTradesGrid.items.unshift(offer)
+            this.myHistoricTradesGrid.clearCache()
         }
     }
 
@@ -728,12 +736,14 @@ class TradePortal extends LitElement {
 
             // Add to my historic trades
             this.myHistoricTradesGrid.items.unshift(offer)
+            this.myHistoricTradesGrid.clearCache()
         }
 
         this.openOrdersGrid.items.forEach((item, index) => {
             if (item.qortalAtAddress === offer.qortalAtAddress) {
 
                 this.openOrdersGrid.items.splice(index, 1)
+                this.openOrdersGrid.clearCache()
             }
         })
     }
@@ -817,6 +827,9 @@ class TradePortal extends LitElement {
          *  - ALICE_REFUNDED
          */
 
+        //  Reverse the states
+        states.reverse()
+
         states.forEach(state => {
 
             if (state.creatorAddress === this.selectedAddress.address) {
@@ -868,6 +881,9 @@ class TradePortal extends LitElement {
 
     changeTradeBotState(state, tradeState) {
 
+        // Set Loading state
+        this.myOrdersGrid.loading = true
+
         const stateItem = {
             ...state,
             _tradeState: tradeState
@@ -877,11 +893,24 @@ class TradePortal extends LitElement {
 
         const addStateItem = () => {
 
+            this.myOrdersGrid.loading = false
             this.myOrdersGrid.items.unshift(stateItem)
             this.myOrdersGrid.clearCache();
         }
 
-        item ? item.textContent = tradeState : addStateItem()
+        const updateStateItem = () => {
+
+            this.myOrdersGrid.items.forEach((item, index) => {
+                if (item.atAddress === state.atAddress) {
+
+                    this.myOrdersGrid.items.splice(index, 1)
+                    this.myOrdersGrid.items.unshift(stateItem)
+                    this.myOrdersGrid.clearCache();
+                }
+            })
+        }
+
+        item ? updateStateItem() : addStateItem()
     }
 
     // ONLY USE FOR BOB_DONE, BOB_REFUNDED, ALICE_DONE, ALICE_REFUNDED
@@ -891,6 +920,7 @@ class TradePortal extends LitElement {
             if (item.atAddress === state.atAddress) {
 
                 this.myOrdersGrid.items.splice(index, 1)
+                this.myOrdersGrid.clearCache();
             }
         })
     }
@@ -1044,7 +1074,7 @@ class TradePortal extends LitElement {
                 fundingQortAmount: fundingQortAmount,
                 bitcoinAmount: parseFloat(sellTotalInput),
                 tradeTimeout: 10080,
-                receivingAddress: this.selectedAddress.btcWallet._taddress
+                receivingAddress: this.selectedAddress.btcWallet.address
             })
 
             return response
@@ -1071,7 +1101,7 @@ class TradePortal extends LitElement {
                 this.isSellLoading = false
                 this.sellBtnDisable = false
 
-                parentEpml.request('showSnackBar', `Failed to Create Trade. ERROR_CODE: ${response}`);
+                parentEpml.request('showSnackBar', `Failed to Create Trade. ERROR_CODE: ${response.message}`);
             }
         }
 
@@ -1099,7 +1129,7 @@ class TradePortal extends LitElement {
 
             const response = await parentEpml.request('tradeBotRespondRequest', {
                 atAddress: qortalAtAddress,
-                xprv58: this.selectedAddress.btcWallet._tDerivedMasterPrivateKey,
+                xprv58: this.selectedAddress.btcWallet.derivedMasterPrivateKey,
                 receivingAddress: this.selectedAddress.address
             })
 
@@ -1119,7 +1149,7 @@ class TradePortal extends LitElement {
                 this.shadowRoot.getElementById('buyTotalInput').value = this.initialAmount
                 this.shadowRoot.getElementById('qortalAtAddress').value = ''
 
-                parentEpml.request('showSnackBar', "Buy Order Successful! Trade in Progress...");
+                parentEpml.request('showSnackBar', "Buy Request Successful!");
 
             } else if (response === false) {
 
@@ -1132,7 +1162,7 @@ class TradePortal extends LitElement {
                 this.isBuyLoading = false
                 this.buyBtnDisable = false
 
-                parentEpml.request('showSnackBar', `Failed to Create Trade. ERROR_CODE: ${response}`);
+                parentEpml.request('showSnackBar', `Failed to Create Trade. ERROR_CODE: ${response.message}`);
             }
         }
 
@@ -1163,11 +1193,9 @@ class TradePortal extends LitElement {
             if (response === true) {
 
                 button.remove()
-                const item = this.myOrdersGrid.querySelector(`#${state.atAddress}`)
-                item.textContent = 'CANCELLING...'
                 this.cancelBtnDisable = false
 
-                parentEpml.request('showSnackBar', "Trade Cancelled!");
+                parentEpml.request('showSnackBar', "Trade Cancelling In Progress!");
 
             } else if (response === false) {
 
@@ -1180,7 +1208,7 @@ class TradePortal extends LitElement {
                 button.innerHTML = 'CANCEL'
                 this.cancelBtnDisable = false
 
-                parentEpml.request('showSnackBar', `Failed to Cancel Trade. ERROR_CODE: ${response}`);
+                parentEpml.request('showSnackBar', `Failed to Cancel Trade. ERROR_CODE: ${response.message}`);
             }
         }
 
@@ -1207,7 +1235,7 @@ class TradePortal extends LitElement {
         parentEpml.request('apiCall', {
             url: `/crosschain/btc/walletbalance`,
             method: "POST",
-            body: window.parent.reduxStore.getState().app.selectedAddress.btcWallet._tDerivedMasterPrivateKey
+            body: window.parent.reduxStore.getState().app.selectedAddress.btcWallet.derivedMasterPrivateKey
         }).then(res => {
             this.btcBalance = (Number(res) / 1e8).toFixed(8)
         })

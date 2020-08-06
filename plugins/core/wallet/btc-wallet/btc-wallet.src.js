@@ -175,7 +175,7 @@ class BTCWallet extends LitElement {
                 <div ?hidden="${this.loading}">
                     <div id="topbar" style="background: ; color: ; padding: 20px;">
                         <span class="mono weight-1300">
-                            ${this.selectedBtcWallet._taddress}
+                            ${this.selectedBtcWallet.address}
                         </span>
                         <br>
                         <div class="layout horizontal wrap">
@@ -366,7 +366,7 @@ class BTCWallet extends LitElement {
         parentEpml.request('apiCall', {
             url: `/crosschain/btc/walletbalance`,
             method: "POST",
-            body: window.parent.reduxStore.getState().app.selectedAddress.btcWallet._tDerivedMasterPrivateKey
+            body: window.parent.reduxStore.getState().app.selectedAddress.btcWallet.derivedMasterPrivateKey
         }).then(res => {
             this.balance = (Number(res) / 1e8).toFixed(8)
 
