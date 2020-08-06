@@ -1034,7 +1034,7 @@ class TradePortal extends LitElement {
 
         const sellAmountInput = this.shadowRoot.getElementById('sellAmountInput').value
         const sellTotalInput = this.shadowRoot.getElementById('sellTotalInput').value
-        const fundingQortAmount = this.round(parseFloat(sellAmountInput) + 1) // Set default AT fees for processing to 1 QORT
+        const fundingQortAmount = this.round(parseFloat(sellAmountInput) + 0.001) // Set default AT fees for processing to 0.001 QORT
 
         const makeRequest = async () => {
 
@@ -1142,7 +1142,7 @@ class TradePortal extends LitElement {
 
     }
 
-    async cancelAction(event, state) {
+    async cancelAction(state) {
 
         const button = this.shadowRoot.querySelector(`mwc-button#${state.atAddress}`)
         button.innerHTML = `<paper-spinner-lite active></paper-spinner-lite>`
@@ -1151,11 +1151,8 @@ class TradePortal extends LitElement {
         const makeRequest = async () => {
 
             const response = await parentEpml.request('deleteTradeOffer', {
-                atAddress: state.atAddress,
-                tradeKeyPair: {
-                    publicKey: state.tradeNativePublicKey,
-                    privateKey: new Uint8Array(window.parent.Base58.decode(state.tradePrivateKey))
-                }
+                creatorPublicKey: this.selectedAddress.base58PublicKey,
+                atAddress: state.atAddress
             })
 
             return response
@@ -1219,10 +1216,8 @@ class TradePortal extends LitElement {
 
     renderCancelButton(stateItem) {
 
-        if (stateItem.tradeState == 'BOB_WAITING_FOR_AT_CONFIRM') {
-            return html`<mwc-button id="${stateItem.atAddress}" ?disabled=${this.cancelBtnDisable} class="cancel" @click=${(e) => this.cancelAction(e, stateItem)}>CANCEL</mwc-button>`
-        } else if (stateItem.tradeState == 'BOB_WAITING_FOR_MESSAGE') {
-            return html`<mwc-button id="${stateItem.atAddress}" ?disabled=${this.cancelBtnDisable} class="cancel" @click=${(e) => this.cancelAction(e, stateItem)}>CANCEL</mwc-button>`
+        if (stateItem.tradeState === 'BOB_WAITING_FOR_MESSAGE') {
+            return html`<mwc-button id="${stateItem.atAddress}" ?disabled=${this.cancelBtnDisable} class="cancel" @click=${(e) => this.cancelAction(stateItem)}>CANCEL</mwc-button>`
         } else {
             return ''
         }
