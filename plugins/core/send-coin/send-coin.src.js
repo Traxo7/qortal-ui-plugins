@@ -3,6 +3,8 @@ import { Epml } from '../../../epml'
 
 import '@material/mwc-button'
 import '@material/mwc-textfield'
+import '@material/mwc-select'
+import '@material/mwc-list/mwc-list-item.js'
 import '@polymer/paper-progress/paper-progress.js'
 
 const parentEpml = new Epml({ type: 'WINDOW', source: window.parent })
@@ -19,7 +21,9 @@ class SendMoneyPage extends LitElement {
             selectedAddress: { type: Object },
             recipient: { type: String },
             isValidAmount: { type: Boolean },
-            balance: { type: Number }
+            balance: { type: Number },
+            btcBalance: { type: Number },
+            selectedCoin: { type: String },
         }
     }
 
@@ -88,8 +92,8 @@ class SendMoneyPage extends LitElement {
             }
 
             .selectedBalance {
+                display: none;
                 font-size: 14px;
-                display: block;
             }
 
             .selectedBalance .balance {
@@ -112,14 +116,19 @@ class SendMoneyPage extends LitElement {
                             <h3 style="margin:0; padding:8px 0;">Send money</h3>
 
                             <div class="selectedBalance">
-                                <!--  style$="color: {{selectedAddress.color}}" -->
-                                <span class="balance">${this.balance} qort</span> available for
+                                <span id="balance"></span> available for
                                 transfer from
-                                <span>${this.selectedAddress.address}</span>
+                                <span id="address"></span>
                             </div>
                         </div>
 
                     </paper-card>
+                    <p>
+                        <mwc-select id="coinType" label="Select Coin" index="0" @selected=${(e) => this.selectCoin(e)} style="min-width: 130px; max-width:100%; width:100%;">
+                            <mwc-list-item value="qort">QORT</mwc-list-item>
+                            <mwc-list-item value="btc">BTC</mwc-list-item>
+                        </mwc-select>
+                    </p>
                     <p>
                         <mwc-textfield
                             style="width:100%;"
@@ -145,7 +154,7 @@ class SendMoneyPage extends LitElement {
 
                     <div class="buttons" >
                         <div>
-                            <mwc-button ?disabled=${this.btnDisable} style="width:100%;" raised icon="send" @click=${e => this._sendMoney(e)}>Send &nbsp;</mwc-button>
+                            <mwc-button ?disabled=${this.btnDisable} style="width:100%;" raised icon="send" @click=${e => this.doSend(e)}>Send &nbsp;</mwc-button>
                         </div>
                     </div>
                     
@@ -172,10 +181,6 @@ class SendMoneyPage extends LitElement {
 
         const targetAmount = e.target.value
         const target = e.target
-
-        console.log("Length: ", targetAmount.length);
-        console.log("Value: ", targetAmount);
-
 
         if (targetAmount.length === 0) {
 
@@ -211,8 +216,6 @@ class SendMoneyPage extends LitElement {
 
 
             if (newValue.includes('-') === true) {
-
-                console.log('contain ------');
 
                 this.btnDisable = true
                 target.validationMessage = "Invalid Amount!"
@@ -275,7 +278,22 @@ class SendMoneyPage extends LitElement {
         parentEpml.request('openFramePasteMenu', eventObject)
     }
 
-    async _sendMoney(e) {
+    doSend(e) {
+        // ...
+
+        if (this.selectedCoin === 'invalid') {
+
+            parentEpml.request('showSnackBar', "Invalid Selection!");
+        } else if (this.selectedCoin === 'qort') {
+
+            this.sendQort()
+        } else if (this.selectedCoin === 'btc') {
+
+            this.sendBtc()
+        }
+    }
+
+    async sendQort() {
         const amount = this.shadowRoot.getElementById('amountInput').value
         let recipient = this.shadowRoot.getElementById('recipient').value
 
@@ -411,6 +429,57 @@ class SendMoneyPage extends LitElement {
         validateReceiver(recipient)
     }
 
+
+    async sendBtc() {
+        const amount = this.shadowRoot.getElementById('amountInput').value
+        let recipient = this.shadowRoot.getElementById('recipient').value
+
+        this.sendMoneyLoading = true
+        this.btnDisable = true
+
+        const makeRequest = async () => {
+
+            const response = await parentEpml.request('sendBtc', {
+                xprv58: this.selectedAddress.btcWallet.derivedMasterPrivateKey,
+                receivingAddress: recipient,
+                bitcoinAmount: amount
+            })
+
+            return response
+        }
+
+        const manageResponse = (response) => {
+
+            if (response === true) {
+
+                this.shadowRoot.getElementById('amountInput').value = ''
+                this.shadowRoot.getElementById('recipient').value = ''
+                this.errorMessage = ''
+                this.recipient = ''
+                this.amount = 0
+                this.successMessage = 'Transaction Successful!'
+                this.sendMoneyLoading = false
+                this.btnDisable = false
+            } else if (response === false) {
+
+                this.errorMessage = 'Transaction Failed!'
+                this.sendMoneyLoading = false
+                this.btnDisable = false
+                throw new Error(txnResponse)
+            } else {
+
+                this.errorMessage = response.message
+                this.sendMoneyLoading = false
+                this.btnDisable = false
+                throw new Error(response)
+            }
+        }
+
+        // Call makeRequest
+        const res = await makeRequest()
+        manageResponse(res)
+    }
+
     _textMenu(event) {
 
         const getSelectedText = () => {
@@ -458,6 +527,8 @@ class SendMoneyPage extends LitElement {
         this.selectedAddress = {}
         this.amount = 0
         this.isValidAmount = false
+        this.btcBalance = 0
+        this.selectedCoin = 'invalid'
 
         let configLoaded = false
 
@@ -498,6 +569,9 @@ class SendMoneyPage extends LitElement {
 
     firstUpdated() {
 
+        // Get BTC Balance
+        this.updateBTCAccountBalance()
+
         window.addEventListener("contextmenu", (event) => {
 
             event.preventDefault();
@@ -534,7 +608,8 @@ class SendMoneyPage extends LitElement {
             const checkSelectedTextAndShowMenu = () => {
                 let selectedText = getSelectedText();
                 if (selectedText && typeof selectedText === 'string') {
-                    // ...
+
+
                 } else {
 
                     this.pasteMenu(event, 'amountInput')
@@ -566,7 +641,8 @@ class SendMoneyPage extends LitElement {
             const checkSelectedTextAndShowMenu = () => {
                 let selectedText = getSelectedText();
                 if (selectedText && typeof selectedText === 'string') {
-                    // ...
+
+
                 } else {
 
                     this.pasteMenu(event, 'recipient')
@@ -586,6 +662,40 @@ class SendMoneyPage extends LitElement {
 
     }
 
+    selectCoin(e) {
+        const coinType = this.shadowRoot.getElementById('coinType').value
+        this.selectedCoin = coinType
+
+        if (coinType === 'qort') {
+
+            this.shadowRoot.getElementById('balance').textContent = `${this.balance} QORT`
+            this.shadowRoot.getElementById('address').textContent = this.selectedAddress.address
+            this.shadowRoot.querySelector('.selectedBalance').style.display = 'block'
+            this.shadowRoot.getElementById('amountInput').label = "Amount (QORT)"
+            this.shadowRoot.getElementById('recipient').label = "To (address or name)"
+        } else if (coinType === 'btc') {
+
+            this.shadowRoot.getElementById('balance').textContent = `${this.btcBalance} BTC`
+            this.shadowRoot.getElementById('address').textContent = this.selectedAddress.btcWallet.address
+            this.shadowRoot.querySelector('.selectedBalance').style.display = 'block'
+            this.shadowRoot.getElementById('amountInput').label = "Amount (BTC)"
+            this.shadowRoot.getElementById('recipient').label = "To (BTC address)"
+        } else {
+            this.selectedCoin = 'invalid'
+        }
+    }
+
+    updateBTCAccountBalance() {
+
+        parentEpml.request('apiCall', {
+            url: `/crosschain/btc/walletbalance`,
+            method: "POST",
+            body: window.parent.reduxStore.getState().app.selectedAddress.btcWallet.derivedMasterPrivateKey
+        }).then(res => {
+            this.btcBalance = (Number(res) / 1e8).toFixed(8)
+        })
+    }
+
     clearSelection() {
 
         window.getSelection().removeAllRanges()
@@ -593,4 +703,4 @@ class SendMoneyPage extends LitElement {
     }
 }
 
-window.customElements.define('send-money-page', SendMoneyPage)
+window.customElements.define('send-coin-page', SendMoneyPage)

@@ -70,8 +70,8 @@ const generateForPlugins = () => {
       out: "plugins/core/trade-portal/trade-portal.js",
     },
     {
-      in: "plugins/core/send-money/send-money.src.js",
-      out: "plugins/core/send-money/send-money.js",
+      in: "plugins/core/send-coin/send-coin.src.js",
+      out: "plugins/core/send-coin/send-coin.js",
     },
     {
       in: "plugins/core/wallet/wallet-app.src.js",

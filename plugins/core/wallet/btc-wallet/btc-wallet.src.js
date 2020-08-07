@@ -370,6 +370,8 @@ class BTCWallet extends LitElement {
         }).then(res => {
             this.balance = (Number(res) / 1e8).toFixed(8)
 
+        }).catch(err => {
+            parentEpml.request('showSnackBar', "Failed to Fetch Balance. Try again!");
         })
     }
 

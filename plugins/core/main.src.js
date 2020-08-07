@@ -31,10 +31,10 @@ parentEpml.ready().then(() => {
             parent: false
         },
         {
-            url: 'send-money',
+            url: 'send-coin',
             domain: 'core',
-            page: 'send-money/index.html',
-            title: 'Send Money',
+            page: 'send-coin/index.html',
+            title: 'Send Coin',
             icon: 'send',
             menus: [],
             parent: false
