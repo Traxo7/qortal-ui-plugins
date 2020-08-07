@@ -162,10 +162,10 @@ export default [
     },
     {
         context: 'window',
-        input: 'plugins/core/send-money/send-money.src.js',
+        input: 'plugins/core/send-coin/send-coin.src.js',
         output: [
             {
-                file: 'plugins/core/send-money/send-money.js',
+                file: 'plugins/core/send-coin/send-coin.js',
                 format: 'iife'
             }
         ],

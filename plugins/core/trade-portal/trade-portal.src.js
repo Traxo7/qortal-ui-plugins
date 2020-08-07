@@ -8,6 +8,7 @@ import '@material/mwc-textfield'
 import '@material/mwc-icon-button'
 import '@polymer/paper-spinner/paper-spinner-lite.js'
 import '@vaadin/vaadin-grid/vaadin-grid.js'
+import '@vaadin/vaadin-grid/vaadin-grid-sorter'
 import '@vaadin/vaadin-grid/theme/material/all-imports.js'
 
 const parentEpml = new Epml({ type: 'WINDOW', source: window.parent })
@@ -314,11 +315,7 @@ class TradePortal extends LitElement {
                                 <div class="border-wrapper">
                                     <vaadin-grid theme="compact column-borders row-stripes wrap-cell-content" id="openOrdersGrid" aria-label="Open Orders" .items="${this.openOrders}">
                                         <vaadin-grid-column resizable header="Amount (QORT)" path="qortAmount"></vaadin-grid-column>
-                                        <vaadin-grid-column resizable header="Price (BTC)" .renderer=${(root, column, data) => {
-                const price = this.round(parseFloat(data.item.btcAmount) / parseFloat(data.item.qortAmount))
-                render(html`${price}`, root)
-            }}>
-                                </vaadin-grid-column>
+                                        <vaadin-grid-column resizable header="Price (BTC)" id="priceColumn" path="priceBtc"></vaadin-grid-column>
                                         <vaadin-grid-column resizable header="Total (BTC)" .renderer=${(root, column, data) => {
                 render(html`<span> ${data.item.btcAmount} </span>`, root)
             }}>
@@ -558,6 +555,12 @@ class TradePortal extends LitElement {
 
         // Set Trade Panes
         this.openOrdersGrid = this.shadowRoot.getElementById('openOrdersGrid')
+
+        this.openOrdersGrid.querySelector('#priceColumn').headerRenderer = function (root) {
+            root.innerHTML = '<vaadin-grid-sorter path="priceBtc" direction="asc">Price (BTC)</vaadin-grid-sorter>';
+        };
+
+
         this.myOrdersGrid = this.shadowRoot.getElementById('myOrdersGrid')
         this.historicTradesGrid = this.shadowRoot.getElementById('historicTradesGrid')
         this.myHistoricTradesGrid = this.shadowRoot.getElementById('myHistoricTradesGrid')
@@ -643,14 +646,21 @@ class TradePortal extends LitElement {
 
     processOfferingTrade(offer) {
 
+        // console.log(this.openOrdersGrid.columns);
+
+        const offerItem = {
+            ...offer,
+            priceBtc: this.round(parseFloat(offer.btcAmount) / parseFloat(offer.qortAmount))
+        }
+
         const addOffer = () => {
-            this.openOrdersGrid.items.unshift(offer)
+            this.openOrdersGrid.items.unshift(offerItem)
             this.openOrdersGrid.clearCache();
         }
 
         const initOffer = () => {
 
-            this.openOrdersGrid.items.push(offer)
+            this.openOrdersGrid.items.push(offerItem)
             this.openOrdersGrid.clearCache()
         }
 
