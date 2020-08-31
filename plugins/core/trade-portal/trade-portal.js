@@ -2764,7 +2764,7 @@
                         </div>
                         <div class="my-historic-trades">
                             <div class="box">
-                                <header>MY HISTORIC TRADES</header>
+                                <header>MY TRADE HISTORY</header>
                                 <div class="border-wrapper">
                                     <vaadin-grid theme="compact column-borders row-stripes wrap-cell-content" id="myHistoricTradesGrid" aria-label="My Open Orders" .items="${this.myHistoricTrades}">
                                         <vaadin-grid-column resizable header="Date" .renderer=${(e,t,i)=>{const r=new Date(i.item.timestamp).toLocaleString();L(F`${r}`,e)}}>
