@@ -684,7 +684,13 @@ class SendMoneyPage extends LitElement {
             method: "POST",
             body: window.parent.reduxStore.getState().app.selectedAddress.btcWallet.derivedMasterPrivateKey
         }).then(res => {
-            this.btcBalance = (Number(res) / 1e8).toFixed(8)
+            if (isNaN(Number(res))) {
+
+                parentEpml.request('showSnackBar', "Failed to Fetch Bitcoin Balance. Try again!");
+            } else {
+
+                this.btcBalance = (Number(res) / 1e8).toFixed(8)
+            }
         })
     }
 
