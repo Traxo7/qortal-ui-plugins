@@ -29,7 +29,9 @@ class ChatPage extends LitElement {
             messageSignature: { type: String }, // maybe use this as an ID for each message, but also considering its length
             _initialMessages: { type: Array },
             isUserDown: { type: Boolean },
-            isPasteMenuOpen: { type: Boolean }
+            isPasteMenuOpen: { type: Boolean },
+            showNewMesssageBar: { attribute: false },
+            hideNewMesssageBar: { attribute: false }
         }
     }
 
@@ -217,7 +219,6 @@ class ChatPage extends LitElement {
     * @property id or index
     * @property sender and other info..
     */
-
     newMessageRow(messageObj) {
 
         return `
@@ -245,9 +246,15 @@ class ChatPage extends LitElement {
 
             viewElement.insertBefore(li, downObserver)
             viewElement.scrollTop = viewElement.scrollHeight
+        } else if (this.isUserDown) {
+
+            // Append the message and scroll to the bottom if user is down the page
+            viewElement.insertBefore(li, downObserver)
+            viewElement.scrollTop = viewElement.scrollHeight
         } else {
 
             viewElement.insertBefore(li, downObserver)
+            this.showNewMesssageBar()
         }
     }
 
@@ -256,7 +263,6 @@ class ChatPage extends LitElement {
      * @param {Object} encodedMessageObj 
      * 
      */
-
     decodeMessage(encodedMessageObj) {
         let decodedMessageObj = {}
 
@@ -287,7 +293,6 @@ class ChatPage extends LitElement {
 
         return decodedMessageObj
     }
-
 
     async fetchChatMessages(chatId) {
 
@@ -552,27 +557,22 @@ class ChatPage extends LitElement {
         sendMessageRequest()
     }
 
-
     /**
      *  _textArea Method gets called whenver a user presses a key in the textarea
      * @param {Event} e - where e is the event object
      */
-
     _textArea(e) {
 
         if (e.keyCode === 13 && !e.shiftKey) this._sendMessage()
     }
 
-
     /**
      * Method to set if the user's location is down in the chat
      * @param { Boolean } isDown 
      */
-
     setIsUserDown(isDown) {
 
-        this.isUserDown = isDown
-        // console.log(this.isUserDown);
+        this.isUserDown = isDown;
     }
 
     _downObserverhandler(entries) {
@@ -580,6 +580,7 @@ class ChatPage extends LitElement {
         if (entries[0].isIntersecting) {
 
             this.setIsUserDown(true)
+            this.hideNewMesssageBar()
         } else {
 
             this.setIsUserDown(false)
@@ -590,8 +591,8 @@ class ChatPage extends LitElement {
         const downObserver = this.shadowRoot.querySelector('chat-scroller').shadowRoot.getElementById('downObserver')
 
         const options = {
-            root: this.shadowRoot.getElementById('viewElement'),
-            rootMargin: '500px',
+            root: this.shadowRoot.querySelector('chat-scroller').shadowRoot.getElementById('viewElement'),
+            rootMargin: '100px',
             threshold: 1
         }
         const observer = new IntersectionObserver(this._downObserverhandler, options)
