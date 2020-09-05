@@ -194,16 +194,6 @@ class SendMoneyPage extends LitElement {
             e.target.invalid = true
             e.target.validationMessage = "Invalid Amount!"
 
-        } else if ((parseFloat(targetAmount) + parseFloat(0.001)) > parseFloat(this.balance)) {
-
-            this.isValidAmount = false
-            this.btnDisable = true
-
-            e.target.blur()
-            e.target.focus()
-
-            e.target.invalid = true
-            e.target.validationMessage = "Insufficient Funds!"
         } else {
 
             this.btnDisable = false
