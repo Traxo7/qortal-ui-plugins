@@ -402,6 +402,8 @@ class SendMoneyPage extends LitElement {
                 this.btnDisable = false
                 throw new Error(txnResponse)
             } else if (txnResponse.success === true && !txnResponse.data.error) {
+                this.shadowRoot.getElementById('amountInput').value = ''
+                this.shadowRoot.getElementById('recipient').value = ''
                 this.errorMessage = ''
                 this.recipient = ''
                 this.amount = 0
