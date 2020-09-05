@@ -612,12 +612,12 @@ class TradePortal extends LitElement {
 
             event.preventDefault();
             this._textMenu(event)
-        });
+        }, { passive: true });
 
         window.addEventListener("click", () => {
 
             parentEpml.request('closeCopyTextMenu', null)
-        });
+        }, { passive: true });
 
         window.onkeyup = (e) => {
             if (e.keyCode === 27) {
@@ -654,7 +654,6 @@ class TradePortal extends LitElement {
                 }
             })
         })
-
 
         parentEpml.imReady()
     }
@@ -1322,7 +1321,6 @@ class TradePortal extends LitElement {
         })
     }
 
-
     renderCancelButton(stateItem) {
 
         if (stateItem.tradeState === 'BOB_WAITING_FOR_MESSAGE') {
@@ -1373,7 +1371,6 @@ class TradePortal extends LitElement {
         manageResponse(res)
 
     }
-
 
     renderCancelStuckOfferButton(offerItem) {
 
@@ -1616,7 +1613,7 @@ class TradePortal extends LitElement {
         const connectedWorker = this.inlineWorker(this.initSocket, modifiers)
         connectedWorker.addEventListener('message', function (event) {
             handleMessage(event.data)
-        })
+        }, { passive: true })
     }
 
     handleStuckTrades() {
@@ -1694,7 +1691,7 @@ class TradePortal extends LitElement {
         connectedWorker.addEventListener('message', function (event) {
             handleMessage(event.data)
             connectedWorker.terminate()
-        })
+        }, { passive: true })
     }
 
 }
