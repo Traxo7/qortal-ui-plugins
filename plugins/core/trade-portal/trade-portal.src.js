@@ -901,7 +901,7 @@ class TradePortal extends LitElement {
                     this.changeTradeBotState(state, 'TRADING')
                 } else if (state.tradeState == 'BOB_WAITING_FOR_AT_REDEEM') {
 
-                    this.changeTradeBotState(state, 'TRADING')
+                    this.changeTradeBotState(state, 'REDEEMING')
                 } else if (state.tradeState == 'BOB_DONE') {
 
                     this.handleCompletedState(state)
