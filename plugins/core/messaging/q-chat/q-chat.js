@@ -926,7 +926,7 @@
                 display: flex;
                 flex: 0 1 auto;
                 align-items: center;
-                justify-content: flex-end;
+                justify-content: space-between;
                 padding: 0px 25px;
                 font-size: 14px;
                 font-weight: 500;
@@ -1082,7 +1082,8 @@
 
             <div class="chat">
                 <div id="newMessageBar" class="new-message-bar hide-new-message-bar clearfix" @click=${()=>this.scrollToBottom()}>
-                    <span>New Message (Click to scroll down)</span>
+                    <span style="flex: 1;">New Message</span>
+                    <span>(Click to scroll down) <mwc-icon style="font-size: 16px; vertical-align: bottom;">keyboard_arrow_down</mwc-icon></span>
                 </div>
 
                 <div class="chat-history">
