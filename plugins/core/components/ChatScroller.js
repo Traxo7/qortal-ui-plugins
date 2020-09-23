@@ -42,7 +42,7 @@ class ChatScroller extends LitElement {
         }
         .chat-list {
             overflow-y: auto;
-            height: 92vh;
+            height: 91vh;
             box-sizing: border-box;
         }
         .chat-message {
