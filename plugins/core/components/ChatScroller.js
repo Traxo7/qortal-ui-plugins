@@ -5,6 +5,8 @@ class ChatScroller extends LitElement {
         return {
             getNewMessage: { attribute: false },
             getOldMessage: { attribute: false },
+            emojiPicker: { attribute: false },
+            escapeHTML: { attribute: false },
             initialMessages: { type: Array }, // First set of messages to load.. 15 messages max ( props )
             messages: { type: Array }
         }
@@ -35,6 +37,7 @@ class ChatScroller extends LitElement {
             border-radius: 6px;
             border: 3px solid var(--scrollbarBG);
         }
+
         ul {
             list-style: none;
             margin: 0;
@@ -45,42 +48,7 @@ class ChatScroller extends LitElement {
             height: 91vh;
             box-sizing: border-box;
         }
-        .chat-message {
-            padding: 10px;
-            bottom: 0;
-            position: absolute;
-            display: inline-block;
-            width: 100%;
-            background-color: #eee;
-            box-sizing: border-box;
-        }
 
-        .chat-message textarea {
-            width: 80%;
-            border: none;
-            display: inline-block;
-            font-size: 16px;
-            padding: 10px 20px;
-            border-radius: 5px;
-            resize: none;
-        }
-
-        .chat-message button {
-            float: right;
-            color: #94c2ed;
-            font-size: 16px;
-            text-transform: uppercase;
-            border: none;
-            cursor: pointer;
-            font-weight: bold;
-            background: #f2f5f8;
-            padding: 10px;
-            margin-top: 4px;
-            margin-right: 4px;
-        }
-        .chat-message button:hover {
-            color: #75b1e8;
-        }
         .message-data {
             margin-bottom: 15px;
         }
@@ -95,8 +63,7 @@ class ChatScroller extends LitElement {
             color: black;
             padding: 12px 10px;
             line-height: 19px;
-            white-space: pre-wrap;
-            white-space: break-spaces;
+            white-space: pre-line;
             word-wrap: break-word;
             -webkit-user-select: text;
             -moz-user-select: text;
@@ -123,6 +90,14 @@ class ChatScroller extends LitElement {
             border-bottom-color: #ddd;
             border-width: 10px;
             margin-left: -10px;
+        }
+
+        .emoji {
+            width: 1.7em;
+            height: 1.5em;
+            margin-bottom: -2px;
+            vertical-align: bottom;
+            object-fit: contain;
         }
 
         .my-message {
@@ -160,10 +135,6 @@ class ChatScroller extends LitElement {
             clear: both;
             height: 0;
         }
-
-        /* #upObserver {
-            margin-top: 0px
-        } */
         `
     }
 
@@ -182,67 +153,47 @@ class ChatScroller extends LitElement {
         return html`
                 <ul id="viewElement" class="chat-list clearfix">
                     <div id="upObserver"></div>
-                    ${html`${this.renderChatMessages(this.initialMessages)}`}
                     <div id="downObserver"></div>
                 </ul>
         `
     }
 
-
-    messageRow(messageObj) {
-
-        return html`
-            <li id=${messageObj.signature} class="clearfix">
-                <div class="message-data ${messageObj.sender === this.myAddress ? "align-right" : ""}">
-                    <span class="message-data-name">${messageObj.senderName ? messageObj.senderName : messageObj.sender}</span>
-                    <span class="message-data-time"><message-time timestamp=${messageObj.timestamp}></message-time></span>
-
-                </div>
-                <div class="message ${messageObj.sender === this.myAddress ? "my-message float-right" : "other-message"}">${messageObj.decodedMessage}</div>
-            </li>
-        `
-    }
-
-    oldMessageRow(messageObj) {
+    chatMessageTemplate(messageObj) {
 
         return `
             <li class="clearfix">
                 <div class="message-data ${messageObj.sender === this.myAddress ? "align-right" : ""}">
                     <span class="message-data-name">${messageObj.senderName ? messageObj.senderName : messageObj.sender}</span>
                     <span class="message-data-time"><message-time timestamp=${messageObj.timestamp}></message-time></span>
-
                 </div>
-                <div id="messageContent" class="message ${messageObj.sender === this.myAddress ? "my-message float-right" : "other-message"}">${messageObj.decodedMessage}</div>
+                <div id="messageContent" class="message ${messageObj.sender === this.myAddress ? "my-message float-right" : "other-message"}">${this.emojiPicker.parse(this.escapeHTML(messageObj.decodedMessage))}</div>
             </li>
         `
     }
 
-
     renderChatMessages(messages) {
 
-        return messages.map((message) => {
-
-            return html`${this.messageRow(message)}`;
-        })
+        messages.forEach(message => {
+            const li = document.createElement('li');
+            li.innerHTML = this.chatMessageTemplate(message);
+            li.id = message.signature;
+            this.downObserverElement.before(li);
+        });
     }
 
     renderOldMessages(listOfOldMessages) {
 
-        let { oldMessages, scrollElement } = listOfOldMessages
-
-        const upObserver = this.shadowRoot.getElementById('upObserver');
+        let { oldMessages, scrollElement } = listOfOldMessages;
 
         let _oldMessages = oldMessages.reverse();
         _oldMessages.forEach(oldMessage => {
             const li = document.createElement('li');
-            li.innerHTML = this.oldMessageRow(oldMessage);
-            li.id = oldMessage.signature
-            li.firstElementChild.firstElementChild.nextElementSibling.textContent = oldMessage.decodedMessage;
-            upObserver.after(li);
+            li.innerHTML = this.chatMessageTemplate(oldMessage);
+            li.id = oldMessage.signature;
+            this.upObserverElement.after(li);
             scrollElement.scrollIntoView({ behavior: 'auto', block: 'center' });
-        })
+        });
     }
-
 
     _getOldMessage(_scrollElement) {
 
@@ -263,28 +214,30 @@ class ChatScroller extends LitElement {
     }
 
     upElementObserver() {
-        const upObserver = this.shadowRoot.getElementById('upObserver');
-
         const options = {
-            root: this.shadowRoot.getElementById('viewElement'),
+            root: this.viewElement,
             rootMargin: '0px',
             threshold: 1
-        }
+        };
+
         const observer = new IntersectionObserver(this._upObserverhandler, options)
-        observer.observe(upObserver)
+        observer.observe(this.upObserverElement)
     }
 
-
     firstUpdated() {
+
+        this.viewElement = this.shadowRoot.getElementById('viewElement');
+        this.upObserverElement = this.shadowRoot.getElementById('upObserver');
+        this.downObserverElement = this.shadowRoot.getElementById('downObserver');
+
+        this.renderChatMessages(this.initialMessages)
 
         // Intialize Observers
         this.upElementObserver()
 
-        const viewElement = this.shadowRoot.getElementById('viewElement');
-        viewElement.scrollTop = viewElement.scrollHeight + 50;
+        this.viewElement.scrollTop = this.viewElement.scrollHeight + 50;
     }
 
 }
 
 window.customElements.define('chat-scroller', ChatScroller)
-
