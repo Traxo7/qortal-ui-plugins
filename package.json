@@ -18,6 +18,7 @@
     "@polymer/paper-spinner": "^3.0.2",
     "@vaadin/vaadin-grid": "^5.6.6",
     "epml": "^0.3.3",
+    "html-escaper": "^3.0.0",
     "lit-html": "^1.2.1",
     "rollup": "^1.31.1",
     "rollup-plugin-alias": "^2.2.0",
@@ -31,6 +32,7 @@
   },
   "dependencies": {
     "@material/mwc-list": "^0.17.2",
-    "@material/mwc-select": "^0.17.2"
+    "@material/mwc-select": "^0.17.2",
+    "emoji-picker-js": "https://github.com/lotw7277/emoji-picker-js"
   }
 }

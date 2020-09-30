@@ -45,155 +45,167 @@ class Chat extends LitElement {
                 --paper-spinner-stroke-width: 2px;
             }
 
-                *,
-    *:before,
-    *:after {
-        box-sizing: border-box;
-    }
+            *,
+            *:before,
+            *:after {
+                box-sizing: border-box;
+            }
 
-    ul {
-        list-style: none;
-        padding: 0;
-    }
+            ul {
+                list-style: none;
+                padding: 0;
+            }
 
-    .container {
-        margin: 0 auto;
-        width: 100%;
-        background: #fff;
-    }
+            .container {
+                margin: 0 auto;
+                width: 100%;
+                background: #fff;
+            }
 
-    .people-list {
-        width: 20%;
-        float: left;
-        height: 100vh;
-        overflow-y: hidden;
-        border-right: 3px #ddd solid;
-    }
+            .people-list {
+                width: 20vw;
+                float: left;
+                height: 100vh;
+                overflow-y: hidden;
+                border-right: 3px #ddd solid;
+            }
 
-    .people-list .search {
-        padding: 20px;
-    }
+            .people-list .search {
+                padding: 20px;
+            }
 
-    .people-list .create-chat {
-        border-radius: 3px;
-        border: none;
-        display: inline-block;
-        padding: 14px;
-        color: white;
-        background: #6a6c75;
-        width: 90%;
-        font-size: 15px;
-        text-align: center;
-        cursor: pointer;
-    }
+            .people-list .create-chat {
+                border-radius: 3px;
+                border: none;
+                display: inline-block;
+                padding: 14px;
+                color: white;
+                background: #6a6c75;
+                width: 90%;
+                font-size: 15px;
+                text-align: center;
+                cursor: pointer;
+            }
 
-    .people-list .create-chat:hover {
-        opacity: .8;
-        box-shadow: 0 3px 5px rgba(0, 0, 0, .2);
-    }
+            .people-list .create-chat:hover {
+                opacity: .8;
+                box-shadow: 0 3px 5px rgba(0, 0, 0, .2);
+            }
 
-    .people-list ul {
-        padding: 0;
-        height: 85vh;
-        overflow-y: auto;
-        overflow-x: hidden;        
-    }
+            .people-list ul {
+                padding: 0;
+                height: 85vh;
+                overflow-y: auto;
+                overflow-x: hidden;     
+            }
 
-    .chat {
-        width: 80%;
-        height: 100vh;
-        float: left;
-        background: #fff;
-        border-top-right-radius: 5px;
-        border-bottom-right-radius: 5px;
-        color: #434651;
-        box-sizing: border-box;
-    }
+            .chat {
+                width: 80vw;
+                height: 100vh;
+                float: left;
+                background: #fff;
+                border-top-right-radius: 5px;
+                border-bottom-right-radius: 5px;
+                color: #434651;
+                box-sizing: border-box;
+            }
 
-    .chat .chat-header {
-        padding: 5px;
-        border-bottom: 2px solid #eee;
-        height: 4vh;
-    }
+            .chat .new-message-bar {
+                display: flex;
+                flex: 0 1 auto;
+                align-items: center;
+                justify-content: space-between;
+                padding: 0px 25px;
+                font-size: 14px;
+                font-weight: 500;
+                top: 0;
+                position: absolute;
+                left: 20vw;
+                right: 0;
+                z-index: 5;
+                background: #6a6c75;
+                color: white;
+                border-radius: 0 0 8px 8px;
+                min-height: 25px;
+                transition: opacity .15s;
+                text-transform: capitalize;
+                opacity: .85;
+                cursor: pointer;
+            }
 
-    .chat .chat-header .chat-about {
-        float: left;
-        padding-left: 10px;
-        margin-top: 6px;
-    }
+            .chat .new-message-bar:hover {
+                opacity: .75;
+                transform: translateY(-1px);
+                box-shadow: 0 3px 7px rgba(0, 0, 0, .2);
+            }
 
-    .chat .chat-header .chat-with {
-        font-weight: bold;
-        font-size: 16px;
-    }
+            .hide-new-message-bar {
+                display: none !important;
+            }
 
-    .chat .chat-header .fa-star {
-        float: right;
-        color: #d8dadf;
-        font-size: 20px;
-        margin-top: 12px;
-    }
+            .chat .chat-history {
+                position: absolute;
+                top: 0;
+                right: 0;
+                bottom: 100%;
+                left: 20vw;
+                border-bottom: 2px solid white;
+                overflow-y: hidden;
+                height: 100vh;
+                box-sizing: border-box;
+            }
 
-    .chat .chat-history {
-        /* padding: 10px 10px 10px; */
-        border-bottom: 2px solid white;
-        overflow-y: hidden;
-        height: 96vh;
-        position: relative;
-        box-sizing: border-box;
-    }
+            .chat .chat-message {
+                padding: 10px;
+                height: 10%;
+                display: inline-block;
+                width: 100%;
+                background-color: #eee;
+            }
 
-    .chat .chat-message {
-        padding: 10px;
-        height: 10%;
-        display: inline-block;
-        width: 100%;
-        background-color: #eee;
-    }
+            .chat .chat-message textarea {
+                width: 90%;
+                border: none;
+                font-size: 16px;
+                padding: 10px 20px;
+                border-radius: 5px;
+                resize: none;
+            }
 
-    .chat .chat-message textarea {
-        width: 90%;
-        border: none;
-        font-size: 16px;
-        padding: 10px 20px;
-        border-radius: 5px;
-        resize: none;
-    }
+            .chat .chat-message button {
+                float: right;
+                color: #94c2ed;
+                font-size: 16px;
+                text-transform: uppercase;
+                border: none;
+                cursor: pointer;
+                font-weight: bold;
+                background: #f2f5f8;
+                padding: 10px;
+                margin-top: 4px;
+                margin-right: 4px;
+            }
 
-    .chat .chat-message button {
-        float: right;
-        color: #94c2ed;
-        font-size: 16px;
-        text-transform: uppercase;
-        border: none;
-        cursor: pointer;
-        font-weight: bold;
-        background: #f2f5f8;
-        padding: 10px;
-        margin-top: 4px;
-        margin-right: 4px;
-    }
+            .chat .chat-message button:hover {
+                color: #75b1e8;
+            }
 
-    .chat .chat-message button:hover {
-        color: #75b1e8;
-    }
+            .online,
+            .offline,
+            .me {
+                margin-right: 3px;
+                font-size: 10px;
+            }
 
-    .online,
-    .offline,
-    .me {
-        margin-right: 3px;
-        font-size: 10px;
-    }
-
-    .clearfix:after {
-        visibility: hidden;
-        display: block;
-        font-size: 0;
-        content: " ";
-        clear: both;
-        height: 0;
-    }
-    .red {
+            .clearfix:after {
+                visibility: hidden;
+                display: block;
+                font-size: 0;
+                content: " ";
+                clear: both;
+                height: 0;
+            }
+            .red {
                 --mdc-theme-primary: red;
             }
 
@@ -262,6 +274,9 @@ class Chat extends LitElement {
         this.messages = []
         this.btnDisable = false
         this.isLoading = false
+
+        this.showNewMesssageBar = this.showNewMesssageBar.bind(this)
+        this.hideNewMesssageBar = this.hideNewMesssageBar.bind(this)
     }
 
     render() {
@@ -281,11 +296,9 @@ class Chat extends LitElement {
             </div>
 
             <div class="chat">
-                <div class="chat-header clearfix">
-                    <div class="chat-about">
-                        <div class="chat-with"></div>
-                    </div>
-                    <i class="fa fa-star"></i>
+                <div id="newMessageBar" class="new-message-bar hide-new-message-bar clearfix" @click=${ () => this.scrollToBottom()}>
+                    <span style="flex: 1;">New Message</span>
+                    <span>(Click to scroll down) <mwc-icon style="font-size: 16px; vertical-align: bottom;">keyboard_arrow_down</mwc-icon></span>
                 </div>
 
                 <div class="chat-history">
@@ -337,8 +350,6 @@ class Chat extends LitElement {
         let splitedUrl = decodeURI(tempUrl).split('?')
         let activeChatHeadUrl = splitedUrl[1] === undefined ? '' : splitedUrl[1]
 
-
-
         return chatHeadArr.map(eachChatHead => {
             return html`<chat-head activeChatHeadUrl=${activeChatHeadUrl} chatInfo=${JSON.stringify(eachChatHead)}></chat-head>`
         })
@@ -350,7 +361,7 @@ class Chat extends LitElement {
 
         // TODO: DONE: Do the above in the ChatPage 
 
-        return html`<chat-page myAddress=${window.parent.reduxStore.getState().app.selectedAddress.address} chatId=${chatId}></chat-page>`
+        return html`<chat-page .hideNewMesssageBar=${this.hideNewMesssageBar} .showNewMesssageBar=${this.showNewMesssageBar} myAddress=${window.parent.reduxStore.getState().app.selectedAddress.address} chatId=${chatId}></chat-page>`
     }
 
     setChatHeads(chatObj) {
@@ -470,7 +481,6 @@ class Chat extends LitElement {
         })
 
         parentEpml.imReady()
-
     }
 
     _sendMessage() {
@@ -617,7 +627,6 @@ class Chat extends LitElement {
                 parentEpml.request('showSnackBar', "Sending failed, Please retry...")
                 this.isLoading = false
             }
-
         }
 
         // Exec..
@@ -669,6 +678,20 @@ class Chat extends LitElement {
     isEmptyArray(arr) {
         if (!arr) { return true }
         return arr.length === 0
+    }
+
+    scrollToBottom() {
+
+        const viewElement = this.shadowRoot.querySelector('chat-page').shadowRoot.querySelector('chat-scroller').shadowRoot.getElementById('viewElement');
+        viewElement.scroll({ top: viewElement.scrollHeight, left: 0, behavior: 'smooth' })
+    }
+
+    showNewMesssageBar() {
+        this.shadowRoot.getElementById('newMessageBar').classList.remove('hide-new-message-bar')
+    }
+
+    hideNewMesssageBar() {
+        this.shadowRoot.getElementById('newMessageBar').classList.add('hide-new-message-bar')
     }
 }
 

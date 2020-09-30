@@ -194,16 +194,6 @@ class SendMoneyPage extends LitElement {
             e.target.invalid = true
             e.target.validationMessage = "Invalid Amount!"
 
-        } else if ((parseFloat(targetAmount) + parseFloat(0.001)) > parseFloat(this.balance)) {
-
-            this.isValidAmount = false
-            this.btnDisable = true
-
-            e.target.blur()
-            e.target.focus()
-
-            e.target.invalid = true
-            e.target.validationMessage = "Insufficient Funds!"
         } else {
 
             this.btnDisable = false
@@ -412,6 +402,8 @@ class SendMoneyPage extends LitElement {
                 this.btnDisable = false
                 throw new Error(txnResponse)
             } else if (txnResponse.success === true && !txnResponse.data.error) {
+                this.shadowRoot.getElementById('amountInput').value = ''
+                this.shadowRoot.getElementById('recipient').value = ''
                 this.errorMessage = ''
                 this.recipient = ''
                 this.amount = 0
@@ -692,7 +684,13 @@ class SendMoneyPage extends LitElement {
             method: "POST",
             body: window.parent.reduxStore.getState().app.selectedAddress.btcWallet.derivedMasterPrivateKey
         }).then(res => {
-            this.btcBalance = (Number(res) / 1e8).toFixed(8)
+            if (isNaN(Number(res))) {
+
+                parentEpml.request('showSnackBar', "Failed to Fetch Bitcoin Balance. Try again!");
+            } else {
+
+                this.btcBalance = (Number(res) / 1e8).toFixed(8)
+            }
         })
     }
 

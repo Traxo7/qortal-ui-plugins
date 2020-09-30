@@ -525,7 +525,7 @@ class TradePortal extends LitElement {
                         </div>
                         <div class="my-historic-trades">
                             <div class="box">
-                                <header>MY HISTORIC TRADES</header>
+                                <header>MY TRADE HISTORY</header>
                                 <div class="border-wrapper">
                                     <vaadin-grid theme="compact column-borders row-stripes wrap-cell-content" id="myHistoricTradesGrid" aria-label="My Open Orders" .items="${this.myHistoricTrades}">
                                         <vaadin-grid-column resizable header="Date" .renderer=${(root, column, data) => {
@@ -612,12 +612,12 @@ class TradePortal extends LitElement {
 
             event.preventDefault();
             this._textMenu(event)
-        });
+        }, { passive: true });
 
         window.addEventListener("click", () => {
 
             parentEpml.request('closeCopyTextMenu', null)
-        });
+        }, { passive: true });
 
         window.onkeyup = (e) => {
             if (e.keyCode === 27) {
@@ -654,7 +654,6 @@ class TradePortal extends LitElement {
                 }
             })
         })
-
 
         parentEpml.imReady()
     }
@@ -902,7 +901,7 @@ class TradePortal extends LitElement {
                     this.changeTradeBotState(state, 'TRADING')
                 } else if (state.tradeState == 'BOB_WAITING_FOR_AT_REDEEM') {
 
-                    this.changeTradeBotState(state, 'TRADING')
+                    this.changeTradeBotState(state, 'REDEEMING')
                 } else if (state.tradeState == 'BOB_DONE') {
 
                     this.handleCompletedState(state)
@@ -1318,10 +1317,15 @@ class TradePortal extends LitElement {
             method: "POST",
             body: window.parent.reduxStore.getState().app.selectedAddress.btcWallet.derivedMasterPrivateKey
         }).then(res => {
-            this.btcBalance = (Number(res) / 1e8).toFixed(8)
+            if (isNaN(Number(res))) {
+
+                parentEpml.request('showSnackBar', "Failed to Fetch Bitcoin Balance. Try again!");
+            } else {
+
+                this.btcBalance = (Number(res) / 1e8).toFixed(8)
+            }
         })
     }
-
 
     renderCancelButton(stateItem) {
 
@@ -1373,7 +1377,6 @@ class TradePortal extends LitElement {
         manageResponse(res)
 
     }
-
 
     renderCancelStuckOfferButton(offerItem) {
 
@@ -1616,7 +1619,7 @@ class TradePortal extends LitElement {
         const connectedWorker = this.inlineWorker(this.initSocket, modifiers)
         connectedWorker.addEventListener('message', function (event) {
             handleMessage(event.data)
-        })
+        }, { passive: true })
     }
 
     handleStuckTrades() {
@@ -1694,7 +1697,7 @@ class TradePortal extends LitElement {
         connectedWorker.addEventListener('message', function (event) {
             handleMessage(event.data)
             connectedWorker.terminate()
-        })
+        }, { passive: true })
     }
 
 }
