@@ -393,6 +393,14 @@ class Chat extends LitElement {
 
     firstUpdated() {
 
+        const stopKeyEventPropagation = (e) => {
+            e.stopPropagation();
+            return false;
+        }
+
+        this.shadowRoot.getElementById('sendTo').addEventListener('keydown', stopKeyEventPropagation);
+        this.shadowRoot.getElementById('messageBox').addEventListener('keydown', stopKeyEventPropagation);
+
         const getDataFromURL = () => {
             let tempUrl = document.location.href
             let splitedUrl = decodeURI(tempUrl).split('?')
