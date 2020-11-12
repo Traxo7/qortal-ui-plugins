@@ -1612,8 +1612,11 @@ class TradePortal extends LitElement {
             }
         }
 
+        let myNode = window.parent.reduxStore.getState().app.nodeConfig.knownNodes[window.parent.reduxStore.getState().app.nodeConfig.node]
+        let nodeUrl = myNode.domain + ":" + myNode.port
+
         const modifiers = [
-            { searchValue: 'NODEURL', replaceValue: 'localhost:12391' }
+            { searchValue: 'NODEURL', replaceValue: nodeUrl }
         ]
 
         const connectedWorker = this.inlineWorker(this.initSocket, modifiers)
@@ -1687,8 +1690,11 @@ class TradePortal extends LitElement {
             handleOffers()
         }
 
+        let myNode = window.parent.reduxStore.getState().app.nodeConfig.knownNodes[window.parent.reduxStore.getState().app.nodeConfig.node]
+        let nodeUrl = myNode.domain + ":" + myNode.port
+
         const modifiers = [
-            { searchValue: 'NODEURL', replaceValue: 'localhost:12391' },
+            { searchValue: 'NODEURL', replaceValue: nodeUrl },
             { searchValue: 'SELECTED_ADDRESS', replaceValue: this.selectedAddress.address }
         ]
 
