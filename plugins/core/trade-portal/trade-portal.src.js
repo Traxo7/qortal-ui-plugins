@@ -816,10 +816,7 @@ class TradePortal extends LitElement {
 
             if (offer.mode === 'OFFERING') {
 
-                if (this.tradeOffersSocketCounter > 1) {
-
-                    this.processOfferingTrade(offer)
-                }
+                this.processOfferingTrade(offer)
             } else if (offer.mode === 'REDEEMED') {
 
                 this.processRedeemedTrade(offer)
@@ -1017,24 +1014,13 @@ class TradePortal extends LitElement {
 
     initSocket() {
 
-        const getOffers = async () => {
-
-            const url = `http://NODEURL/crosschain/tradeoffers`
-            const res = await fetch(url)
-            const _openTradeOrders = await res.json()
-            const openTradeOrders = await _openTradeOrders.filter(order => order.mode === "OFFERING")
-            self.postMessage({ type: "GET_OFFERS", data: openTradeOrders });
-        }
-
         const initTradeOffersWebSocket = () => {
-
             let tradeOffersSocketCounter = 0
             let socketTimeout
 
             let socketLink = `ws://NODEURL/websockets/crosschain/tradeoffers?includeHistoric=true`;
 
             const socket = new WebSocket(socketLink);
-
             // Open Connection
             socket.onopen = () => {
 
@@ -1042,14 +1028,12 @@ class TradePortal extends LitElement {
                 tradeOffersSocketCounter += 1
                 console.log(`[TRADE-OFFERS-SOCKET] ==>: CONNECTED`);
             }
-
             // Message Event
             socket.onmessage = (e) => {
 
                 self.postMessage({ type: "TRADE_OFFERS", data: e.data, counter: tradeOffersSocketCounter });
                 tradeOffersSocketCounter += 1
             }
-
             // Closed Event
             socket.onclose = () => {
                 clearTimeout(socketTimeout)
@@ -1058,7 +1042,6 @@ class TradePortal extends LitElement {
                 // Restart Socket Connection
                 restartTradeOffersWebSocket()
             }
-
             // Error Event
             socket.onerror = (e) => {
                 clearTimeout(socketTimeout)
@@ -1070,30 +1053,24 @@ class TradePortal extends LitElement {
 
                 socketTimeout = setTimeout(pingSocket, 295000)
             }
-
         };
 
         const initTradeBotWebSocket = () => {
-
             let socketTimeout
-
             let socketLink = `ws://NODEURL/websockets/crosschain/tradebot`;
 
             const socket = new WebSocket(socketLink);
-
             // Open Connection
             socket.onopen = () => {
 
                 setTimeout(pingSocket, 50)
                 console.log(`[TRADEBOT-SOCKET] ==>: CONNECTED`);
             }
-
             // Message Event
             socket.onmessage = (e) => {
 
                 self.postMessage({ type: "TRADE_BOT", data: e.data });
             }
-
             // Closed Event
             socket.onclose = () => {
                 clearTimeout(socketTimeout)
@@ -1102,7 +1079,6 @@ class TradePortal extends LitElement {
                 // Restart Socket Connection
                 restartTradeBotWebSocket()
             }
-
             // Error Event
             socket.onerror = (e) => {
                 clearTimeout(socketTimeout)
@@ -1111,24 +1087,17 @@ class TradePortal extends LitElement {
 
             const pingSocket = () => {
                 socket.send('ping')
-
                 socketTimeout = setTimeout(pingSocket, 295000)
             }
-
         };
 
         const restartTradeOffersWebSocket = () => {
-
             setTimeout(() => initTradeOffersWebSocket(), 3000)
         }
 
         const restartTradeBotWebSocket = () => {
-
             setTimeout(() => initTradeBotWebSocket(), 3000)
         }
-
-        // Get Offers
-        getOffers()
 
         // Start TradeOffersWebSocket
         initTradeOffersWebSocket()
@@ -1600,8 +1569,6 @@ class TradePortal extends LitElement {
         const handleMessage = (message) => {
 
             switch (message.type) {
-                case "GET_OFFERS":
-                    return this.processGetOffers(message.data)
                 case "TRADE_OFFERS":
                     this.tradeOffersSocketCounter = message.counter
                     return this.processTradeOffers(JSON.parse(message.data))
