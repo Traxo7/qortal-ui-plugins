@@ -981,37 +981,6 @@ class TradePortal extends LitElement {
         })
     }
 
-
-    processGetOffers(offers) {
-
-        const offerItem = (offer) => {
-            return {
-                ...offer,
-                btcAmount: offer.expectedBitcoin,
-                priceBtc: this.round(parseFloat(offer.expectedBitcoin) / parseFloat(offer.qortAmount))
-            }
-        }
-
-        const addOffer = (offer) => {
-            this.openOrdersGrid.items.unshift(offerItem(offer))
-            this.openOrdersGrid.clearCache();
-        }
-
-        const initOffer = (offer) => {
-            this.openOrdersGrid.items.push(offerItem(offer))
-            this.openOrdersGrid.clearCache()
-        }
-
-        const handleOffers = () => {
-            offers.forEach(offer => {
-                this.openOrdersGrid.items.length === 0 ? initOffer(offer) : addOffer(offer)
-            })
-        }
-
-        handleOffers()
-    }
-
-
     initSocket() {
 
         const initTradeOffersWebSocket = () => {
