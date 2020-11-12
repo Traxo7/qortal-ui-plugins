@@ -586,19 +586,14 @@ class TradePortal extends LitElement {
         `
     }
 
-
     firstUpdated() {
-
         // Check BTC Wallet Balance
         this.updateBTCAccountBalance()
-
         // Set Trade Panes
         this.openOrdersGrid = this.shadowRoot.getElementById('openOrdersGrid')
-
         this.openOrdersGrid.querySelector('#priceColumn').headerRenderer = function (root) {
             root.innerHTML = '<vaadin-grid-sorter path="priceBtc" direction="asc">Price (BTC)</vaadin-grid-sorter>';
         };
-
 
         this.myOrdersGrid = this.shadowRoot.getElementById('myOrdersGrid')
         this.historicTradesGrid = this.shadowRoot.getElementById('historicTradesGrid')
@@ -668,7 +663,6 @@ class TradePortal extends LitElement {
         this.buyBtnDisable = false
     }
 
-
     getOpenOrdersGrid() {
 
         const myGrid = this.shadowRoot.querySelector('#openOrdersGrid')
@@ -692,15 +686,14 @@ class TradePortal extends LitElement {
 
         const addOffer = () => {
             this.openOrdersGrid.items.unshift(offerItem);
-            this.openOrdersGrid.clearCache();
         }
 
         const initOffer = () => {
             this.openOrdersGrid.items.push(offerItem);
-            this.openOrdersGrid.clearCache();
         }
 
-        this.openOrdersGrid.items.length === 0 ? initOffer() : addOffer()
+        this.openOrdersGrid.items.length === 0 ? initOffer() : addOffer();
+        this.tradeOffersSocketCounter > 1 ? this.openOrdersGrid.clearCache() : null;
     }
 
     processRedeemedTrade(offer) {
@@ -715,9 +708,8 @@ class TradePortal extends LitElement {
             }
 
             // Add to my historic trades
-
             this.myHistoricTradesGrid.items.unshift(offer)
-            this.myHistoricTradesGrid.clearCache();
+            this.tradeOffersSocketCounter > 1 ? this.myHistoricTradesGrid.clearCache() : null;
         } else if (offer.partnerQortalReceivingAddress === this.selectedAddress.address) {
 
             // Check and Update BTC Wallet Balance
@@ -727,19 +719,19 @@ class TradePortal extends LitElement {
             }
 
             // Add to my historic trades
-            this.myHistoricTradesGrid.items.unshift(offer)
-            this.myHistoricTradesGrid.clearCache();
+            this.myHistoricTradesGrid.items.unshift(offer);
+            this.tradeOffersSocketCounter > 1 ? this.myHistoricTradesGrid.clearCache() : null;
         }
 
         // Add to historic trades
-        this.historicTradesGrid.items.unshift(offer)
-        this.historicTradesGrid.clearCache();
+        this.historicTradesGrid.items.unshift(offer);
+        this.tradeOffersSocketCounter > 1 ? this.historicTradesGrid.clearCache() : null;
     }
 
     processTradingTrade(offer) {
 
         // Remove from open market orders
-        if (this.tradeOffersSocketCounter > 1) {
+        if (offer.qortalCreator === this.selectedAddress.address && this.tradeOffersSocketCounter > 1) {
 
             // Check and Update BTC Wallet Balance
             this.updateBTCAccountBalance()
@@ -748,8 +740,8 @@ class TradePortal extends LitElement {
         this.openOrdersGrid.items.forEach((item, index) => {
             if (item.qortalAtAddress === offer.qortalAtAddress) {
 
-                this.openOrdersGrid.items.splice(index, 1)
-                this.openOrdersGrid.clearCache();
+                this.openOrdersGrid.items.splice(index, 1);
+                this.tradeOffersSocketCounter > 1 ? this.openOrdersGrid.clearCache() : null;
             }
         })
     }
@@ -765,8 +757,8 @@ class TradePortal extends LitElement {
             }
 
             // Add to my historic trades
-            this.myHistoricTradesGrid.items.unshift(offer)
-            this.myHistoricTradesGrid.clearCache()
+            this.myHistoricTradesGrid.items.unshift(offer);
+            this.tradeOffersSocketCounter > 1 ? this.myHistoricTradesGrid.clearCache() : null;
         }
     }
 
@@ -781,15 +773,15 @@ class TradePortal extends LitElement {
             }
 
             // Add to my historic trades
-            this.myHistoricTradesGrid.items.unshift(offer)
-            this.myHistoricTradesGrid.clearCache()
+            this.myHistoricTradesGrid.items.unshift(offer);
+            this.tradeOffersSocketCounter > 1 ? this.myHistoricTradesGrid.clearCache() : null;
         }
 
         this.openOrdersGrid.items.forEach((item, index) => {
             if (item.qortalAtAddress === offer.qortalAtAddress) {
 
                 this.openOrdersGrid.items.splice(index, 1)
-                this.openOrdersGrid.clearCache()
+                this.tradeOffersSocketCounter > 1 ? this.openOrdersGrid.clearCache() : null;
             }
         })
 
@@ -817,6 +809,7 @@ class TradePortal extends LitElement {
             if (offer.mode === 'OFFERING') {
 
                 this.processOfferingTrade(offer)
+                this.tradeOffersSocketCounter > 1 ? this.openOrdersGrid.clearCache() : null;
             } else if (offer.mode === 'REDEEMED') {
 
                 this.processRedeemedTrade(offer)
@@ -832,7 +825,6 @@ class TradePortal extends LitElement {
             }
         })
     }
-
 
     /**
      *  TradeBot Note by cat
@@ -934,7 +926,6 @@ class TradePortal extends LitElement {
         this.filterStuckTrades(states)
     }
 
-
     changeTradeBotState(state, tradeState) {
 
         // Set Loading state
@@ -983,12 +974,10 @@ class TradePortal extends LitElement {
 
     initSocket() {
 
-        const initTradeOffersWebSocket = () => {
+        const initTradeOffersWebSocket = (restarted = false) => {
             let tradeOffersSocketCounter = 0
             let socketTimeout
-
             let socketLink = `ws://NODEURL/websockets/crosschain/tradeoffers?includeHistoric=true`;
-
             const socket = new WebSocket(socketLink);
             // Open Connection
             socket.onopen = () => {
@@ -1000,8 +989,9 @@ class TradePortal extends LitElement {
             // Message Event
             socket.onmessage = (e) => {
 
-                self.postMessage({ type: "TRADE_OFFERS", data: e.data, counter: tradeOffersSocketCounter });
-                tradeOffersSocketCounter += 1
+                self.postMessage({ type: "TRADE_OFFERS", data: e.data, counter: tradeOffersSocketCounter, isRestarted: restarted });
+                tradeOffersSocketCounter += 1;
+                restarted = false;
             }
             // Closed Event
             socket.onclose = () => {
@@ -1019,15 +1009,13 @@ class TradePortal extends LitElement {
 
             const pingSocket = () => {
                 socket.send('ping')
-
                 socketTimeout = setTimeout(pingSocket, 295000)
             }
         };
 
-        const initTradeBotWebSocket = () => {
+        const initTradeBotWebSocket = (restarted = false) => {
             let socketTimeout
             let socketLink = `ws://NODEURL/websockets/crosschain/tradebot`;
-
             const socket = new WebSocket(socketLink);
             // Open Connection
             socket.onopen = () => {
@@ -1038,7 +1026,8 @@ class TradePortal extends LitElement {
             // Message Event
             socket.onmessage = (e) => {
 
-                self.postMessage({ type: "TRADE_BOT", data: e.data });
+                self.postMessage({ type: "TRADE_BOT", data: e.data, isRestarted: restarted });
+                restarted = false;
             }
             // Closed Event
             socket.onclose = () => {
@@ -1061,11 +1050,11 @@ class TradePortal extends LitElement {
         };
 
         const restartTradeOffersWebSocket = () => {
-            setTimeout(() => initTradeOffersWebSocket(), 3000)
+            setTimeout(() => initTradeOffersWebSocket(true), 3000)
         }
 
         const restartTradeBotWebSocket = () => {
-            setTimeout(() => initTradeBotWebSocket(), 3000)
+            setTimeout(() => initTradeBotWebSocket(true), 3000)
         }
 
         // Start TradeOffersWebSocket
@@ -1533,16 +1522,27 @@ class TradePortal extends LitElement {
         return worker;
     }
 
+    clearPaneCache() {
+        this.openOrdersGrid.clearCache();
+        this.myHistoricTradesGrid.clearCache();
+        this.historicTradesGrid.clearCache();
+    }
+
     createConnection() {
 
         const handleMessage = (message) => {
 
             switch (message.type) {
                 case "TRADE_OFFERS":
-                    this.tradeOffersSocketCounter = message.counter
-                    return this.processTradeOffers(JSON.parse(message.data))
+                    if (!message.isRestarted) {
+                        this.tradeOffersSocketCounter = message.counter;
+                        this.processTradeOffers(JSON.parse(message.data));
+                        this.tradeOffersSocketCounter === 1 ? this.clearPaneCache() : null;
+                    }
+                    return null;
                 case "TRADE_BOT":
-                    return this.processTradeBotStates(JSON.parse(message.data))
+                    if (!message.isRestarted) this.processTradeBotStates(JSON.parse(message.data)); 
+                    return null;
                 default:
                     break;
             }
@@ -1641,7 +1641,6 @@ class TradePortal extends LitElement {
             connectedWorker.terminate()
         }, { passive: true })
     }
-
 }
 
 window.customElements.define('trade-portal', TradePortal)
