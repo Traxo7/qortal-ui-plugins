@@ -2583,7 +2583,7 @@
                                         <vaadin-grid-column resizable header="Price (LTC)" id="priceColumn" path="price"></vaadin-grid-column>
                                         <vaadin-grid-column resizable header="Total (LTC)" .renderer=${(e,t,i)=>{z(F`<span> ${i.item.foreignAmount} </span>`,e)}}>
                                         </vaadin-grid-column>
-                                        <vaadin-grid-column header="L S" id="lastSeen" width="4em" flex-grow="0" .renderer=${(e,t,i)=>{let r="";r=void 0===i.item.lastSeen?"":new Date(i.item.lastSeen).toISOString(),z(F`${r?F`<time-ago datetime=${r} format="micro"></time-ago>`:""}`,e)}}>
+                                        <vaadin-grid-column header="L S" id="lastSeen" width="6em" flex-grow="0" .renderer=${(e,t,i)=>{let r="";r=void 0===i.item.lastSeen?"":new Date(i.item.lastSeen).toISOString(),z(F`${r?F`<time-ago datetime=${r} format="micro"></time-ago>`:""}`,e)}}>
                                         </vaadin-grid-column>
                                     </vaadin-grid>
                                 </div>

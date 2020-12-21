@@ -333,7 +333,7 @@ class TradePortal extends LitElement {
                 render(html`<span> ${data.item.foreignAmount} </span>`, root)
             }}>
                                         </vaadin-grid-column>
-                                        <vaadin-grid-column header="L S" id="lastSeen" width="4em" flex-grow="0" .renderer=${(root, column, data) => {
+                                        <vaadin-grid-column header="L S" id="lastSeen" width="6em" flex-grow="0" .renderer=${(root, column, data) => {
             // console.log(data.item.lastSeen);
             let timeIso = '';
             data.item.lastSeen === undefined ? timeIso = '' : timeIso = new Date(data.item.lastSeen).toISOString();
