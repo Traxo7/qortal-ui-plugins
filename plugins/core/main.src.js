@@ -26,6 +26,15 @@ parentEpml.ready().then(() => {
                     icon: 'toc',
                     menus: [],
                     parent: false
+                },
+                {
+                    url: 'ltc-wallet',
+                    domain: 'core',
+                    page: 'wallet/ltc-wallet/index.html',
+                    title: 'Litecoin Wallet',
+                    icon: 'toc',
+                    menus: [],
+                    parent: false
                 }
             ],
             parent: false

@@ -80,6 +80,10 @@ const generateForPlugins = () => {
     {
       in: "plugins/core/wallet/btc-wallet/btc-wallet.src.js",
       out: "plugins/core/wallet/btc-wallet/btc-wallet.js",
+      },
+    {
+      in: "plugins/core/wallet/ltc-wallet/ltc-wallet.src.js",
+      out: "plugins/core/wallet/ltc-wallet/ltc-wallet.js",
     },
     {
       in: "plugins/core/reward-share/reward-share.src.js",
