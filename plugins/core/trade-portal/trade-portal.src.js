@@ -126,6 +126,14 @@ class TradePortal extends LitElement {
                 /* height: 450px; */
             }
 
+            .no-last-seen {
+                background: rgb(255, 89, 89);
+                padding: 9px 1.3px;
+                border-radius: 50%;
+                width: 1rem;
+                margin: 0 auto;
+            }
+
 
             #second-trade-section {
 
@@ -333,12 +341,10 @@ class TradePortal extends LitElement {
                 render(html`<span> ${data.item.foreignAmount} </span>`, root)
             }}>
                                         </vaadin-grid-column>
-                                        <vaadin-grid-column header="L S" id="lastSeen" width="6em" flex-grow="0" .renderer=${(root, column, data) => {
-            // console.log(data.item.lastSeen);
+                                        <vaadin-grid-column header="L S" id="lastSeen" width="5.7em" flex-grow="0" .renderer=${(root, column, data) => {
             let timeIso = '';
             data.item.lastSeen === undefined ? timeIso = '' : timeIso = new Date(data.item.lastSeen).toISOString();
-            
-                render(html`${timeIso ? html`<time-ago datetime=${timeIso} format="micro"></time-ago>` : ''}`, root)
+                render(html`${timeIso ? html`<time-ago datetime=${timeIso} format="micro"></time-ago>` : html`<div class="no-last-seen" title="No Last Seen"></div>`}`, root)
             }}>
                                         </vaadin-grid-column>
                                     </vaadin-grid>
@@ -742,8 +748,13 @@ class TradePortal extends LitElement {
         }
 
         // Add to historic trades
-        this.historicTradesGrid.items.unshift(offer);
-        this.tradeOffersSocketCounter > 1 ? this.historicTradesGrid.clearCache() : null;
+        const addNewHistoricTrade = () => {
+            this.historicTradesGrid.items.unshift(offer);
+            this.historicTradesGrid.clearCache();
+        }
+
+
+        this.tradeOffersSocketCounter > 1 ? addNewHistoricTrade() : null;
     }
 
     processTradingTrade(offer) {
@@ -1000,14 +1011,17 @@ class TradePortal extends LitElement {
 
         switch (this._foreignBlockchain) {
             case 'LITECOIN':
-                return LitecoinACCTv1(tradeStates);
+                LitecoinACCTv1(tradeStates);
+                break;
             case 'BITCOIN':
-                return BitcoinACCTv1(tradeStates);
+                BitcoinACCTv1(tradeStates);
+                break;
             default:
+                break;
         }
 
         // Filter Stuck Trades
-        this.filterStuckTrades(tradeStates)
+        setTimeout(() => this.filterStuckTrades(tradeStates), 50);
     }
 
     changeTradeBotState(state, tradeState) {
@@ -1162,7 +1176,7 @@ class TradePortal extends LitElement {
 
         const initPresenceWebSocket = (restarted = false) => {
             let socketTimeout
-            let socketLink = `ws://localhost:62391/websockets/presence`;
+            let socketLink = `ws://localhost:62391/websockets/presence?presenceType=TRADE_BOT`;
             const socket = new WebSocket(socketLink);
             // Open Connection
             socket.onopen = () => {
@@ -1744,6 +1758,15 @@ class TradePortal extends LitElement {
             tradeBotStates = event.data
         })
 
+        const getCompletedTrades = async () => {
+
+            const url = `http://NODEURL/crosschain/trades?foreignBlockchain=FOREIGN_BLOCKCHAIN`;
+            const res = await fetch(url);
+            const historicTrades = await res.json()
+            
+            self.postMessage({ type: "HISTORIC_TRADES", data: historicTrades });
+        }
+
         const filterStuckOffers = (myOffers) => {
 
             const myTradeBotStates = tradeBotStates.filter(state => state.creatorAddress === 'SELECTED_ADDRESS');
@@ -1757,7 +1780,7 @@ class TradePortal extends LitElement {
 
         const getOffers = async () => {
 
-            const url = `http://NODEURL/crosschain/tradeoffers?foreignBlockchain=FOREIGN_BLOCKCHAIN` // TODO: remove hard-coded values
+            const url = `http://NODEURL/crosschain/tradeoffers?foreignBlockchain=FOREIGN_BLOCKCHAIN`;
             const res = await fetch(url)
             const openTradeOrders = await res.json()
             const myOpenTradeOrders = await openTradeOrders.filter(order => order.mode === "OFFERING" && order.qortalCreator === "SELECTED_ADDRESS");
@@ -1766,16 +1789,38 @@ class TradePortal extends LitElement {
             self.postMessage({ type: "STUCK_OFFERS", data: stuckOffers });
         }
 
+        // Get Historic Trades
+        getCompletedTrades();
+
         // Get Offers
-        getOffers()
+        getOffers();
     }
 
     filterStuckTrades(states) {
 
+        let isHanddleTradesDone = false;
+        let isHanddleStuckOffersDone = false;
+
         const handleMessage = (message) => {
 
-            const offers = message.data
+            switch (message.type) {
+                case "HISTORIC_TRADES":
+                    this.historicTrades = message.data;
+                    isHanddleTradesDone = true;
+                    break;
+                case "STUCK_OFFERS":
+                    doStuckOffers(message.data);
+                    isHanddleStuckOffersDone = true;
+                    break;
+                default:
+                    break;
+            }
 
+            if (isHanddleTradesDone === true && isHanddleStuckOffersDone === true) return connectedWorker.terminate();
+        }
+
+        const doStuckOffers = (message) => {
+            const offers = message;
             const offerItem = (offer) => {
                 return {
                     ...offer,
@@ -1797,7 +1842,7 @@ class TradePortal extends LitElement {
                 })
             }
 
-            handleOffers()
+            handleOffers();
         };
 
         let myNode = window.parent.reduxStore.getState().app.nodeConfig.knownNodes[window.parent.reduxStore.getState().app.nodeConfig.node];
@@ -1813,7 +1858,6 @@ class TradePortal extends LitElement {
         connectedWorker.postMessage(states);
         connectedWorker.addEventListener('message', function (event) {
             handleMessage(event.data);
-            connectedWorker.terminate();
         }, { passive: true });
     }
 }
