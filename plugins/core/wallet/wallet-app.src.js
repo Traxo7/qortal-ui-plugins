@@ -12,46 +12,16 @@ import '@vaadin/vaadin-grid/theme/material/all-imports.js'
 
 import '@github/time-elements'
 
-const TX_TYPES = {
-    1: 'Genesis',
-    2: 'Payment',
-
-    3: 'Name registration',
-    4: 'Name update',
-    5: 'Sell name',
-    6: 'Cancel sell name',
-    7: 'Buy name',
-
-    8: 'Create poll',
-    9: 'Vote in poll',
-
-    10: 'Arbitrary',
-
-    11: 'Issue asset',
-    12: 'Transfer asset',
-    13: 'Create asset order',
-    14: 'Cancel asset order',
-    15: 'Multi-payment transaction',
-
-    16: 'Deploy AT',
-
-    17: 'Message',
-
-    18: 'Chat',
-    19: 'Supernode',
-    20: 'Airdrop'
-}
-
 const parentEpml = new Epml({ type: 'WINDOW', source: window.parent })
 
-class WalletApp extends LitElement {
+class MultiWallet extends LitElement {
     static get properties() {
         return {
             loading: { type: Boolean },
-            transactions: { type: Array },
+            transactions: { type: Object },
             lastBlock: { type: Object },
-            selectedAddress: { type: Object },
-            addressInfo: { type: Object },
+            selectedWallet: { type: Object },
+            selectedLtcWallet: { type: Object },
             balance: { type: Number },
             selectedTransaction: { type: Object },
             isTextMenuOpen: { type: Boolean }
@@ -59,7 +29,45 @@ class WalletApp extends LitElement {
     }
 
     static get styles() {
-        return css`
+        return [
+            css`
+            #pages {
+                display: flex;
+                flex-wrap: wrap;
+                /* margin: 20px; */
+                padding: 10px 5px 5px 5px;
+                margin: 0px 20px 20px 20px;
+                
+            }
+
+            #pages > button {
+                user-select: none;
+                padding: 5px;
+                margin: 0 5px;
+                border-radius: 10%;
+                border: 0;
+                background: transparent;
+                font: inherit;
+                outline: none;
+                cursor: pointer;
+            }
+
+            #pages > button:not([disabled]):hover,
+            #pages > button:focus {
+                color: #ccc;
+                background-color: #eee;
+            }
+
+            #pages > button[selected] {
+                font-weight: bold;
+                color: white;
+                background-color: #ccc;
+            }
+
+            #pages > button[disabled] {
+                opacity: 0.5;
+                cursor: default;
+            }
             .red{
                 color: var(--paper-red-500);
             }
@@ -161,29 +169,328 @@ class WalletApp extends LitElement {
                 padding: .2rem .5rem;
                 margin-left: 4px;
             }
-        `
+                * {
+                    box-sizing: border-box;
+                }
+
+                body {
+                    margin: 0;
+                    padding: 0;
+                    -webkit-font-smoothing:antialiased;
+                    -moz-osx-font-smoothing:grayscale;
+                }
+
+                h2 {
+                    margin: 0;
+                    font-weight: 400;
+                    color: #707584;
+                    font: 24px/24px 'Open Sans', sans-serif;
+                }
+
+                h3 {
+                    margin: 0 0 5px;
+                    font-weight: 600;
+                    font-size: 18px;
+                    line-height: 18px;
+                }
+
+                /* Styles for Larger Screen Sizes */
+                @media(min-width:765px) {
+
+                    .wrapper {
+                        display: grid;
+                        grid-template-columns: .5fr 3.5fr;
+                    }
+                }
+
+                .wrapper {
+                    margin: 0 auto;
+                    height: 100%;
+                    overflow: hidden;
+                    border-radius: 8px;
+                    background-color: #fff;
+                }
+
+                .wallet {
+                    width: 250px;
+                    background-color: #f2f2f2;
+                    height: 100%;
+                    border-top-left-radius: inherit;
+                    border-bottom-left-radius: inherit;
+                    padding: 50px;
+                }
+
+                .wallet-header {
+                    margin: 0 50px;
+                    display: flex;
+                    justify-content: space-between;
+                }
+
+                .transactions-wrapper {
+                    width: 100%;
+                    padding: 50px 0;
+                    height: 100vh;
+                }
+
+                .total-balance {
+                    display: inline-block;
+                    font-weight: 600;
+                    font-size: 32px;
+                    color: #444750;
+                }
+
+                #transactions {
+                    margin-top: 60px;
+                    margin-left: 20px;
+                    margin-right: 20px;
+                    border-top: 1px solid #e5e5e5;
+                    padding-top: 0px;
+                    height: 100%;
+                    overflow: auto;
+                }
+
+                .show {
+                    animation: fade-in .3s 1;
+                }
+
+                .transaction-item {
+                    display: flex;
+                    justify-content: space-between;
+                    position: relative;
+                    padding-left: 40px;
+                    margin-bottom: 45px;
+                    margin-right: 50px;
+                }
+                .transaction-item::before {
+                    position: absolute;
+                    content: '';
+                    border: 2px solid #e1e1e1;
+                    border-radius: 50%;
+                    height: 25px;
+                    width: 25px;
+                    left: 0;
+                    top: 10px;
+                    box-sizing: border-box;
+                    vertical-align: middle;
+                    color: #666666;
+                }
+
+                .credit::before {
+                    content: '+';
+                    font-size: 25px;
+                    line-height: 19px;
+                    padding: 0 4px 0;
+                }
+
+                .debit::before {
+                    content: '-';
+                    font-size: 20px;
+                    line-height: 21px;
+                    padding: 0 5px;
+                }
+
+                .transaction-item .details {
+                    font-size: 14px;
+                    line-height: 14px;
+                    color: #999;
+                }
+
+                .transaction-item_details {
+                    width: 270px;
+                }
+
+                .transaction-item_amount .amount {
+                    font-weight: 600;
+                    font-size: 18px;
+                    line-height: 45px;
+                    position: relative;
+                    margin: 0;
+                    display: inline-block;
+                }
+
+                .cards {
+                    margin-top: 60px;
+                }
+
+                .currency-box {
+                    background-color: #fff;
+                    text-align: center;
+                    padding: 15px;
+                    margin-bottom: 45px;
+                    border-radius: 3px;
+                    border: 2px solid #e1e1e1;
+                    cursor: pointer;
+                    transition: .1s ease-in-out;
+                }
+                .currency-box:hover {
+                    transform: scale(1.07);
+                }
+
+                .active {
+                    border-color: #8393ca;
+                    border-width: 3px;
+                }
+
+                .currency-image {
+                    display: inline-block;
+                    height: 58px;
+                    width: 58px;
+                    background-repeat: no-repeat;
+                    background-size: cover;
+                    border-radius: 3px;
+                    margin-bottom: 10px;
+                }
+
+                .qort .currency-image {
+                    background-image: url("https://qortal.org/wp-content/uploads/2019/03/qortal-e1588897849894-150x150.png");
+                }
+
+                .btc .currency-image {
+                    background-image: url('https://s2.coinmarketcap.com/static/img/coins/64x64/1.png');
+                }
+
+                .ltc .currency-image {
+                    background-image: url('https://s2.coinmarketcap.com/static/img/coins/64x64/2.png');
+                }
+
+                .card-list {
+                    margin-top: 20px;
+                }
+
+                .card-list .currency-image {
+                    cursor: pointer;
+                    margin-right: 15px;
+                    transition: .1s;
+                }
+
+                .card-list .currency-image:hover {
+                    transform: scale(1.1);
+                }
+
+                /* animations */
+                @keyframes fade-in {
+                    0% {
+                        opacity: 0;
+                    }
+                100% {
+                    opacity: 1;
+                }
+                }
+
+                /* media queries */
+                @media(max-width:863px) {   
+                    .wallet {
+                        width: 100%;
+                        border-top-right-radius: inherit;
+                        padding-bottom: 25px;
+                    }
+                    .cards {
+                        margin-top: 25px;
+                    }
+                    .currency-box:nth-of-type(2) {
+                        margin-right: 0;
+                    }
+                }
+
+                @media(max-width:764px) {   
+                    .wallet {
+                        width: 100%;
+                        border-top-right-radius: inherit;
+                        padding-bottom: 25px;
+                    }
+                    .cards {
+                        margin-top: 25px;
+                    }
+                    .currency-box {
+                        width: calc(50% - 25px);
+                        max-width: 260px;
+                        display: inline-block;
+                        margin-right: 25px;
+                        margin-bottom: 25px;
+                        text-align: center;
+                    }
+                    .currency-box:nth-of-type(2) {
+                        margin-right: 0;
+                    }
+                }
+
+                @media(max-width:530px) {
+                    h3 {
+                        line-height: 24px;
+                    }
+                    .cards {
+                        text-align: center;
+                    }
+                    .currency-box {
+                        width: calc(100% - 25px);
+                        max-width: 260px;
+                    }
+                    .currency-box:nth-of-type(2) {
+                        margin-right: 25px;
+                    }	
+                    .currency-box:last-of-type {
+                        margin-bottom: 0;
+                    }
+                    .total-balance {
+                        font-size: 22px;
+                    }
+                }
+
+                @media(max-width: 390px) {
+                    .wallet {
+                        padding: 50px 25px;
+                    }
+                    .transactions-wrapper {
+                        padding: 50px 25px;
+                    }
+                    h2 {
+                        font: 18px/24px 'Open Sans', sans-serif;
+                    }
+                }
+            `
+        ]
     }
 
     constructor() {
         super()
-        this.transactions = []
+        this.transactions = {
+            type: 'qort',
+            transactions: []
+        }
+        this.balance = 0.000
+        this.balanceString = '0.000 QORT'
         this.lastBlock = {
             height: 0
-        }
-        this.selectedAddress = {}
+        }        
+        this.qortWallet = {}
+        this.btcWallet = {}
+        this.ltcWallet = {}
         this.selectedTransaction = {}
         this.isTextMenuOpen = false
+        this.loading = true
+
+        this.selectWallet = this.selectWallet.bind(this);
+
+        this.qortWallet = window.parent.reduxStore.getState().app.selectedAddress
+        this.btcWallet = window.parent.reduxStore.getState().app.selectedAddress.btcWallet
+        this.ltcWallet = window.parent.reduxStore.getState().app.selectedAddress.ltcWallet
+
+        this.selectedWallet = {
+            type: 'qort',
+            wallet: this.qortWallet
+        }
 
         parentEpml.ready().then(() => {
 
             parentEpml.subscribe('selected_address', async selectedAddress => {
-                this.selectedAddress = {}
+                this.selectedLtcWallet = {}
                 selectedAddress = JSON.parse(selectedAddress)
                 if (!selectedAddress || Object.entries(selectedAddress).length === 0) return
-                this.selectedAddress = selectedAddress
+                this.qortWallet = selectedAddress;
+                this.btcWallet = selectedAddress.btcWallet;
+                this.ltcWallet = selectedAddress.ltcWallet;
 
-                this.updateAccountTransactions()
-                this.updateAccountBalance()
+                // this.updateAccountTransactions();
             })
 
             parentEpml.subscribe('copy_menu_switch', async value => {
@@ -200,89 +507,60 @@ class WalletApp extends LitElement {
 
     render() {
         return html`
-            <div class="white-bg">
-                
-                <div ?hidden="${this.loading}">
-                    <div id="topbar" style="background: ; color: ; padding: 20px;">
-                        <span class="mono weight-1300">
-                            ${this.selectedAddress.address}
-                        </span>
-                        <br>
-                        <div class="layout horizontal wrap">
-                            <div>
-                                <span class="mono weight-100" style="font-size: 70px;">${this.floor(this.balance)}<span
-                                        style="font-size:24px; vertical-align: top; line-height:60px;">.${this.decimals(this.balance)}
-                                        QORT</span></span>
-                                &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-                            </div>
-                
+            <div class="wrapper">
+                <div class="wallet">
+                    <h2>My Wallets</h2>
+                    <div class="cards">
+                        <div type="qort" class="currency-box qort active">
+                            <div class="currency-image"></div>
+                        </div>
+                        <div type="btc" class="currency-box btc">
+                            <div class="currency-image"></div>
+                        </div>
+                        <div type="ltc" class="currency-box ltc">
+                            <div class="currency-image"></div>
                         </div>
                     </div>
-                
-                    <div id="contentDiv" style="margin: 8px;">
-                
-                
-                
-                        <div class="layout horizontal">
-                            <div style="padding-left:12px;" ?hidden="${!this.isEmptyArray(this.transactions)}">
-                                Address has no transactions yet. 
-                            </div>
+                </div>
 
-                            <vaadin-grid id="transactionsGrid" style="height:auto;" ?hidden="${this.isEmptyArray(this.transactions)}" aria-label="Peers" .items="${this.transactions}" height-by-rows>
-                                <vaadin-grid-column width="4.4rem" header="Type" .renderer=${(root, column, data) => {
-                render(html`
-                                ${data.item.type} 
-                                    ${data.item.creatorAddress === this.selectedAddress.address ? html`<span class="color-out">OUT</span>` : html`<span class="color-in">IN</span>`}
-
-                `, root)
-            }}>
-                                </vaadin-grid-column>
-                                <vaadin-grid-column width="13rem" header="Sender" path="creatorAddress"></vaadin-grid-column>
-                                <vaadin-grid-column width="13rem" header="Receiver" path="recipient"></vaadin-grid-column>
-                                <vaadin-grid-column width="2rem" path="fee"></vaadin-grid-column>
-                                <vaadin-grid-column width="2rem" path="amount"></vaadin-grid-column>
-                                <vaadin-grid-column width="2rem" header="Timestamp" .renderer=${(root, column, data) => {
-
-                const time = new Date(data.item.timestamp)
-                render(html`
-                                        <time-ago datetime=${time.toISOString()}>
-                                            
-                                        </time-ago>
-                                    `, root)
-            }}>
-                                </vaadin-grid-column>
-                            </vaadin-grid>
+                <div class="transactions-wrapper">
+                    <h2 class="wallet-header">
+                        Current Wallet
+                        <div class="">
+                            <span style="display: block; font-size: 18px; color: rgb(68, 71, 80); margin-bottom: 6px;"> ${this.selectedWallet.type === 'qort' ? this.selectedWallet.wallet.address : this.selectedWallet.wallet._taddress } </span>
+                            <span class="total-balance"> ${this.balanceString} </span>
+                        </div>
+                    </h2>
+                    <div id="transactions">
+                        ${this.loading ? html`<paper-spinner-lite style="display: block; margin: 0 auto;" active></paper-spinner-lite>` : ''}
+                        <div id="transactionsDOM"></div>
                     </div>
+                </div>
 
-                    <div>
-                        <mwc-dialog id="showTransactionDetailsDialog" scrimClickAction="${this.showTransactionDetailsLoading ? '' : 'close'}">
+                <div>
+                    <mwc-dialog id="showTransactionDetailsDialog" scrimClickAction="${this.showTransactionDetailsLoading ? '' : 'close'}">
                             <div style="text-align:center">
                             <h1>Transaction Details</h1>
                             <hr>
                             </div>
-
                             <div id="transactionList">
                             <span class="title"> Transaction Type </span>
                             <br>
                             <div><span class="">${this.selectedTransaction.type}</span>
                                     ${this.selectedTransaction.txnFlow === "OUT" ? html`<span class="color-out">OUT</span>` : html`<span class="color-in">IN</span>`}
                             </div>
-
                             <span class="title">Sender</span>
                             <br>
                             <div><span class="">${this.selectedTransaction.creatorAddress}</span></div>
-
                             <span class="title">Receiver</span>
                             <br>
                             <div><span class="">${this.selectedTransaction.recipient}</span></div>
-
                             ${!this.selectedTransaction.amount ? '' : html`
                                     <span class="title">Amount</span>
                                     <br>
                                     <div><span class="">${this.selectedTransaction.amount} QORT</span></div>
                                 `
-            }
-
+                            }
                             <span class="title"> Transaction Fee </span>
                             <br>
                             <div><span class="">${this.selectedTransaction.fee}</span></div>
@@ -299,24 +577,163 @@ class WalletApp extends LitElement {
                             <br>
                             <div><span class="">${this.selectedTransaction.signature}</span></div>
                             </div>
-
                         </mwc-dialog>
                     </div>
-                </div>
             </div>
         `
     }
 
-    getGridTransaction() {
+    async getTransactionGrid(type) {
+        this.transactionsGrid = this.shadowRoot.querySelector(`#${type}TransactionsGrid`);
+        if (type === 'qort') {
+            this.transactionsGrid.addEventListener('click', (e) => {
+                let myItem = this.transactionsGrid.getEventContext(e).item;
+                this.showTransactionDetails(myItem, this.transactions.transactions);
+            }, { passive: true });
+        }
+        
+        this.pagesControl = this.shadowRoot.querySelector('#pages');
+        this.pages = undefined;
+    }
 
-        const myGrid = this.shadowRoot.querySelector('#transactionsGrid')
+    async renderTransactions() {
+        if (this.transactions.type === 'qort') {
 
-        myGrid.addEventListener('click', (e) => {
-            let myItem = myGrid.getEventContext(e).item
+            render(this.renderQortTransactions(this.transactions.transactions, this.selectedWallet.type), this.transactionsDOM);
+        } else {
 
-            this.showTransactionDetails(myItem, this.transactions)
-        }, { passive: true })
+            render(this.renderBTCLikeTransactions(this.transactions.transactions, this.selectedWallet.type), this.transactionsDOM);
+        }
+    }
 
+    renderQortTransactions(transactions, type) {
+        return html`
+            <div style="padding-left:12px;" ?hidden="${!this.isEmptyArray(transactions)}">
+                Address has no transactions yet. 
+            </div>
+            <vaadin-grid id="${type}TransactionsGrid" ?hidden="${this.isEmptyArray(this.transactions.transactions)}" page-size="20" height-by-rows>
+                <vaadin-grid-column auto-width resizable header="Type" .renderer=${(root, column, data) => {
+                    render(html`
+                                    ${data.item.type} 
+                                        ${data.item.creatorAddress === this.qortWallet.address ? html`<span class="color-out">OUT</span>` : html`<span class="color-in">IN</span>`}
+
+                    `, root)
+                }}>
+                </vaadin-grid-column>
+                <vaadin-grid-column auto-width resizable header="Sender" path="creatorAddress"></vaadin-grid-column>
+                <vaadin-grid-column auto-width resizable header="Receiver" path="recipient"></vaadin-grid-column>
+                <vaadin-grid-column auto-width resizable path="fee"></vaadin-grid-column>
+                <vaadin-grid-column auto-width resizable path="amount"></vaadin-grid-column>
+                <vaadin-grid-column auto-width resizable header="Time" .renderer=${(root, column, data) => {
+
+                    const time = new Date(data.item.timestamp)
+                    render(html`
+                                            <time-ago datetime=${time.toISOString()}>
+                                                
+                                            </time-ago>
+                                        `, root)
+                }}>
+                </vaadin-grid-column>
+            </vaadin-grid>
+            <div id="pages"></div>
+        `
+    }
+
+    renderBTCLikeTransactions(transactions, type) {
+        return html`
+            <div style="padding-left:12px;" ?hidden="${!this.isEmptyArray(transactions)}">
+                Address has no transactions yet. 
+            </div>
+            <vaadin-grid id="${type}TransactionsGrid" ?hidden="${this.isEmptyArray(this.transactions.transactions)}" page-size="20" height-by-rows>
+                <vaadin-grid-column auto-width resizable header="Transaction Hash" path="txHash"></vaadin-grid-column>
+                <vaadin-grid-column auto-width resizable header="Total Amount" .renderer=${(root, column, data) => {
+
+                    const amount = (Number(data.item.totalAmount) / 1e8).toFixed(8)
+                    render(html`${amount}`, root)
+                }}>
+                </vaadin-grid-column>
+                <vaadin-grid-column auto-width resizable header="Time" .renderer=${(root, column, data) => {
+
+                    const time = new Date(data.item.timestamp * 1000)
+                    render(html`
+                                            <time-ago datetime=${time.toISOString()}>
+                                                
+                                            </time-ago>
+                                        `, root)
+                }}>
+                </vaadin-grid-column>
+            </vaadin-grid>
+            <div id="pages"></div>
+        `
+    }
+
+    async updateItemsFromPage(page) {
+        if (page === undefined) {
+            return;
+        }
+
+        if (!this.pages) {
+            this.pages = Array.apply(null, {length: Math.ceil(this.transactions.transactions.length / this.transactionsGrid.pageSize )}).map((item, index) => {
+                return index + 1;
+            });
+
+            const prevBtn = document.createElement('button');
+            prevBtn.textContent = '<';
+            prevBtn.addEventListener('click', () => {
+                const selectedPage = parseInt(this.pagesControl.querySelector('[selected]').textContent);
+                this.updateItemsFromPage(selectedPage - 1);
+            });
+            this.pagesControl.appendChild(prevBtn);
+
+            this.pages.forEach(pageNumber => {
+                const pageBtn = document.createElement('button');
+                pageBtn.textContent = pageNumber;
+                pageBtn.addEventListener('click', (e) => {
+                    this.updateItemsFromPage(parseInt(e.target.textContent));
+                });
+                if (pageNumber === page) {
+                    pageBtn.setAttribute('selected', true);
+                }
+                this.pagesControl.appendChild(pageBtn);
+            });
+
+            const nextBtn = window.document.createElement('button');
+            nextBtn.textContent = '>';
+            nextBtn.addEventListener('click', () => {
+                const selectedPage = parseInt(this.pagesControl.querySelector('[selected]').textContent);
+                this.updateItemsFromPage(selectedPage + 1);
+            });
+            this.pagesControl.appendChild(nextBtn);
+        }
+
+        const buttons = Array.from(this.pagesControl.children);
+        buttons.forEach((btn, index) => {
+            if (parseInt(btn.textContent) === page) {
+                btn.setAttribute('selected', true);
+            } else {
+                btn.removeAttribute('selected');
+            }
+
+            if (index === 0) {
+                if (page === 1) {
+                    btn.setAttribute('disabled', '');
+                } else {
+                    btn.removeAttribute('disabled');
+                }
+            }
+
+            if (index === buttons.length - 1) {
+                if (page === this.pages.length) {
+                    btn.setAttribute('disabled', '');
+                } else {
+                    btn.removeAttribute('disabled');
+                }
+            }
+        });
+
+        let start = (page - 1) * this.transactionsGrid.pageSize;
+        let end = page * this.transactionsGrid.pageSize;
+        this.transactionsGrid.items = this.transactions.transactions.slice(start, end);
     }
 
     _textMenu(event) {
@@ -352,64 +769,183 @@ class WalletApp extends LitElement {
         window.parent.getSelection().removeAllRanges()
     }
 
-    firstUpdated() {
+    transactionItem(transactionObject) {
+        return `
+            <div class='transaction-item ${transactionObject.type}'>
+                <div class='transaction-item_details'>
+                    <h3>${transactionObject.name}</h3>
+                    <span class='details'>${transactionObject.category} ${transactionObject.ID} - ${transactionObject.date}</span>
+                </div>
+                <div class='transaction-item_amount'>
+                    <p class='amount'>${transactionObject.amount}</p>
+                </div>
+            </div>
+        `
+    }
 
-        // Calls the getGridTransaction func..
-        this.getGridTransaction()
+    firstUpdated() {
+        // DOM refs
+        this.currencyBoxes = this.shadowRoot.querySelectorAll('.currency-box');
+        this.transactionsDOM = this.shadowRoot.getElementById('transactionsDOM');
+
+        // Attach eventlisteners to the cuurency boxes
+        this.currencyBoxes.forEach(currencyBox => {
+            currencyBox.addEventListener("click", this.selectWallet);
+        });
+
+        this.showQortWallet();
 
         window.addEventListener("contextmenu", (event) => {
-
             event.preventDefault();
             this.isTextMenuOpen = true
             this._textMenu(event)
         });
-
         window.addEventListener("click", () => {
-
             if (this.isTextMenuOpen) {
-
                 parentEpml.request('closeCopyTextMenu', null)
             }
         });
-
         window.onkeyup = (e) => {
             if (e.keyCode === 27) {
-
                 parentEpml.request('closeCopyTextMenu', null)
             }
         }
-
     }
 
-    updateAccountTransactions() {
-        clearTimeout(this.updateAccountTransactionTimeout)
+    selectWallet(event) {
+        event.preventDefault();
+
+        const target = event.currentTarget;
+        if (target.classList.contains('active')) return;
+
+        this.currencyBoxes.forEach(currencyBox => {
+            if (currencyBox.classList.contains('active')) {
+                currencyBox.classList.remove('active');
+            }
+        });
+        target.classList.add('active');
+
+        if (target.attributes.type.value === 'qort') {
+
+            this.selectedWallet = {
+                type: target.attributes.type.value,
+                currencyBox: target,
+                wallet: this.qortWallet
+            }
+            this.showQortWallet();
+        } else if (target.attributes.type.value === 'btc') {
+
+            this.selectedWallet = {
+                type: target.attributes.type.value,
+                currencyBox: target,
+                wallet: this.btcWallet
+            }
+            this.showBTCLikeWallet();
+        } else if (target.attributes.type.value === 'ltc') {
+
+            this.selectedWallet = {
+                type: target.attributes.type.value,
+                currencyBox: target,
+                wallet: this.ltcWallet
+            }
+            this.showBTCLikeWallet();
+        }
+    }
+
+    async showQortWallet() {
+
+        this.transactionsDOM.hidden = true;
+        this.loading = true;
+
+        this.transactions = {
+            type: 'qort',
+            transactions: []
+        }
+
+        this.fetchQortBalance();
+        await this.fetchQortTransactions();
+
+        await this.renderTransactions();
+        await this.getTransactionGrid(this.selectedWallet.type);
+        await this.updateItemsFromPage(1);
+        this.loading = false;
+        this.transactionsDOM.hidden = false;
+    }
+
+    async showBTCLikeWallet() {
+
+        this.transactionsDOM.hidden = true;
+        this.loading = true;
+
+        this.fetchBTCLikeBalance(this.selectedWallet.type);
+        await this.fetchBTCLikeTransactions(this.selectedWallet.type);
+
+        await this.renderTransactions();
+        await this.getTransactionGrid(this.selectedWallet.type);
+        await this.updateItemsFromPage(1);
+        this.loading = false;
+        this.transactionsDOM.hidden = false;
+    }
+
+    async fetchQortTransactions() {
+
+        this.transactions = {
+            type: 'qort',
+            transactions: []
+        };
+
+        const res = await parentEpml.request('apiCall', {
+            url: `/transactions/search?address=${this.qortWallet.address}&confirmationStatus=BOTH&reverse=true`
+        })
+        
+        this.transactions.transactions = res;
+    }
+
+    fetchQortBalance() {
+
+        this.balance = 0;
+        this.balanceString = ``;
+
         parentEpml.request('apiCall', {
-            url: `/transactions/search?address=${this.selectedAddress.address}&confirmationStatus=BOTH&limit=20&reverse=true`
+            url: `/addresses/balance/${this.qortWallet.address}`
         }).then(res => {
-            this.transactions = res
-            this.updateAccountTransactionTimeout = setTimeout(() => this.updateAccountTransactions(), 5000)
+            this.balance = res;
+            this.balanceString = `${this.balance} QORT`;
         })
     }
+    
+    async fetchBTCLikeTransactions(type) {
 
-    updateAccountInfo() {
-        clearTimeout(this.updateAccountInfoTimeout)
-        parentEpml.request('apiCall', {
-            url: `/addresses/${this.selectedAddress.address}`
-        }).then(res => {
-            this.addressInfo = res
+        this.transactions = {
+            type,
+            transactions: []
+        };
 
-            this.updateAccountInfoTimeout = setTimeout(() => this.updateAccountInfo(), 4000)
+        const walletName = `${type}Wallet`;
+        const res = await parentEpml.request('apiCall', {
+            url: `/crosschain/${type}/wallettransactions`,
+            method: 'POST',
+            body: `${window.parent.reduxStore.getState().app.selectedAddress[walletName]._tDerivedmasterPublicKey}`
         })
+        this.transactions.transactions = res;
     }
 
-    updateAccountBalance() {
 
-        clearTimeout(this.updateAccountBalanceTimeout)
+    fetchBTCLikeBalance(type) {
+
+        this.balance = 0;
+        this.balanceString = ``;
+
+        const walletName = `${type}Wallet`;
         parentEpml.request('apiCall', {
-            url: `/addresses/balance/${this.selectedAddress.address}`
+            url: `/crosschain/${type}/walletbalance`,
+            method: "POST",
+            body: `${window.parent.reduxStore.getState().app.selectedAddress[walletName]._tDerivedmasterPublicKey}`
         }).then(res => {
-            this.balance = res
-            this.updateAccountBalanceTimeout = setTimeout(() => this.updateAccountBalance(), 5000)
+            this.balance = (Number(res) / 1e8).toFixed(8)
+            this.balanceString = `${this.balance} ${type.toLocaleUpperCase()}`;
+        }).catch(err => {
+            parentEpml.request('showSnackBar', "Failed to Fetch Balance. Try again!");
         })
     }
 
@@ -418,7 +954,7 @@ class WalletApp extends LitElement {
         allTransactions.forEach(transaction => {
             if (myTransaction.signature === transaction.signature) {
                 // Do something...
-                let txnFlow = myTransaction.creatorAddress === this.selectedAddress.address ? "OUT" : "IN";
+                let txnFlow = myTransaction.creatorAddress === this.qortWallet.address ? "OUT" : "IN";
                 this.selectedTransaction = { ...transaction, txnFlow };
                 if (this.selectedTransaction.signature.length != 0) {
                     this.shadowRoot.querySelector('#showTransactionDetailsDialog').show()
@@ -431,10 +967,12 @@ class WalletApp extends LitElement {
         if (!arr) { return true }
         return arr.length === 0
     }
+
     floor(num) {
         num = parseFloat(num)
         return isNaN(num) ? 0 : this._format(Math.floor(num))
     }
+
     decimals(num) {
         num = parseFloat(num) // So that conversion to string can get rid of insignificant zeros
         // return isNaN(num) ? 0 : (num + "").split(".")[1]
@@ -442,7 +980,7 @@ class WalletApp extends LitElement {
     }
 
     sendOrRecieve(tx) {
-        return tx.sender == this.selectedAddress.address
+        return tx.sender == this.selectedLtcWallet._taddress
     }
 
     senderOrRecipient(tx) {
@@ -451,10 +989,6 @@ class WalletApp extends LitElement {
 
     txColor(tx) {
         return this.sendOrRecieve(tx) ? 'red' : 'green'
-    }
-
-    getTxType(type) {
-        return TX_TYPES[type]
     }
 
     subtract(num1, num2) {
@@ -477,4 +1011,4 @@ class WalletApp extends LitElement {
     }
 }
 
-window.customElements.define('wallet-app', WalletApp)
+window.customElements.define('multi-wallet', MultiWallet)
