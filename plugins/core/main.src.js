@@ -17,26 +17,7 @@ parentEpml.ready().then(() => {
             page: 'wallet/index.html',
             title: 'Wallet',
             icon: 'account_balance_wallet',
-            menus: [
-                {
-                    url: 'btc-wallet',
-                    domain: 'core',
-                    page: 'wallet/btc-wallet/index.html',
-                    title: 'Bitcoin Wallet',
-                    icon: 'toc',
-                    menus: [],
-                    parent: false
-                },
-                {
-                    url: 'ltc-wallet',
-                    domain: 'core',
-                    page: 'wallet/ltc-wallet/index.html',
-                    title: 'Litecoin Wallet',
-                    icon: 'toc',
-                    menus: [],
-                    parent: false
-                }
-            ],
+            menus: [],
             parent: false
         },
         {
