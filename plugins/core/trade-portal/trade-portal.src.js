@@ -1249,7 +1249,7 @@ class TradePortal extends LitElement {
                 fundingQortAmount: parseFloat(fundingQortAmount),
                 foreignBlockchain: 'LITECOIN',  // TODO: remove hard-coded values
                 foreignAmount: parseFloat(sellTotalInput),
-                tradeTimeout: 10080, // FIX: reduce the tradeTimeout
+                tradeTimeout: 60, // FIX: reduce the tradeTimeout to 1 hour (60 minutes)
                 receivingAddress: this.selectedAddress.ltcWallet._taddress
             })
 
