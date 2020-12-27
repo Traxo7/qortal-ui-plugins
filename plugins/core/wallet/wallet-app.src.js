@@ -902,15 +902,18 @@ class MultiWallet extends LitElement {
     }
 
     fetchQortBalance() {
-
         this.balance = 0;
         this.balanceString = ``;
 
         parentEpml.request('apiCall', {
             url: `/addresses/balance/${this.qortWallet.address}`
         }).then(res => {
-            this.balance = res;
-            this.balanceString = `${this.balance} QORT`;
+            if (isNaN(Number(res))) {
+                parentEpml.request('showSnackBar', `Failed to Fetch QORT Balance. Try again!`);
+            } else {
+                this.balance = res;
+                this.balanceString = `${this.balance} QORT`;
+            }
         })
     }
     
@@ -930,9 +933,7 @@ class MultiWallet extends LitElement {
         this.transactions.transactions = res;
     }
 
-
     fetchBTCLikeBalance(type) {
-
         this.balance = 0;
         this.balanceString = ``;
 
@@ -942,10 +943,12 @@ class MultiWallet extends LitElement {
             method: "POST",
             body: `${window.parent.reduxStore.getState().app.selectedAddress[walletName]._tDerivedmasterPublicKey}`
         }).then(res => {
-            this.balance = (Number(res) / 1e8).toFixed(8)
-            this.balanceString = `${this.balance} ${type.toLocaleUpperCase()}`;
-        }).catch(err => {
-            parentEpml.request('showSnackBar', "Failed to Fetch Balance. Try again!");
+            if (isNaN(Number(res))) {
+                parentEpml.request('showSnackBar', `Failed to Fetch ${type.toLocaleUpperCase()} Balance. Try again!`);
+            } else {
+                this.balance = (Number(res) / 1e8).toFixed(8)
+                this.balanceString = `${this.balance} ${type.toLocaleUpperCase()}`;
+            }  
         })
     }
 
