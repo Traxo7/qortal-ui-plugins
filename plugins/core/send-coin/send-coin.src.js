@@ -1,10 +1,12 @@
 import { LitElement, html, css } from 'lit-element'
+import { render } from 'lit-html'
 import { Epml } from '../../../epml'
 
 import '@material/mwc-button'
 import '@material/mwc-textfield'
 import '@material/mwc-select'
 import '@material/mwc-list/mwc-list-item.js'
+import '@material/mwc-slider'
 import '@polymer/paper-progress/paper-progress.js'
 
 const parentEpml = new Epml({ type: 'WINDOW', source: window.parent })
@@ -22,8 +24,11 @@ class SendMoneyPage extends LitElement {
             recipient: { type: String },
             isValidAmount: { type: Boolean },
             balance: { type: Number },
+            qortBalance: { type: Number },
             btcBalance: { type: Number },
+            ltcBalance: { type: Number },
             selectedCoin: { type: String },
+            satFeePerByte: { type: Number },
         }
     }
 
@@ -38,6 +43,7 @@ class SendMoneyPage extends LitElement {
         return css`
             * {
                 --mdc-theme-primary: rgb(3, 169, 244);
+                --mdc-theme-secondary: var(--mdc-theme-primary);
                 --paper-input-container-focus-color: var(--mdc-theme-primary);
             }
             #sendMoneyWrapper {
@@ -127,6 +133,7 @@ class SendMoneyPage extends LitElement {
                         <mwc-select id="coinType" label="Select Coin" index="0" @selected=${(e) => this.selectCoin(e)} style="min-width: 130px; max-width:100%; width:100%;">
                             <mwc-list-item value="qort">QORT</mwc-list-item>
                             <mwc-list-item value="btc">BTC</mwc-list-item>
+                            <mwc-list-item value="ltc">LTC</mwc-list-item>
                         </mwc-select>
                     </p>
                     <p>
@@ -144,6 +151,22 @@ class SendMoneyPage extends LitElement {
                     <p>
                         <mwc-textfield style="width:100%;" label="To (address or name)" id="recipient" type="text" value="${this.recipient}"></mwc-textfield>
                     </p>
+
+                    <div style="${this.selectedCoin === 'invalid' || this.selectedCoin === 'qort' ? 'visibility: hidden; margin-bottom: -5em;' : 'visibility: visible; margin-bottom: 0;'}" >
+                        <p style="margin-bottom:0;">
+                            Fee per byte: ${(this.satFeePerByte / 1e8).toFixed(8)} ${ this.selectedCoin === 'invalid' ? 'QORT' : this.selectedCoin.toLocaleUpperCase()}
+                        </p>
+                        <mwc-slider
+                            @change="${e => this.satFeePerByte = e.target.value}"
+                            id="feeSlider"
+                            style="width:100%;"
+                            step="1"
+                            min="10"
+                            max="100"
+                            ?disabled=${this.selectedCoin === 'invalid' || this.selectedCoin === 'qort' ? true : false}
+                            value="${this.satFeePerByte}">
+                        </mwc-slider>
+                    </div>
                     
                     <p style="color:red">${this.errorMessage}</p>
                     <p style="color:green;word-break: break-word;">${this.successMessage}</p>
@@ -157,8 +180,6 @@ class SendMoneyPage extends LitElement {
                             <mwc-button ?disabled=${this.btnDisable} style="width:100%;" raised icon="send" @click=${e => this.doSend(e)}>Send &nbsp;</mwc-button>
                         </div>
                     </div>
-                    
-                    
                 </div>
             </div>
         `
@@ -204,7 +225,6 @@ class SendMoneyPage extends LitElement {
 
         e.target.validityTransform = (newValue, nativeValidity) => {
 
-
             if (newValue.includes('-') === true) {
 
                 this.btnDisable = true
@@ -234,14 +254,6 @@ class SendMoneyPage extends LitElement {
                 this.btnDisable = false
             }
         }
-
-        // else {
-
-        //     this.isValidAmount = true
-        //     this.btnDisable = false
-        //     e.target.invalid = false
-        //     e.target.validationMessage = ""
-        // }
     }
 
 
@@ -269,17 +281,14 @@ class SendMoneyPage extends LitElement {
     }
 
     doSend(e) {
-        // ...
-
         if (this.selectedCoin === 'invalid') {
-
             parentEpml.request('showSnackBar', "Invalid Selection!");
         } else if (this.selectedCoin === 'qort') {
-
             this.sendQort()
         } else if (this.selectedCoin === 'btc') {
-
             this.sendBtc()
+        } else if (this.selectedCoin === 'ltc') {
+            this.sendLtc()
         }
     }
 
@@ -421,30 +430,30 @@ class SendMoneyPage extends LitElement {
         validateReceiver(recipient)
     }
 
-
     async sendBtc() {
         const amount = this.shadowRoot.getElementById('amountInput').value
         let recipient = this.shadowRoot.getElementById('recipient').value
+        const xprv58 = this.selectedAddress.btcWallet._tDerivedMasterPrivateKey
 
         this.sendMoneyLoading = true
         this.btnDisable = true
 
         const makeRequest = async () => {
 
-            const response = await parentEpml.request('sendBtc', {
-                xprv58: this.selectedAddress.btcWallet.derivedMasterPrivateKey,
+            const opts = {
+                xprv58: xprv58,
                 receivingAddress: recipient,
-                bitcoinAmount: amount
-            })
-
-            return response
+                bitcoinAmount: amount,
+                feePerByte: (this.satFeePerByte / 1e8).toFixed(8)
+            }
+            const response = await parentEpml.request('sendBtc', opts);
+            return response;
         }
 
         const manageResponse = (response) => {
 
-            if (response === true) {
-
-                this.shadowRoot.getElementById('amountInput').value = ''
+            if (response.length === 64) {
+                this.shadowRoot.getElementById('amountInput').value = 0
                 this.shadowRoot.getElementById('recipient').value = ''
                 this.errorMessage = ''
                 this.recipient = ''
@@ -453,13 +462,60 @@ class SendMoneyPage extends LitElement {
                 this.sendMoneyLoading = false
                 this.btnDisable = false
             } else if (response === false) {
-
                 this.errorMessage = 'Transaction Failed!'
                 this.sendMoneyLoading = false
                 this.btnDisable = false
                 throw new Error(txnResponse)
             } else {
+                this.errorMessage = response.message
+                this.sendMoneyLoading = false
+                this.btnDisable = false
+                throw new Error(response)
+            }
+        }
 
+        // Call makeRequest
+        const res = await makeRequest()
+        manageResponse(res)
+    }
+
+    async sendLtc() {
+        const amount = this.shadowRoot.getElementById('amountInput').value
+        let recipient = this.shadowRoot.getElementById('recipient').value
+        const xprv58 = this.selectedAddress.ltcWallet._tDerivedMasterPrivateKey
+
+        this.sendMoneyLoading = true
+        this.btnDisable = true
+
+        const makeRequest = async () => {
+
+            const opts = {
+                xprv58: xprv58,
+                receivingAddress: recipient,
+                litecoinAmount: amount,
+                feePerByte: (this.satFeePerByte / 1e8).toFixed(8)
+            }
+            const response = await parentEpml.request('sendLtc', opts);
+            return response
+        }
+
+        const manageResponse = (response) => {
+
+            if (response.length === 64) {
+                this.shadowRoot.getElementById('amountInput').value = 0
+                this.shadowRoot.getElementById('recipient').value = ''
+                this.errorMessage = ''
+                this.recipient = ''
+                this.amount = 0
+                this.successMessage = 'Transaction Successful!'
+                this.sendMoneyLoading = false
+                this.btnDisable = false
+            } else if (response === false) {
+                this.errorMessage = 'Transaction Failed!'
+                this.sendMoneyLoading = false
+                this.btnDisable = false
+                throw new Error(txnResponse)
+            } else {
                 this.errorMessage = response.message
                 this.sendMoneyLoading = false
                 this.btnDisable = false
@@ -504,8 +560,7 @@ class SendMoneyPage extends LitElement {
         parentEpml.request('apiCall', {
             url: `/addresses/balance/${this.selectedAddress.address}`
         }).then(res => {
-            this.balance = res
-
+            this.qortBalance = res
             this.updateAccountBalanceTimeout = setTimeout(() => this.updateAccountBalance(), 4000)
         })
     }
@@ -518,12 +573,20 @@ class SendMoneyPage extends LitElement {
         this.btnDisable = false
         this.selectedAddress = {}
         this.amount = 0
+        this.satFeePerByte = 100000 // TODO: Set to 0.001 QORT (100000 in sats)
+        this.btcSatMinFee = 20
+        this.btcSatMaxFee = 150
+        this.btcDefaultFee = 100 // Set to 100 BTC-per-sat
+        this.ltcSatMinFee = 10
+        this.ltcSatMaxFee = 100
+        this.ltcDefaultFee = 30 // Set to 30 LTC-per-sat
         this.isValidAmount = false
+        this.qortBalance = 0
         this.btcBalance = 0
+        this.ltcBalance = 0
         this.selectedCoin = 'invalid'
 
         let configLoaded = false
-
         parentEpml.ready().then(() => {
             parentEpml.subscribe('selected_address', async selectedAddress => {
                 this.selectedAddress = {}
@@ -562,7 +625,10 @@ class SendMoneyPage extends LitElement {
     firstUpdated() {
 
         // Get BTC Balance
-        this.updateBTCAccountBalance()
+        this.updateBTCAccountBalance();
+
+        // Get LTC Balance
+        this.updateLTCAccountBalance();
 
         window.addEventListener("contextmenu", (event) => {
 
@@ -582,9 +648,7 @@ class SendMoneyPage extends LitElement {
             }
         }
 
-
         // TODO: Rewrite the context menu event listener to support more elements (for now, I'll do write everything out manually )
-
         this.shadowRoot.getElementById("amountInput").addEventListener('contextmenu', (event) => {
 
             const getSelectedText = () => {
@@ -650,52 +714,82 @@ class SendMoneyPage extends LitElement {
             checkSelectedTextAndShowMenu()
 
         })
-
-
     }
 
     selectCoin(e) {
         const coinType = this.shadowRoot.getElementById('coinType').value
         this.selectedCoin = coinType
 
+        this.amount = 0;
+        this.recipient = '';
+        this.shadowRoot.getElementById('amountInput').value = 0;
+        this.shadowRoot.getElementById('recipient').value = '';
+        this.successMessage = '';
+        this.errorMessage = '';
+
         if (coinType === 'qort') {
 
-            this.shadowRoot.getElementById('balance').textContent = `${this.balance} QORT`
+            this.shadowRoot.getElementById('balance').textContent = `${this.qortBalance} QORT`
             this.shadowRoot.getElementById('address').textContent = this.selectedAddress.address
             this.shadowRoot.querySelector('.selectedBalance').style.display = 'block'
             this.shadowRoot.getElementById('amountInput').label = "Amount (QORT)"
             this.shadowRoot.getElementById('recipient').label = "To (address or name)"
+            this.satFeePerByte = 100000;
         } else if (coinType === 'btc') {
 
             this.shadowRoot.getElementById('balance').textContent = `${this.btcBalance} BTC`
-            this.shadowRoot.getElementById('address').textContent = this.selectedAddress.btcWallet.address
+            this.shadowRoot.getElementById('address').textContent = this.selectedAddress.btcWallet._taddress
             this.shadowRoot.querySelector('.selectedBalance').style.display = 'block'
             this.shadowRoot.getElementById('amountInput').label = "Amount (BTC)"
             this.shadowRoot.getElementById('recipient').label = "To (BTC address)"
+            this.shadowRoot.getElementById("feeSlider").min = this.btcSatMinFee
+            this.shadowRoot.getElementById("feeSlider").max = this.btcSatMaxFee
+            this.satFeePerByte = this.btcDefaultFee
+        } else if (coinType === 'ltc') {
+
+            this.shadowRoot.getElementById('balance').textContent = `${this.ltcBalance} LTC`
+            this.shadowRoot.getElementById('address').textContent = this.selectedAddress.ltcWallet._taddress
+            this.shadowRoot.querySelector('.selectedBalance').style.display = 'block'
+            this.shadowRoot.getElementById('amountInput').label = "Amount (LTC)"
+            this.shadowRoot.getElementById('recipient').label = "To (LTC address)"
+            this.shadowRoot.getElementById("feeSlider").min = this.ltcSatMinFee
+            this.shadowRoot.getElementById("feeSlider").max = this.ltcSatMaxFee
+            this.satFeePerByte = this.ltcDefaultFee
         } else {
             this.selectedCoin = 'invalid'
         }
     }
 
     updateBTCAccountBalance() {
-
         parentEpml.request('apiCall', {
             url: `/crosschain/btc/walletbalance`,
             method: "POST",
-            body: window.parent.reduxStore.getState().app.selectedAddress.btcWallet.derivedMasterPrivateKey
+            body: window.parent.reduxStore.getState().app.selectedAddress.btcWallet._tDerivedmasterPublicKey
         }).then(res => {
             if (isNaN(Number(res))) {
-
-                parentEpml.request('showSnackBar', "Failed to Fetch Bitcoin Balance. Try again!");
+                parentEpml.request('showSnackBar', "Failed to Fetch BTC Balance. Try again!");
             } else {
+                this.btcBalance = (Number(res) / 1e8).toFixed(8);
+            }
+        })
+    }
 
-                this.btcBalance = (Number(res) / 1e8).toFixed(8)
+    updateLTCAccountBalance() {
+
+        parentEpml.request('apiCall', {
+            url: `/crosschain/ltc/walletbalance`,
+            method: "POST",
+            body: window.parent.reduxStore.getState().app.selectedAddress.ltcWallet._tDerivedmasterPublicKey
+        }).then(res => {
+            if (isNaN(Number(res))) {
+                parentEpml.request('showSnackBar', "Failed to Fetch LTC Balance. Try again!");
+            } else {
+                this.ltcBalance = (Number(res) / 1e8).toFixed(8);
             }
         })
     }
 
     clearSelection() {
-
         window.getSelection().removeAllRanges()
         window.parent.getSelection().removeAllRanges()
     }
