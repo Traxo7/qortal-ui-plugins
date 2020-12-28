@@ -334,14 +334,14 @@ class TradePortal extends LitElement {
                                     <span>OPEN MARKET SELL ORDERS</span>
                                 </header>
                                 <div class="border-wrapper">
-                                    <vaadin-grid theme="compact column-borders row-stripes wrap-cell-content" id="openOrdersGrid" aria-label="Open Orders" .items="${this.openOrders}">
-                                        <vaadin-grid-column resizable header="Amount (QORT)" path="qortAmount"></vaadin-grid-column>
+                                    <vaadin-grid multi-sort="true" theme="compact column-borders row-stripes wrap-cell-content" id="openOrdersGrid" aria-label="Open Orders" .items="${this.openOrders}">
+                                        <vaadin-grid-column auto-width resizable flex-grow="1" header="Amount (QORT)" id="qprtAmountColumn" path="qortAmount"></vaadin-grid-column>
                                         <vaadin-grid-column resizable header="Price (LTC)" id="priceColumn" path="price"></vaadin-grid-column>
                                         <vaadin-grid-column resizable header="Total (LTC)" .renderer=${(root, column, data) => {
                 render(html`<span> ${data.item.foreignAmount} </span>`, root)
             }}>
                                         </vaadin-grid-column>
-                                        <vaadin-grid-column header="L S" id="lastSeen" width="5.7em" flex-grow="0" .renderer=${(root, column, data) => {
+                                        <vaadin-grid-column header="L S" id="lastSeen" width="6.5em" flex-grow="0" .renderer=${(root, column, data) => {
             let timeIso = '';
             data.item.lastSeen === undefined ? timeIso = '' : timeIso = new Date(data.item.lastSeen).toISOString();
                 render(html`${timeIso ? html`<time-ago datetime=${timeIso} format="micro"></time-ago>` : html`<div class="no-last-seen" title="No Last Seen"></div>`}`, root)
@@ -613,9 +613,12 @@ class TradePortal extends LitElement {
         // Check LTC Wallet Balance
         this.updateLTCAccountBalance()
         // Set Trade Panes
-        this.openOrdersGrid = this.shadowRoot.getElementById('openOrdersGrid')
+        this.openOrdersGrid = this.shadowRoot.getElementById('openOrdersGrid');
         this.openOrdersGrid.querySelector('#priceColumn').headerRenderer = function (root) {
             root.innerHTML = '<vaadin-grid-sorter path="price" direction="asc">Price (LTC)</vaadin-grid-sorter>';
+        };
+        this.openOrdersGrid.querySelector('#qprtAmountColumn').headerRenderer = function (root) {
+            root.innerHTML = '<vaadin-grid-sorter path="qortAmount">Amount (QORT)</vaadin-grid-sorter>';
         };
         this.openOrdersGrid.querySelector('#lastSeen').headerRenderer = function (root) {
             root.innerHTML = '<vaadin-grid-sorter path="lastSeen">L S</vaadin-grid-sorter>';
@@ -627,29 +630,23 @@ class TradePortal extends LitElement {
         this.stuckOrdersGrid = this.shadowRoot.getElementById('stuckOrdersGrid')
 
         // call getOpenOrdersGrid
-        this.getOpenOrdersGrid()
+        this.getOpenOrdersGrid();
 
         window.addEventListener("contextmenu", (event) => {
-
             event.preventDefault();
             this._textMenu(event)
         }, { passive: true });
 
         window.addEventListener("click", () => {
-
             parentEpml.request('closeCopyTextMenu', null)
         }, { passive: true });
 
         window.onkeyup = (e) => {
-            if (e.keyCode === 27) {
-
-                parentEpml.request('closeCopyTextMenu', null)
-            }
+            if (e.keyCode === 27) parentEpml.request('closeCopyTextMenu', null);
         }
 
         let configLoaded = false
         parentEpml.ready().then(() => {
-
             // Create Trade Portal Connection
             this.createConnection()
 
@@ -659,20 +656,14 @@ class TradePortal extends LitElement {
                 if (!selectedAddress || Object.entries(selectedAddress).length === 0) return
                 this.selectedAddress = selectedAddress
 
-                this.updateAccountBalance()
+                this.updateAccountBalance();
             })
             parentEpml.subscribe('config', c => {
-                if (!configLoaded) {
-                    configLoaded = true
-                }
-                this.config = JSON.parse(c)
+                if (!configLoaded) configLoaded = true;
+                this.config = JSON.parse(c);
             })
             parentEpml.subscribe('copy_menu_switch', async value => {
-
-                if (value === 'false' && window.getSelection().toString().length !== 0) {
-
-                    this.clearSelection()
-                }
+                if (value === 'false' && window.getSelection().toString().length !== 0) this.clearSelection();
             })
         })
         parentEpml.imReady();
