@@ -963,7 +963,7 @@ class TradePortal extends LitElement {
          *  - BOB_REFUNDED
          *  - ALICE_WAITING_FOR_AT_LOCK
          *  - ALICE_DONE
-         *  - ALICE_REFUNDING
+         *  - ALICE_REFUNDING_A
          *  - ALICE_REFUNDED
          * 
          * @param {[{}]} states
@@ -998,7 +998,7 @@ class TradePortal extends LitElement {
                     } else if (state.tradeState == 'ALICE_DONE') {
 
                         this.handleCompletedState(state)
-                    } else if (state.tradeState == 'ALICE_REFUNDING') {
+                    } else if (state.tradeState == 'ALICE_REFUNDING_A') {
 
                         this.changeTradeBotState(state, 'REFUNDING')
                     } else if (state.tradeState == 'ALICE_REFUNDED') {
