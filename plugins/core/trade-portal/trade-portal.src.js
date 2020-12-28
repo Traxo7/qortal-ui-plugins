@@ -551,7 +551,12 @@ class TradePortal extends LitElement {
                 render(html`${dateString}`, root)
             }}>
                                 </vaadin-grid-column>
-                                        <vaadin-grid-column resizable header="Status" path="mode"></vaadin-grid-column>
+                                        <vaadin-grid-column resizable header="Status" .renderer=${(root, column, data) => {
+            if (data.item.mode === 'SOLD') return render(html`<span style="color: red"> ${data.item.mode} </span>`, root)
+            if (data.item.mode === 'BOUGHT') return render(html`<span style="color: green"> ${data.item.mode} </span>`, root)
+            return render(html`<span> ${data.item.mode} </span>`, root)
+            }}>
+                                        </vaadin-grid-column>
                                         <vaadin-grid-column resizable header="Price (LTC)" .renderer=${(root, column, data) => {
                 const price = this.round(parseFloat(data.item.foreignAmount) / parseFloat(data.item.qortAmount))
                 render(html`${price}`, root)
@@ -670,7 +675,6 @@ class TradePortal extends LitElement {
                 }
             })
         })
-
         parentEpml.imReady();
 
         // Set Last Seen column's title on OpenOrders grid
@@ -731,8 +735,13 @@ class TradePortal extends LitElement {
                 this.updateLTCAccountBalance()
             }
 
+            const offerItem = {
+                ...offer,
+                mode: 'SOLD'
+            }
+
             // Add to my historic trades
-            this.myHistoricTradesGrid.items.unshift(offer)
+            this.myHistoricTradesGrid.items.unshift(offerItem)
             this.tradeOffersSocketCounter > 1 ? this.myHistoricTradesGrid.clearCache() : null;
         } else if (offer.partnerQortalReceivingAddress === this.selectedAddress.address) {
 
@@ -742,8 +751,13 @@ class TradePortal extends LitElement {
                 this.updateLTCAccountBalance()
             }
 
+            const offerItem = {
+                ...offer,
+                mode: 'BOUGHT'
+            }
+
             // Add to my historic trades
-            this.myHistoricTradesGrid.items.unshift(offer);
+            this.myHistoricTradesGrid.items.unshift(offerItem);
             this.tradeOffersSocketCounter > 1 ? this.myHistoricTradesGrid.clearCache() : null;
         }
 
@@ -1020,8 +1034,11 @@ class TradePortal extends LitElement {
                 break;
         }
 
-        // Filter Stuck Trades
-        setTimeout(() => this.filterStuckTrades(tradeStates), 50);
+        // Fill Historic Trades and Filter Stuck Trades 
+        if (this.tradeOffersSocketCounter === 1) {
+
+            setTimeout(() => this.filterStuckTrades(tradeStates), 50);
+        }
     }
 
     changeTradeBotState(state, tradeState) {
@@ -1762,9 +1779,13 @@ class TradePortal extends LitElement {
 
             const url = `http://NODEURL/crosschain/trades?foreignBlockchain=FOREIGN_BLOCKCHAIN`;
             const res = await fetch(url);
-            const historicTrades = await res.json()
+            const historicTrades = await res.json();
+            const compareFn = (a, b) => {
+                return b.tradeTimestamp - a.tradeTimestamp;
+            };
+            const sortedTrades = historicTrades.sort(compareFn);
             
-            self.postMessage({ type: "HISTORIC_TRADES", data: historicTrades });
+            self.postMessage({ type: "HISTORIC_TRADES", data: sortedTrades });
         }
 
         const filterStuckOffers = (myOffers) => {
