@@ -994,7 +994,7 @@ class TradePortal extends LitElement {
                         this.handleCompletedState(state)
                     } else if (state.tradeState == 'ALICE_WAITING_FOR_AT_LOCK') {
 
-                        this.changeTradeBotState(state, 'LISTED')
+                        this.changeTradeBotState(state, 'BUYING')
                     } else if (state.tradeState == 'ALICE_DONE') {
 
                         this.handleCompletedState(state)
