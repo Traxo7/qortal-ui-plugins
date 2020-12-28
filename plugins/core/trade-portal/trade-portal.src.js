@@ -335,8 +335,14 @@ class TradePortal extends LitElement {
                                 </header>
                                 <div class="border-wrapper">
                                     <vaadin-grid multi-sort="true" theme="compact column-borders row-stripes wrap-cell-content" id="openOrdersGrid" aria-label="Open Orders" .items="${this.openOrders}">
-                                        <vaadin-grid-column auto-width resizable flex-grow="1" header="Amount (QORT)" id="qprtAmountColumn" path="qortAmount"></vaadin-grid-column>
-                                        <vaadin-grid-column resizable header="Price (LTC)" id="priceColumn" path="price"></vaadin-grid-column>
+                                        <vaadin-grid-column auto-width resizable flex-grow="1" header="Amount (QORT)" id="qprtAmountColumn" path="qortAmount" .renderer=${(root, column, data) => {
+                render(html`<span> ${this.round(data.item.qortAmount)} </span>`, root)
+            }}>
+                                        </vaadin-grid-column>
+                                        <vaadin-grid-column resizable header="Price (LTC)" id="priceColumn" path="price" .renderer=${(root, column, data) => {
+                render(html`<span> ${this.round(data.item.price)} </span>`, root)
+            }}>
+                                        </vaadin-grid-column>
                                         <vaadin-grid-column resizable header="Total (LTC)" .renderer=${(root, column, data) => {
                 render(html`<span> ${data.item.foreignAmount} </span>`, root)
             }}>
@@ -700,7 +706,8 @@ class TradePortal extends LitElement {
 
         const offerItem = {
             ...offer,
-            price: this.round(parseFloat(offer.foreignAmount) / parseFloat(offer.qortAmount))
+            qortAmount: parseFloat(offer.qortAmount),
+            price: (parseFloat(offer.foreignAmount) / parseFloat(offer.qortAmount))
         }
 
         const addOffer = () => {
