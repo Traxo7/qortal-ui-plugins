@@ -1347,7 +1347,7 @@ class TradePortal extends LitElement {
                 this.isBuyLoading = false
                 this.buyBtnDisable = false
 
-                parentEpml.request('showSnackBar', "Failed to Create Trade. Try again!");
+                parentEpml.request('showSnackBar', "Buy Request Existing!");
             } else {
 
                 this.isBuyLoading = false
