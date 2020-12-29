@@ -338,19 +338,18 @@ class MultiWallet extends LitElement {
                     background-repeat: no-repeat;
                     background-size: cover;
                     border-radius: 3px;
-                    margin-bottom: 10px;
                 }
 
                 .qort .currency-image {
-                    background-image: url("https://qortal.org/wp-content/uploads/2019/03/qortal-e1588897849894-150x150.png");
+                    background-image: url("/img/qort.png");
                 }
 
                 .btc .currency-image {
-                    background-image: url('https://s2.coinmarketcap.com/static/img/coins/64x64/1.png');
+                    background-image: url('/img/btc.png');
                 }
 
                 .ltc .currency-image {
-                    background-image: url('https://s2.coinmarketcap.com/static/img/coins/64x64/2.png');
+                    background-image: url('/img/ltc.png');
                 }
 
                 .card-list {
