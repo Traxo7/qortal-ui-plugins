@@ -1191,7 +1191,7 @@
                     <paper-card style="width:100%; max-width:740px;">
                         <div style="background-color: ${this.selectedAddress.color}; margin:0; color: ${this.textColor(this.selectedAddress.textColor)};">
 
-                            <h3 style="margin:0; padding:8px 0;">Send money</h3>
+                            <h3 style="margin:0; padding:8px 0;">Send Coin</h3>
 
                             <div class="selectedBalance">
                                 <span id="balance"></span> available for
@@ -1215,7 +1215,7 @@
                             required
                             label="Amount (qort)"
                             @input=${e=>{this._checkAmount(e)}}
-                            type="number" 
+                            type="number"
                             auto-validate="false"
                             value="${this.amount}">
                         </mwc-textfield>
@@ -1239,10 +1239,10 @@
                             value="${this.satFeePerByte}">
                         </mwc-slider>
                     </div>
-                    
+
                     <p style="color:red">${this.errorMessage}</p>
                     <p style="color:green;word-break: break-word;">${this.successMessage}</p>
-                    
+
                     ${this.sendMoneyLoading?L`
                         <paper-progress indeterminate style="width:100%; margin:4px;"></paper-progress>
                     `:""}
