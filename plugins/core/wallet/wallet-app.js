@@ -2210,531 +2210,539 @@
     </style>
   </template>
 </dom-module>`;document.head.appendChild(Ul.content);const jl=["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"],ql=["January","February","March","April","May","June","July","August","September","October","November","December"];function Wl(e){return"0".concat(e).slice(-2)}function Yl(e,t){const i=e.getDay(),r=e.getDate(),n=e.getMonth(),o=e.getFullYear(),s=e.getHours(),a=e.getMinutes(),l=e.getSeconds();return t.replace(/%([%aAbBcdeHIlmMpPSwyYZz])/g,(function(t){let d;switch(t[1]){case"%":return"%";case"a":return jl[i].slice(0,3);case"A":return jl[i];case"b":return ql[n].slice(0,3);case"B":return ql[n];case"c":return e.toString();case"d":return Wl(r);case"e":return String(r);case"H":return Wl(s);case"I":return Wl(Yl(e,"%l"));case"l":return String(0===s||12===s?12:(s+12)%12);case"m":return Wl(n+1);case"M":return Wl(a);case"p":return s>11?"PM":"AM";case"P":return s>11?"pm":"am";case"S":return Wl(l);case"w":return String(i);case"y":return Wl(o%100);case"Y":return String(o);case"Z":return d=e.toString().match(/\((\w+)\)$/),d?d[1]:"";case"z":return d=e.toString().match(/\w([+-]\d\d\d\d) /),d?d[1]:""}return""}))}function Jl(e){let t;return function(){if(t)return t;if("Intl"in window)try{return t=new Intl.DateTimeFormat(void 0,e),t}catch(e){if(!(e instanceof RangeError))throw e}}}let Kl=null;const Xl=Jl({day:"numeric",month:"short"});function Ql(){if(null!==Kl)return Kl;const e=Xl();if(e){const t=e.format(new Date(0));return Kl=!!t.match(/^\d/),Kl}return!1}let Zl=null;const ed=Jl({day:"numeric",month:"short",year:"numeric"});function td(e){const t=e.closest("[lang]");return t instanceof HTMLElement&&t.lang?t.lang:"default"}const id=new WeakMap;class rd extends HTMLElement{static get observedAttributes(){return["datetime","day","format","lang","hour","minute","month","second","title","weekday","year"]}connectedCallback(){const e=this.getFormattedTitle();e&&!this.hasAttribute("title")&&this.setAttribute("title",e);const t=this.getFormattedDate();t&&(this.textContent=t)}attributeChangedCallback(e,t,i){const r=this.getFormattedTitle();if("datetime"===e){const e=Date.parse(i);isNaN(e)?id.delete(this):id.set(this,new Date(e))}const n=this.getFormattedTitle(),o=this.getAttribute("title");"title"===e||!n||o&&o!==r||this.setAttribute("title",n);const s=this.getFormattedDate();s&&(this.textContent=s)}get date(){return id.get(this)}getFormattedTitle(){const e=this.date;if(!e)return;const t=nd();if(t)return t.format(e);try{return e.toLocaleString()}catch(t){if(t instanceof RangeError)return e.toString();throw t}}getFormattedDate(){}}const nd=Jl({day:"numeric",month:"short",year:"numeric",hour:"numeric",minute:"2-digit",timeZoneName:"short"}),od=new WeakMap;class sd extends rd{attributeChangedCallback(e,t,i){"hour"!==e&&"minute"!==e&&"second"!==e&&"time-zone-name"!==e||od.delete(this),super.attributeChangedCallback(e,t,i)}getFormattedDate(){const e=this.date;if(!e)return;const t=function(e,t){const i={weekday:{short:"%a",long:"%A"},day:{numeric:"%e","2-digit":"%d"},month:{short:"%b",long:"%B"},year:{numeric:"%Y","2-digit":"%y"}};let r=Ql()?"weekday day month year":"weekday month day, year";for(const t in i){const n=i[t][e.getAttribute(t)];r=r.replace(t,n||"")}return r=r.replace(/(\s,)|(,\s$)/,""),Yl(t,r).replace(/\s+/," ").trim()}(this,e)||"",i=function(e,t){const i={},r=e.getAttribute("hour");"numeric"!==r&&"2-digit"!==r||(i.hour=r);const n=e.getAttribute("minute");"numeric"!==n&&"2-digit"!==n||(i.minute=n);const o=e.getAttribute("second");"numeric"!==o&&"2-digit"!==o||(i.second=o);const s=e.getAttribute("time-zone-name");"short"!==s&&"long"!==s||(i.timeZoneName=s);if(0===Object.keys(i).length)return;let a=od.get(e);a||(a=Jl(i),od.set(e,a));const l=a();if(l)return l.format(t);{const e=i.second?"%H:%M:%S":"%H:%M";return Yl(t,e)}}(this,e)||"";return"".concat(t," ").concat(i).trim()}}window.customElements.get("local-time")||(window.LocalTimeElement=sd,window.customElements.define("local-time",sd));class ad{constructor(e,t){this.date=e,this.locale=t}toString(){const e=this.timeElapsed();if(e)return e;{const e=this.timeAhead();return e||"on ".concat(this.formatDate())}}timeElapsed(){const e=(new Date).getTime()-this.date.getTime(),t=Math.round(e/1e3),i=Math.round(t/60),r=Math.round(i/60),n=Math.round(r/24);return e>=0&&n<30?this.timeAgoFromMs(e):null}timeAhead(){const e=this.date.getTime()-(new Date).getTime(),t=Math.round(e/1e3),i=Math.round(t/60),r=Math.round(i/60),n=Math.round(r/24);return e>=0&&n<30?this.timeUntil():null}timeAgo(){const e=(new Date).getTime()-this.date.getTime();return this.timeAgoFromMs(e)}timeAgoFromMs(e){const t=Math.round(e/1e3),i=Math.round(t/60),r=Math.round(i/60),n=Math.round(r/24),o=Math.round(n/30),s=Math.round(o/12);return e<0||t<10?ld(this.locale,0,"second"):t<45?ld(this.locale,-t,"second"):t<90||i<45?ld(this.locale,-i,"minute"):i<90||r<24?ld(this.locale,-r,"hour"):r<36||n<30?ld(this.locale,-n,"day"):o<18?ld(this.locale,-o,"month"):ld(this.locale,-s,"year")}microTimeAgo(){const e=(new Date).getTime()-this.date.getTime(),t=Math.round(e/1e3),i=Math.round(t/60),r=Math.round(i/60),n=Math.round(r/24),o=Math.round(n/30),s=Math.round(o/12);return i<1?"1m":i<60?"".concat(i,"m"):r<24?"".concat(r,"h"):n<365?"".concat(n,"d"):"".concat(s,"y")}timeUntil(){const e=this.date.getTime()-(new Date).getTime();return this.timeUntilFromMs(e)}timeUntilFromMs(e){const t=Math.round(e/1e3),i=Math.round(t/60),r=Math.round(i/60),n=Math.round(r/24),o=Math.round(n/30),s=Math.round(o/12);return o>=18||o>=12?ld(this.locale,s,"year"):n>=45||n>=30?ld(this.locale,o,"month"):r>=36||r>=24?ld(this.locale,n,"day"):i>=90||i>=45?ld(this.locale,r,"hour"):t>=90||t>=45?ld(this.locale,i,"minute"):ld(this.locale,t>=10?t:0,"second")}microTimeUntil(){const e=this.date.getTime()-(new Date).getTime(),t=Math.round(e/1e3),i=Math.round(t/60),r=Math.round(i/60),n=Math.round(r/24),o=Math.round(n/30),s=Math.round(o/12);return n>=365?"".concat(s,"y"):r>=24?"".concat(n,"d"):i>=60?"".concat(r,"h"):i>1?"".concat(i,"m"):"1m"}formatDate(){let e=Ql()?"%e %b":"%b %e";var t;return t=this.date,(new Date).getUTCFullYear()!==t.getUTCFullYear()&&(e+=function(){if(null!==Zl)return Zl;const e=ed();if(e){const t=e.format(new Date(0));return Zl=!!t.match(/\d,/),Zl}return!0}()?", %Y":" %Y"),Yl(this.date,e)}formatTime(){const e=dd();return e?e.format(this.date):Yl(this.date,"%l:%M%P")}}function ld(e,t,i){const r=function(e,t){if("Intl"in window&&"RelativeTimeFormat"in window.Intl)try{return new Intl.RelativeTimeFormat(e,t)}catch(e){if(!(e instanceof RangeError))throw e}}(e,{numeric:"auto"});return r?r.format(t,i):function(e,t){if(0===e)switch(t){case"year":case"quarter":case"month":case"week":return"this ".concat(t);case"day":return"today";case"hour":case"minute":return"in 0 ".concat(t,"s");case"second":return"now"}else if(1===e)switch(t){case"year":case"quarter":case"month":case"week":return"next ".concat(t);case"day":return"tomorrow";case"hour":case"minute":case"second":return"in 1 ".concat(t)}else if(-1===e)switch(t){case"year":case"quarter":case"month":case"week":return"last ".concat(t);case"day":return"yesterday";case"hour":case"minute":case"second":return"1 ".concat(t," ago")}else if(e>1)switch(t){case"year":case"quarter":case"month":case"week":case"day":case"hour":case"minute":case"second":return"in ".concat(e," ").concat(t,"s")}else if(e<-1)switch(t){case"year":case"quarter":case"month":case"week":case"day":case"hour":case"minute":case"second":return"".concat(-e," ").concat(t,"s ago")}throw new RangeError("Invalid unit argument for format() '".concat(t,"'"))}(t,i)}const dd=Jl({hour:"numeric",minute:"2-digit"});class cd extends rd{getFormattedDate(){const e=this.date;if(e)return new ad(e,td(this)).toString()}connectedCallback(){hd.push(this),pd||(ud(),pd=setInterval(ud,6e4)),super.connectedCallback()}disconnectedCallback(){const e=hd.indexOf(this);-1!==e&&hd.splice(e,1),hd.length||pd&&(clearInterval(pd),pd=null)}}const hd=[];let pd;function ud(){let e,t,i;for(t=0,i=hd.length;t<i;t++)e=hd[t],e.textContent=e.getFormattedDate()||""}window.customElements.get("relative-time")||(window.RelativeTimeElement=cd,window.customElements.define("relative-time",cd));class md extends cd{getFormattedDate(){const e=this.getAttribute("format"),t=this.date;if(t)return"micro"===e?new ad(t,td(this)).microTimeAgo():new ad(t,td(this)).timeAgo()}}window.customElements.get("time-ago")||(window.TimeAgoElement=md,window.customElements.define("time-ago",md));class _d extends cd{getFormattedDate(){const e=this.getAttribute("format"),t=this.date;if(t)return"micro"===e?new ad(t,td(this)).microTimeUntil():new ad(t,td(this)).timeUntil()}}window.customElements.get("time-until")||(window.TimeUntilElement=_d,window.customElements.define("time-until",_d));const fd=new ce({type:"WINDOW",source:window.parent});window.customElements.define("multi-wallet",class extends se{static get properties(){return{loading:{type:Boolean},transactions:{type:Object},lastBlock:{type:Object},selectedWallet:{type:Object},selectedLtcWallet:{type:Object},balance:{type:Number},selectedTransaction:{type:Object},isTextMenuOpen:{type:Boolean}}}static get styles(){return[ne`
-            #pages {
-                display: flex;
-                flex-wrap: wrap;
-                /* margin: 20px; */
-                padding: 10px 5px 5px 5px;
-                margin: 0px 20px 20px 20px;
-                
-            }
+				#pages {
+					display: flex;
+					flex-wrap: wrap;
+					/* margin: 20px; */
+					padding: 10px 5px 5px 5px;
+					margin: 0px 20px 20px 20px;
+				}
 
-            #pages > button {
-                user-select: none;
-                padding: 5px;
-                margin: 0 5px;
-                border-radius: 10%;
-                border: 0;
-                background: transparent;
-                font: inherit;
-                outline: none;
-                cursor: pointer;
-            }
+				#pages > button {
+					user-select: none;
+					padding: 5px;
+					margin: 0 5px;
+					border-radius: 10%;
+					border: 0;
+					background: transparent;
+					font: inherit;
+					outline: none;
+					cursor: pointer;
+				}
 
-            #pages > button:not([disabled]):hover,
-            #pages > button:focus {
-                color: #ccc;
-                background-color: #eee;
-            }
+				#pages > button:not([disabled]):hover,
+				#pages > button:focus {
+					color: #ccc;
+					background-color: #eee;
+				}
 
-            #pages > button[selected] {
-                font-weight: bold;
-                color: white;
-                background-color: #ccc;
-            }
+				#pages > button[selected] {
+					font-weight: bold;
+					color: white;
+					background-color: #ccc;
+				}
 
-            #pages > button[disabled] {
-                opacity: 0.5;
-                cursor: default;
-            }
-            .red{
-                color: var(--paper-red-500);
-            }
-            .green{
-                color: var(--paper-green-500);
-            }
-            paper-spinner-lite{
-                height:75px;
-                width:75px;
-                --paper-spinner-color: var(--primary-color);
-                --paper-spinner-stroke-width: 2px;
-            }
-            .unconfirmed{
-                font-style: italic;
-            }
-                        .roboto {
-                font-family: "Roboto", sans-serif;
-            }
-            .mono {
-                font-family: "Roboto Mono", monospace;
-            }
-            .weight-100{
-                font-weight: 100;
-            }
-            
-            .text-white-primary{
-                color: var(--white-primary)
-            }
-            .text-white-secondary{
-                color: var(--white-secondary)
-            }
-            .text-white-disabled{
-                color: var(--white-disabled)
-            }
-            .text-white-hint{
-                color: var(--white-divider)
-            }
+				#pages > button[disabled] {
+					opacity: 0.5;
+					cursor: default;
+				}
+				.red {
+					color: var(--paper-red-500);
+				}
+				.green {
+					color: var(--paper-green-500);
+				}
+				paper-spinner-lite {
+					height: 75px;
+					width: 75px;
+					--paper-spinner-color: var(--primary-color);
+					--paper-spinner-stroke-width: 2px;
+				}
+				.unconfirmed {
+					font-style: italic;
+				}
+				.roboto {
+					font-family: 'Roboto', sans-serif;
+				}
+				.mono {
+					font-family: 'Roboto Mono', monospace;
+				}
+				.weight-100 {
+					font-weight: 100;
+				}
 
-            table {
-                border:none;
-            }
-            table td, th{
-                white-space:nowrap;
-                /* padding:10px; */
-                text-align:left;
-                font-size:14px;
-                padding:0 12px;
-                font-family: "Roboto", sans-serif;
-            }
-            table tr {
-                height:48px;
-            }
-            table tr:hover td{
-                background:#eee;
-            }
-            table tr th {
-                color: #666;
-                font-size:12px;
-            }
-            table tr td {
-                margin:0;
-            }
-            .white-bg {
-                height:100vh;
-                background: #fff;
-            }
-            span {
-                font-size: 18px;
-                word-break: break-all;
-            }
-            .title {
-                font-weight:600;
-                font-size:12px;
-                line-height: 32px;
-                opacity: 0.66;
-            }
-            #transactionList {
-                padding:0;
-            }
-            #transactionList > * {
-                /* padding-left:24px;
+				.text-white-primary {
+					color: var(--white-primary);
+				}
+				.text-white-secondary {
+					color: var(--white-secondary);
+				}
+				.text-white-disabled {
+					color: var(--white-disabled);
+				}
+				.text-white-hint {
+					color: var(--white-divider);
+				}
+
+				table {
+					border: none;
+				}
+				table td,
+				th {
+					white-space: nowrap;
+					/* padding:10px; */
+					text-align: left;
+					font-size: 14px;
+					padding: 0 12px;
+					font-family: 'Roboto', sans-serif;
+				}
+				table tr {
+					height: 48px;
+				}
+				table tr:hover td {
+					background: #eee;
+				}
+				table tr th {
+					color: #666;
+					font-size: 12px;
+				}
+				table tr td {
+					margin: 0;
+				}
+				.white-bg {
+					height: 100vh;
+					background: #fff;
+				}
+				span {
+					font-size: 18px;
+					word-break: break-all;
+				}
+				.title {
+					font-weight: 600;
+					font-size: 12px;
+					line-height: 32px;
+					opacity: 0.66;
+				}
+				#transactionList {
+					padding: 0;
+				}
+				#transactionList > * {
+					/* padding-left:24px;
                 padding-right:24px; */
-            }
-            .color-in {
-                color: #02977e;
-                background-color: rgba(0,201,167,.2);
-                font-weight: 700;
-                font-size: .60938rem;
-                border-radius: .25rem!important;
-                padding: .2rem .5rem;
-                margin-left: 4px;
-            }
-            .color-out {
-                color: #b47d00;
-                background-color: rgba(219,154,4,.2);
-                font-weight: 700;
-                font-size: .60938rem;
-                border-radius: .25rem!important;
-                padding: .2rem .5rem;
-                margin-left: 4px;
-            }
-                * {
-                    box-sizing: border-box;
-                }
+				}
+				.color-in {
+					color: #02977e;
+					background-color: rgba(0, 201, 167, 0.2);
+					font-weight: 700;
+					font-size: 0.60938rem;
+					border-radius: 0.25rem !important;
+					padding: 0.2rem 0.5rem;
+					margin-left: 4px;
+				}
+				.color-out {
+					color: #b47d00;
+					background-color: rgba(219, 154, 4, 0.2);
+					font-weight: 700;
+					font-size: 0.60938rem;
+					border-radius: 0.25rem !important;
+					padding: 0.2rem 0.5rem;
+					margin-left: 4px;
+				}
+				* {
+					box-sizing: border-box;
+				}
 
-                body {
-                    margin: 0;
-                    padding: 0;
-                    -webkit-font-smoothing:antialiased;
-                    -moz-osx-font-smoothing:grayscale;
-                }
+				body {
+					margin: 0;
+					padding: 0;
+					background: white;
+					-webkit-font-smoothing: antialiased;
+					-moz-osx-font-smoothing: grayscale;
+				}
 
-                h2 {
-                    margin: 0;
-                    font-weight: 400;
-                    color: #707584;
-                    font: 24px/24px 'Open Sans', sans-serif;
-                }
+				h2 {
+					margin: 0;
+					font-weight: 400;
+					color: #707584;
+					font: 24px/24px 'Open Sans', sans-serif;
+				}
 
-                h3 {
-                    margin: 0 0 5px;
-                    font-weight: 600;
-                    font-size: 18px;
-                    line-height: 18px;
-                }
+				h3 {
+					margin: 0 0 5px;
+					font-weight: 600;
+					font-size: 18px;
+					line-height: 18px;
+				}
 
-                /* Styles for Larger Screen Sizes */
-                @media(min-width:765px) {
+				/* Styles for Larger Screen Sizes */
+				@media (min-width: 765px) {
+					.wrapper {
+						display: grid;
+						grid-template-columns: 0.5fr 3.5fr;
+					}
+				}
 
-                    .wrapper {
-                        display: grid;
-                        grid-template-columns: .5fr 3.5fr;
-                    }
-                }
+				.wrapper {
+					margin: 0 auto;
+					height: 100%;
+					overflow: hidden;
+					border-radius: 8px;
+					background-color: #fff;
+				}
 
-                .wrapper {
-                    margin: 0 auto;
-                    height: 100%;
-                    overflow: hidden;
-                    border-radius: 8px;
-                    background-color: #fff;
-                }
+				.wallet {
+					width: 250px;
+					background-color: #f2f2f2;
+					height: 100%;
+					border-top-left-radius: inherit;
+					border-bottom-left-radius: inherit;
+					padding: 50px;
+				}
 
-                .wallet {
-                    width: 250px;
-                    background-color: #f2f2f2;
-                    height: 100%;
-                    border-top-left-radius: inherit;
-                    border-bottom-left-radius: inherit;
-                    padding: 50px;
-                }
+				.wallet-header {
+					margin: 0 50px;
+					display: flex;
+					justify-content: space-between;
+				}
 
-                .wallet-header {
-                    margin: 0 50px;
-                    display: flex;
-                    justify-content: space-between;
-                }
+				.transactions-wrapper {
+					width: 100%;
+					padding: 50px 0 0 0;
+					height: 100%;
+				}
 
-                .transactions-wrapper {
-                    width: 100%;
-                    padding: 50px 0;
-                    height: 100vh;
-                }
+				.total-balance {
+					display: inline-block;
+					font-weight: 600;
+					font-size: 32px;
+					color: #444750;
+				}
 
-                .total-balance {
-                    display: inline-block;
-                    font-weight: 600;
-                    font-size: 32px;
-                    color: #444750;
-                }
+				#transactions {
+					margin-top: 60px;
+					margin-left: 20px;
+					margin-right: 20px;
+					border-top: 1px solid #e5e5e5;
+					padding-top: 0px;
+					height: 100%;
+					/* overflow: auto; */
+				}
 
-                #transactions {
-                    margin-top: 60px;
-                    margin-left: 20px;
-                    margin-right: 20px;
-                    border-top: 1px solid #e5e5e5;
-                    padding-top: 0px;
-                    height: 100%;
-                    overflow: auto;
-                }
+				.show {
+					animation: fade-in 0.3s 1;
+				}
 
-                .show {
-                    animation: fade-in .3s 1;
-                }
+				.transaction-item {
+					display: flex;
+					justify-content: space-between;
+					position: relative;
+					padding-left: 40px;
+					margin-bottom: 45px;
+					margin-right: 50px;
+				}
+				.transaction-item::before {
+					position: absolute;
+					content: '';
+					border: 2px solid #e1e1e1;
+					border-radius: 50%;
+					height: 25px;
+					width: 25px;
+					left: 0;
+					top: 10px;
+					box-sizing: border-box;
+					vertical-align: middle;
+					color: #666666;
+				}
 
-                .transaction-item {
-                    display: flex;
-                    justify-content: space-between;
-                    position: relative;
-                    padding-left: 40px;
-                    margin-bottom: 45px;
-                    margin-right: 50px;
-                }
-                .transaction-item::before {
-                    position: absolute;
-                    content: '';
-                    border: 2px solid #e1e1e1;
-                    border-radius: 50%;
-                    height: 25px;
-                    width: 25px;
-                    left: 0;
-                    top: 10px;
-                    box-sizing: border-box;
-                    vertical-align: middle;
-                    color: #666666;
-                }
+				.credit::before {
+					content: '+';
+					font-size: 25px;
+					line-height: 19px;
+					padding: 0 4px 0;
+				}
 
-                .credit::before {
-                    content: '+';
-                    font-size: 25px;
-                    line-height: 19px;
-                    padding: 0 4px 0;
-                }
+				.debit::before {
+					content: '-';
+					font-size: 20px;
+					line-height: 21px;
+					padding: 0 5px;
+				}
 
-                .debit::before {
-                    content: '-';
-                    font-size: 20px;
-                    line-height: 21px;
-                    padding: 0 5px;
-                }
+				.transaction-item .details {
+					font-size: 14px;
+					line-height: 14px;
+					color: #999;
+				}
 
-                .transaction-item .details {
-                    font-size: 14px;
-                    line-height: 14px;
-                    color: #999;
-                }
+				.transaction-item_details {
+					width: 270px;
+				}
 
-                .transaction-item_details {
-                    width: 270px;
-                }
+				.transaction-item_amount .amount {
+					font-weight: 600;
+					font-size: 18px;
+					line-height: 45px;
+					position: relative;
+					margin: 0;
+					display: inline-block;
+				}
 
-                .transaction-item_amount .amount {
-                    font-weight: 600;
-                    font-size: 18px;
-                    line-height: 45px;
-                    position: relative;
-                    margin: 0;
-                    display: inline-block;
-                }
+				.cards {
+					margin-top: 60px;
+				}
 
-                .cards {
-                    margin-top: 60px;
-                }
+				.currency-box {
+					background-color: #fff;
+					text-align: center;
+					padding: 15px;
+					margin-bottom: 45px;
+					border-radius: 3px;
+					border: 2px solid #e1e1e1;
+					cursor: pointer;
+					transition: 0.1s ease-in-out;
+				}
+				.currency-box:hover {
+					transform: scale(1.07);
+				}
 
-                .currency-box {
-                    background-color: #fff;
-                    text-align: center;
-                    padding: 15px;
-                    margin-bottom: 45px;
-                    border-radius: 3px;
-                    border: 2px solid #e1e1e1;
-                    cursor: pointer;
-                    transition: .1s ease-in-out;
-                }
-                .currency-box:hover {
-                    transform: scale(1.07);
-                }
+				.active {
+					border-color: #8393ca;
+					border-width: 3px;
+				}
 
-                .active {
-                    border-color: #8393ca;
-                    border-width: 3px;
-                }
+				.currency-image {
+					display: inline-block;
+					height: 58px;
+					width: 58px;
+					background-repeat: no-repeat;
+					background-size: cover;
+					border-radius: 3px;
+				}
 
-                .currency-image {
-                    display: inline-block;
-                    height: 58px;
-                    width: 58px;
-                    background-repeat: no-repeat;
-                    background-size: cover;
-                    border-radius: 3px;
-                }
+				.qort .currency-image {
+					background-image: url('/img/qort.png');
+				}
 
-                .qort .currency-image {
-                    background-image: url("/img/qort.png");
-                }
+				.btc .currency-image {
+					background-image: url('/img/btc.png');
+				}
 
-                .btc .currency-image {
-                    background-image: url('/img/btc.png');
-                }
+				.ltc .currency-image {
+					background-image: url('/img/ltc.png');
+				}
 
-                .ltc .currency-image {
-                    background-image: url('/img/ltc.png');
-                }
+				.card-list {
+					margin-top: 20px;
+				}
 
-                .card-list {
-                    margin-top: 20px;
-                }
+				.card-list .currency-image {
+					cursor: pointer;
+					margin-right: 15px;
+					transition: 0.1s;
+				}
 
-                .card-list .currency-image {
-                    cursor: pointer;
-                    margin-right: 15px;
-                    transition: .1s;
-                }
+				.card-list .currency-image:hover {
+					transform: scale(1.1);
+				}
 
-                .card-list .currency-image:hover {
-                    transform: scale(1.1);
-                }
+				/* animations */
+				@keyframes fade-in {
+					0% {
+						opacity: 0;
+					}
+					100% {
+						opacity: 1;
+					}
+				}
 
-                /* animations */
-                @keyframes fade-in {
-                    0% {
-                        opacity: 0;
-                    }
-                100% {
-                    opacity: 1;
-                }
-                }
+				/* media queries */
+				@media (max-width: 863px) {
+					.wallet {
+						width: 100%;
+						height: max-content;
+						border-top-right-radius: inherit;
+						padding-bottom: 25px;
+					}
+					.cards {
+						margin-top: 25px;
+					}
+					.currency-box:nth-of-type(2) {
+						margin-right: 0;
+					}
+				}
 
-                /* media queries */
-                @media(max-width:863px) {   
-                    .wallet {
-                        width: 100%;
-                        border-top-right-radius: inherit;
-                        padding-bottom: 25px;
-                    }
-                    .cards {
-                        margin-top: 25px;
-                    }
-                    .currency-box:nth-of-type(2) {
-                        margin-right: 0;
-                    }
-                }
+				@media (max-width: 764px) {
+					.wallet {
+						width: 100%;
+						height: max-content;
+						border-top-right-radius: inherit;
+						padding-bottom: 25px;
+					}
+					.cards {
+						margin-top: 25px;
+					}
+					.currency-box {
+						width: calc(50% - 25px);
+						max-width: 260px;
+						display: inline-block;
+						margin-right: 25px;
+						margin-bottom: 25px;
+						text-align: center;
+					}
+					.currency-box:nth-of-type(2) {
+						margin-right: 0;
+					}
+				}
 
-                @media(max-width:764px) {   
-                    .wallet {
-                        width: 100%;
-                        border-top-right-radius: inherit;
-                        padding-bottom: 25px;
-                    }
-                    .cards {
-                        margin-top: 25px;
-                    }
-                    .currency-box {
-                        width: calc(50% - 25px);
-                        max-width: 260px;
-                        display: inline-block;
-                        margin-right: 25px;
-                        margin-bottom: 25px;
-                        text-align: center;
-                    }
-                    .currency-box:nth-of-type(2) {
-                        margin-right: 0;
-                    }
-                }
+				@media (max-width: 530px) {
+					h3 {
+						line-height: 24px;
+					}
+					.cards {
+						text-align: center;
+					}
+					.currency-box {
+						width: calc(100% - 25px);
+						max-width: 260px;
+					}
+					.currency-box:nth-of-type(2) {
+						margin-right: 25px;
+					}
+					.currency-box:last-of-type {
+						margin-bottom: 0;
+					}
+					.total-balance {
+						font-size: 22px;
+					}
+				}
 
-                @media(max-width:530px) {
-                    h3 {
-                        line-height: 24px;
-                    }
-                    .cards {
-                        text-align: center;
-                    }
-                    .currency-box {
-                        width: calc(100% - 25px);
-                        max-width: 260px;
-                    }
-                    .currency-box:nth-of-type(2) {
-                        margin-right: 25px;
-                    }	
-                    .currency-box:last-of-type {
-                        margin-bottom: 0;
-                    }
-                    .total-balance {
-                        font-size: 22px;
-                    }
-                }
+				@media (max-width: 390px) {
+					.wallet {
+						height: max-content;
+						padding: 50px 25px;
+					}
+					.transactions-wrapper {
+						padding: 50px 25px;
+					}
+					h2 {
+						font: 18px/24px 'Open Sans', sans-serif;
+					}
+				}
+			`]}constructor(){super(),this.transactions={type:"qort",transactions:[]},this.balance=0,this.balanceString="0.000 QORT",this.lastBlock={height:0},this.qortWallet={},this.btcWallet={},this.ltcWallet={},this.selectedTransaction={},this.isTextMenuOpen=!1,this.loading=!0,this.selectWallet=this.selectWallet.bind(this),this.qortWallet=window.parent.reduxStore.getState().app.selectedAddress,this.btcWallet=window.parent.reduxStore.getState().app.selectedAddress.btcWallet,this.ltcWallet=window.parent.reduxStore.getState().app.selectedAddress.ltcWallet,this.selectedWallet={type:"qort",wallet:this.qortWallet},fd.ready().then(()=>{fd.subscribe("selected_address",async e=>{this.selectedLtcWallet={},(e=JSON.parse(e))&&0!==Object.entries(e).length&&(this.qortWallet=e,this.btcWallet=e.btcWallet,this.ltcWallet=e.ltcWallet)}),fd.subscribe("copy_menu_switch",async e=>{"false"===e&&!0===this.isTextMenuOpen&&(this.clearSelection(),this.isTextMenuOpen=!1)})})}render(){return L`
+			<div class="wrapper">
+				<div class="wallet">
+					<h2>My Wallets</h2>
+					<div class="cards">
+						<div type="qort" class="currency-box qort active">
+							<div class="currency-image"></div>
+						</div>
+						<div type="btc" class="currency-box btc">
+							<div class="currency-image"></div>
+						</div>
+						<div type="ltc" class="currency-box ltc">
+							<div class="currency-image"></div>
+						</div>
+					</div>
+				</div>
 
-                @media(max-width: 390px) {
-                    .wallet {
-                        padding: 50px 25px;
-                    }
-                    .transactions-wrapper {
-                        padding: 50px 25px;
-                    }
-                    h2 {
-                        font: 18px/24px 'Open Sans', sans-serif;
-                    }
-                }
-            `]}constructor(){super(),this.transactions={type:"qort",transactions:[]},this.balance=0,this.balanceString="0.000 QORT",this.lastBlock={height:0},this.qortWallet={},this.btcWallet={},this.ltcWallet={},this.selectedTransaction={},this.isTextMenuOpen=!1,this.loading=!0,this.selectWallet=this.selectWallet.bind(this),this.qortWallet=window.parent.reduxStore.getState().app.selectedAddress,this.btcWallet=window.parent.reduxStore.getState().app.selectedAddress.btcWallet,this.ltcWallet=window.parent.reduxStore.getState().app.selectedAddress.ltcWallet,this.selectedWallet={type:"qort",wallet:this.qortWallet},fd.ready().then(()=>{fd.subscribe("selected_address",async e=>{this.selectedLtcWallet={},(e=JSON.parse(e))&&0!==Object.entries(e).length&&(this.qortWallet=e,this.btcWallet=e.btcWallet,this.ltcWallet=e.ltcWallet)}),fd.subscribe("copy_menu_switch",async e=>{"false"===e&&!0===this.isTextMenuOpen&&(this.clearSelection(),this.isTextMenuOpen=!1)})})}render(){return L`
-            <div class="wrapper">
-                <div class="wallet">
-                    <h2>My Wallets</h2>
-                    <div class="cards">
-                        <div type="qort" class="currency-box qort active">
-                            <div class="currency-image"></div>
-                        </div>
-                        <div type="btc" class="currency-box btc">
-                            <div class="currency-image"></div>
-                        </div>
-                        <div type="ltc" class="currency-box ltc">
-                            <div class="currency-image"></div>
-                        </div>
-                    </div>
-                </div>
+				<div class="transactions-wrapper">
+					<h2 class="wallet-header">
+						Current Wallet
+						<div class="">
+							<span style="display: block; font-size: 18px; color: rgb(68, 71, 80); margin-bottom: 6px;"> ${"qort"===this.selectedWallet.type?this.selectedWallet.wallet.address:this.selectedWallet.wallet._taddress} </span>
+							<span class="total-balance"> ${this.balanceString} </span>
+						</div>
+					</h2>
+					<div id="transactions">
+						${this.loading?L`<paper-spinner-lite style="display: block; margin: 0 auto;" active></paper-spinner-lite>`:""}
+						<div id="transactionsDOM"></div>
+					</div>
+				</div>
 
-                <div class="transactions-wrapper">
-                    <h2 class="wallet-header">
-                        Current Wallet
-                        <div class="">
-                            <span style="display: block; font-size: 18px; color: rgb(68, 71, 80); margin-bottom: 6px;"> ${"qort"===this.selectedWallet.type?this.selectedWallet.wallet.address:this.selectedWallet.wallet._taddress} </span>
-                            <span class="total-balance"> ${this.balanceString} </span>
-                        </div>
-                    </h2>
-                    <div id="transactions">
-                        ${this.loading?L`<paper-spinner-lite style="display: block; margin: 0 auto;" active></paper-spinner-lite>`:""}
-                        <div id="transactionsDOM"></div>
-                    </div>
-                </div>
+				<div>
+					<mwc-dialog id="showTransactionDetailsDialog" scrimClickAction="${this.showTransactionDetailsLoading?"":"close"}">
+						<div style="text-align:center">
+							<h1>Transaction Details</h1>
+							<hr />
+						</div>
+						<div id="transactionList">
+							<span class="title"> Transaction Type </span>
+							<br />
+							<div>
+								<span class="">${this.selectedTransaction.type}</span>
+								${"OUT"===this.selectedTransaction.txnFlow?L`<span class="color-out">OUT</span>`:L`<span class="color-in">IN</span>`}
+							</div>
+							<span class="title">Sender</span>
+							<br />
+							<div><span class="">${this.selectedTransaction.creatorAddress}</span></div>
+							<span class="title">Receiver</span>
+							<br />
+							<div><span class="">${this.selectedTransaction.recipient}</span></div>
+							${this.selectedTransaction.amount?L`
+										<span class="title">Amount</span>
+										<br />
+										<div><span class="">${this.selectedTransaction.amount} QORT</span></div>
+								  `:""}
+							<span class="title"> Transaction Fee </span>
+							<br />
+							<div><span class="">${this.selectedTransaction.fee}</span></div>
 
-                <div>
-                    <mwc-dialog id="showTransactionDetailsDialog" scrimClickAction="${this.showTransactionDetailsLoading?"":"close"}">
-                            <div style="text-align:center">
-                            <h1>Transaction Details</h1>
-                            <hr>
-                            </div>
-                            <div id="transactionList">
-                            <span class="title"> Transaction Type </span>
-                            <br>
-                            <div><span class="">${this.selectedTransaction.type}</span>
-                                    ${"OUT"===this.selectedTransaction.txnFlow?L`<span class="color-out">OUT</span>`:L`<span class="color-in">IN</span>`}
-                            </div>
-                            <span class="title">Sender</span>
-                            <br>
-                            <div><span class="">${this.selectedTransaction.creatorAddress}</span></div>
-                            <span class="title">Receiver</span>
-                            <br>
-                            <div><span class="">${this.selectedTransaction.recipient}</span></div>
-                            ${this.selectedTransaction.amount?L`
-                                    <span class="title">Amount</span>
-                                    <br>
-                                    <div><span class="">${this.selectedTransaction.amount} QORT</span></div>
-                                `:""}
-                            <span class="title"> Transaction Fee </span>
-                            <br>
-                            <div><span class="">${this.selectedTransaction.fee}</span></div>
+							<span class="title">Block</span>
+							<br />
+							<div><span class="">${this.selectedTransaction.blockHeight}</span></div>
 
-                            <span class="title">Block</span>
-                            <br>
-                            <div><span class="">${this.selectedTransaction.blockHeight}</span></div>
+							<span class="title">Time</span>
+							<br />
+							<div><span class="">${new Date(this.selectedTransaction.timestamp).toString()}</span></div>
 
-                            <span class="title">Time</span>
-                            <br>
-                            <div><span class="">${new Date(this.selectedTransaction.timestamp).toString()}</span></div>
-
-                            <span class="title"> Transaction Signature </span>
-                            <br>
-                            <div><span class="">${this.selectedTransaction.signature}</span></div>
-                            </div>
-                        </mwc-dialog>
-                    </div>
-            </div>
-        `}async getTransactionGrid(e){this.transactionsGrid=this.shadowRoot.querySelector(`#${e}TransactionsGrid`),"qort"===e&&this.transactionsGrid.addEventListener("click",e=>{let t=this.transactionsGrid.getEventContext(e).item;this.showTransactionDetails(t,this.transactions.transactions)},{passive:!0}),this.pagesControl=this.shadowRoot.querySelector("#pages"),this.pages=void 0}async renderTransactions(){"qort"===this.transactions.type?M(this.renderQortTransactions(this.transactions.transactions,this.selectedWallet.type),this.transactionsDOM):M(this.renderBTCLikeTransactions(this.transactions.transactions,this.selectedWallet.type),this.transactionsDOM)}renderQortTransactions(e,t){return L`
-            <div style="padding-left:12px;" ?hidden="${!this.isEmptyArray(e)}">
-                Address has no transactions yet. 
-            </div>
-            <vaadin-grid id="${t}TransactionsGrid" ?hidden="${this.isEmptyArray(this.transactions.transactions)}" page-size="20" height-by-rows>
-                <vaadin-grid-column auto-width resizable header="Type" .renderer=${(e,t,i)=>{M(L`
-                                    ${i.item.type} 
-                                        ${i.item.creatorAddress===this.qortWallet.address?L`<span class="color-out">OUT</span>`:L`<span class="color-in">IN</span>`}
-
-                    `,e)}}>
-                </vaadin-grid-column>
-                <vaadin-grid-column auto-width resizable header="Sender" path="creatorAddress"></vaadin-grid-column>
-                <vaadin-grid-column auto-width resizable header="Receiver" path="recipient"></vaadin-grid-column>
-                <vaadin-grid-column auto-width resizable path="fee"></vaadin-grid-column>
-                <vaadin-grid-column auto-width resizable path="amount"></vaadin-grid-column>
-                <vaadin-grid-column auto-width resizable header="Time" .renderer=${(e,t,i)=>{const r=new Date(i.item.timestamp);M(L`
-                                            <time-ago datetime=${r.toISOString()}>
-                                                
-                                            </time-ago>
-                                        `,e)}}>
-                </vaadin-grid-column>
-            </vaadin-grid>
-            <div id="pages"></div>
-        `}renderBTCLikeTransactions(e,t){return L`
-            <div style="padding-left:12px;" ?hidden="${!this.isEmptyArray(e)}">
-                Address has no transactions yet. 
-            </div>
-            <vaadin-grid id="${t}TransactionsGrid" ?hidden="${this.isEmptyArray(this.transactions.transactions)}" page-size="20" height-by-rows>
-                <vaadin-grid-column auto-width resizable header="Transaction Hash" path="txHash"></vaadin-grid-column>
-                <vaadin-grid-column auto-width resizable header="Total Amount" .renderer=${(e,t,i)=>{const r=(Number(i.item.totalAmount)/1e8).toFixed(8);M(L`${r}`,e)}}>
-                </vaadin-grid-column>
-                <vaadin-grid-column auto-width resizable header="Time" .renderer=${(e,t,i)=>{const r=new Date(1e3*i.item.timestamp);M(L`
-                                            <time-ago datetime=${r.toISOString()}>
-                                                
-                                            </time-ago>
-                                        `,e)}}>
-                </vaadin-grid-column>
-            </vaadin-grid>
-            <div id="pages"></div>
-        `}async updateItemsFromPage(e){if(void 0===e)return;if(!this.pages){this.pages=Array.apply(null,{length:Math.ceil(this.transactions.transactions.length/this.transactionsGrid.pageSize)}).map((e,t)=>t+1);const t=document.createElement("button");t.textContent="<",t.addEventListener("click",()=>{const e=parseInt(this.pagesControl.querySelector("[selected]").textContent);this.updateItemsFromPage(e-1)}),this.pagesControl.appendChild(t),this.pages.forEach(t=>{const i=document.createElement("button");i.textContent=t,i.addEventListener("click",e=>{this.updateItemsFromPage(parseInt(e.target.textContent))}),t===e&&i.setAttribute("selected",!0),this.pagesControl.appendChild(i)});const i=window.document.createElement("button");i.textContent=">",i.addEventListener("click",()=>{const e=parseInt(this.pagesControl.querySelector("[selected]").textContent);this.updateItemsFromPage(e+1)}),this.pagesControl.appendChild(i)}const t=Array.from(this.pagesControl.children);t.forEach((i,r)=>{parseInt(i.textContent)===e?i.setAttribute("selected",!0):i.removeAttribute("selected"),0===r&&(1===e?i.setAttribute("disabled",""):i.removeAttribute("disabled")),r===t.length-1&&(e===this.pages.length?i.setAttribute("disabled",""):i.removeAttribute("disabled"))});let i=(e-1)*this.transactionsGrid.pageSize,r=e*this.transactionsGrid.pageSize;this.transactionsGrid.items=this.transactions.transactions.slice(i,r)}_textMenu(e){const t=()=>{var e="";return void 0!==window.getSelection?e=window.getSelection().toString():void 0!==this.shadowRoot.selection&&"Text"==this.shadowRoot.selection.type&&(e=this.shadowRoot.selection.createRange().text),e};(()=>{let i=t();if(i&&"string"==typeof i){let t={selectedText:i,eventObject:{pageX:e.pageX,pageY:e.pageY,clientX:e.clientX,clientY:e.clientY},isFrame:!0};fd.request("openCopyTextMenu",t)}})()}clearSelection(){window.getSelection().removeAllRanges(),window.parent.getSelection().removeAllRanges()}transactionItem(e){return`\n            <div class='transaction-item ${e.type}'>\n                <div class='transaction-item_details'>\n                    <h3>${e.name}</h3>\n                    <span class='details'>${e.category} ${e.ID} - ${e.date}</span>\n                </div>\n                <div class='transaction-item_amount'>\n                    <p class='amount'>${e.amount}</p>\n                </div>\n            </div>\n        `}firstUpdated(){this.currencyBoxes=this.shadowRoot.querySelectorAll(".currency-box"),this.transactionsDOM=this.shadowRoot.getElementById("transactionsDOM"),this.currencyBoxes.forEach(e=>{e.addEventListener("click",this.selectWallet)}),this.showQortWallet(),window.addEventListener("contextmenu",e=>{e.preventDefault(),this.isTextMenuOpen=!0,this._textMenu(e)}),window.addEventListener("click",()=>{this.isTextMenuOpen&&fd.request("closeCopyTextMenu",null)}),window.onkeyup=e=>{27===e.keyCode&&fd.request("closeCopyTextMenu",null)}}selectWallet(e){e.preventDefault();const t=e.currentTarget;t.classList.contains("active")||(this.currencyBoxes.forEach(e=>{e.classList.contains("active")&&e.classList.remove("active")}),t.classList.add("active"),"qort"===t.attributes.type.value?(this.selectedWallet={type:t.attributes.type.value,currencyBox:t,wallet:this.qortWallet},this.showQortWallet()):"btc"===t.attributes.type.value?(this.selectedWallet={type:t.attributes.type.value,currencyBox:t,wallet:this.btcWallet},this.showBTCLikeWallet()):"ltc"===t.attributes.type.value&&(this.selectedWallet={type:t.attributes.type.value,currencyBox:t,wallet:this.ltcWallet},this.showBTCLikeWallet()))}async showQortWallet(){this.transactionsDOM.hidden=!0,this.loading=!0,this.transactions={type:"qort",transactions:[]},this.fetchQortBalance(),await this.fetchQortTransactions(),await this.renderTransactions(),await this.getTransactionGrid(this.selectedWallet.type),await this.updateItemsFromPage(1),this.loading=!1,this.transactionsDOM.hidden=!1}async showBTCLikeWallet(){this.transactionsDOM.hidden=!0,this.loading=!0,this.fetchBTCLikeBalance(this.selectedWallet.type),await this.fetchBTCLikeTransactions(this.selectedWallet.type),await this.renderTransactions(),await this.getTransactionGrid(this.selectedWallet.type),await this.updateItemsFromPage(1),this.loading=!1,this.transactionsDOM.hidden=!1}async fetchQortTransactions(){this.transactions={type:"qort",transactions:[]};const e=await fd.request("apiCall",{url:`/transactions/search?address=${this.qortWallet.address}&confirmationStatus=BOTH&reverse=true`});this.transactions.transactions=e}fetchQortBalance(){this.balance=0,this.balanceString="",fd.request("apiCall",{url:"/addresses/balance/"+this.qortWallet.address}).then(e=>{isNaN(Number(e))?fd.request("showSnackBar","Failed to Fetch QORT Balance. Try again!"):(this.balance=e,this.balanceString=this.balance+" QORT")})}async fetchBTCLikeTransactions(e){this.transactions={type:e,transactions:[]};const t=e+"Wallet",i=await fd.request("apiCall",{url:`/crosschain/${e}/wallettransactions`,method:"POST",body:""+window.parent.reduxStore.getState().app.selectedAddress[t]._tDerivedmasterPublicKey});this.transactions.transactions=i}fetchBTCLikeBalance(e){this.balance=0,this.balanceString="";const t=e+"Wallet";fd.request("apiCall",{url:`/crosschain/${e}/walletbalance`,method:"POST",body:""+window.parent.reduxStore.getState().app.selectedAddress[t]._tDerivedmasterPublicKey}).then(t=>{isNaN(Number(t))?fd.request("showSnackBar",`Failed to Fetch ${e.toLocaleUpperCase()} Balance. Try again!`):(this.balance=(Number(t)/1e8).toFixed(8),this.balanceString=`${this.balance} ${e.toLocaleUpperCase()}`)})}showTransactionDetails(e,t){t.forEach(t=>{if(e.signature===t.signature){let i=e.creatorAddress===this.qortWallet.address?"OUT":"IN";this.selectedTransaction={...t,txnFlow:i},0!=this.selectedTransaction.signature.length&&this.shadowRoot.querySelector("#showTransactionDetailsDialog").show()}})}isEmptyArray(e){return!e||0===e.length}floor(e){return e=parseFloat(e),isNaN(e)?0:this._format(Math.floor(e))}decimals(e){return(e=parseFloat(e))%1>0?(e+"").split(".")[1]:"0"}sendOrRecieve(e){return e.sender==this.selectedLtcWallet._taddress}senderOrRecipient(e){return this.sendOrRecieve(e)?e.recipient:e.sender}txColor(e){return this.sendOrRecieve(e)?"red":"green"}subtract(e,t){return e-t}getConfirmations(e,t){return t-e+1}_format(e){return e.toLocaleString()}textColor(e){return"light"===e?"rgba(255,255,255,0.7)":"rgba(0,0,0,0.87)"}_unconfirmedClass(e){return e?"unconfirmed":""}})}));
+							<span class="title"> Transaction Signature </span>
+							<br />
+							<div><span class="">${this.selectedTransaction.signature}</span></div>
+						</div>
+					</mwc-dialog>
+				</div>
+			</div>
+		`}async getTransactionGrid(e){this.transactionsGrid=this.shadowRoot.querySelector(`#${e}TransactionsGrid`),"qort"===e&&this.transactionsGrid.addEventListener("click",e=>{let t=this.transactionsGrid.getEventContext(e).item;this.showTransactionDetails(t,this.transactions.transactions)},{passive:!0}),this.pagesControl=this.shadowRoot.querySelector("#pages"),this.pages=void 0}async renderTransactions(){"qort"===this.transactions.type?M(this.renderQortTransactions(this.transactions.transactions,this.selectedWallet.type),this.transactionsDOM):M(this.renderBTCLikeTransactions(this.transactions.transactions,this.selectedWallet.type),this.transactionsDOM)}renderQortTransactions(e,t){return L`
+			<div style="padding-left:12px;" ?hidden="${!this.isEmptyArray(e)}">Address has no transactions yet.</div>
+			<vaadin-grid id="${t}TransactionsGrid" ?hidden="${this.isEmptyArray(this.transactions.transactions)}" page-size="20" height-by-rows>
+				<vaadin-grid-column
+					auto-width
+					resizable
+					header="Type"
+					.renderer=${(e,t,i)=>{M(L` ${i.item.type} ${i.item.creatorAddress===this.qortWallet.address?L`<span class="color-out">OUT</span>`:L`<span class="color-in">IN</span>`} `,e)}}
+				>
+				</vaadin-grid-column>
+				<vaadin-grid-column auto-width resizable header="Sender" path="creatorAddress"></vaadin-grid-column>
+				<vaadin-grid-column auto-width resizable header="Receiver" path="recipient"></vaadin-grid-column>
+				<vaadin-grid-column auto-width resizable path="fee"></vaadin-grid-column>
+				<vaadin-grid-column auto-width resizable path="amount"></vaadin-grid-column>
+				<vaadin-grid-column
+					auto-width
+					resizable
+					header="Time"
+					.renderer=${(e,t,i)=>{const r=new Date(i.item.timestamp);M(L` <time-ago datetime=${r.toISOString()}> </time-ago> `,e)}}
+				>
+				</vaadin-grid-column>
+			</vaadin-grid>
+			<div id="pages"></div>
+		`}renderBTCLikeTransactions(e,t){return L`
+			<div style="padding-left:12px;" ?hidden="${!this.isEmptyArray(e)}">Address has no transactions yet.</div>
+			<vaadin-grid id="${t}TransactionsGrid" ?hidden="${this.isEmptyArray(this.transactions.transactions)}" page-size="20" height-by-rows>
+				<vaadin-grid-column auto-width resizable header="Transaction Hash" path="txHash"></vaadin-grid-column>
+				<vaadin-grid-column
+					auto-width
+					resizable
+					header="Total Amount"
+					.renderer=${(e,t,i)=>{const r=(Number(i.item.totalAmount)/1e8).toFixed(8);M(L`${r}`,e)}}
+				>
+				</vaadin-grid-column>
+				<vaadin-grid-column
+					auto-width
+					resizable
+					header="Time"
+					.renderer=${(e,t,i)=>{const r=new Date(1e3*i.item.timestamp);M(L` <time-ago datetime=${r.toISOString()}> </time-ago> `,e)}}
+				>
+				</vaadin-grid-column>
+			</vaadin-grid>
+			<div id="pages"></div>
+		`}async updateItemsFromPage(e,t=!1){if(void 0===e)return;if(!0===t&&(this.pagesControl.innerHTML=""),!this.pages){this.pages=Array.apply(null,{length:Math.ceil(this.transactions.transactions.length/this.transactionsGrid.pageSize)}).map((e,t)=>t+1);const t=document.createElement("button");t.textContent="<",t.addEventListener("click",()=>{const e=parseInt(this.pagesControl.querySelector("[selected]").textContent);this.updateItemsFromPage(e-1)}),this.pagesControl.appendChild(t),this.pages.forEach(t=>{const i=document.createElement("button");i.textContent=t,i.addEventListener("click",e=>{this.updateItemsFromPage(parseInt(e.target.textContent))}),t===e&&i.setAttribute("selected",!0),this.pagesControl.appendChild(i)});const i=window.document.createElement("button");i.textContent=">",i.addEventListener("click",()=>{const e=parseInt(this.pagesControl.querySelector("[selected]").textContent);this.updateItemsFromPage(e+1)}),this.pagesControl.appendChild(i)}const i=Array.from(this.pagesControl.children);i.forEach((t,r)=>{parseInt(t.textContent)===e?t.setAttribute("selected",!0):t.removeAttribute("selected"),0===r&&(1===e?t.setAttribute("disabled",""):t.removeAttribute("disabled")),r===i.length-1&&(e===this.pages.length?t.setAttribute("disabled",""):t.removeAttribute("disabled"))});let r=(e-1)*this.transactionsGrid.pageSize,n=e*this.transactionsGrid.pageSize;this.transactionsGrid.items=this.transactions.transactions.slice(r,n)}_textMenu(e){const t=()=>{var e="";return void 0!==window.getSelection?e=window.getSelection().toString():void 0!==this.shadowRoot.selection&&"Text"==this.shadowRoot.selection.type&&(e=this.shadowRoot.selection.createRange().text),e};(()=>{let i=t();if(i&&"string"==typeof i){let t={selectedText:i,eventObject:{pageX:e.pageX,pageY:e.pageY,clientX:e.clientX,clientY:e.clientY},isFrame:!0};fd.request("openCopyTextMenu",t)}})()}clearSelection(){window.getSelection().removeAllRanges(),window.parent.getSelection().removeAllRanges()}transactionItem(e){return`\n            <div class='transaction-item ${e.type}'>\n                <div class='transaction-item_details'>\n                    <h3>${e.name}</h3>\n                    <span class='details'>${e.category} ${e.ID} - ${e.date}</span>\n                </div>\n                <div class='transaction-item_amount'>\n                    <p class='amount'>${e.amount}</p>\n                </div>\n            </div>\n        `}firstUpdated(){this.currencyBoxes=this.shadowRoot.querySelectorAll(".currency-box"),this.transactionsDOM=this.shadowRoot.getElementById("transactionsDOM"),this.currencyBoxes.forEach(e=>{e.addEventListener("click",this.selectWallet)}),this.showQortWallet(),window.addEventListener("contextmenu",e=>{e.preventDefault(),this.isTextMenuOpen=!0,this._textMenu(e)}),window.addEventListener("click",()=>{this.isTextMenuOpen&&fd.request("closeCopyTextMenu",null)}),window.onkeyup=e=>{27===e.keyCode&&fd.request("closeCopyTextMenu",null)}}selectWallet(e){e.preventDefault();const t=e.currentTarget;t.classList.contains("active")||(this.currencyBoxes.forEach(e=>{e.classList.contains("active")&&e.classList.remove("active")}),t.classList.add("active"),"qort"===t.attributes.type.value?(this.selectedWallet={type:t.attributes.type.value,currencyBox:t,wallet:this.qortWallet},this.showQortWallet()):"btc"===t.attributes.type.value?(this.selectedWallet={type:t.attributes.type.value,currencyBox:t,wallet:this.btcWallet},this.showBTCLikeWallet()):"ltc"===t.attributes.type.value&&(this.selectedWallet={type:t.attributes.type.value,currencyBox:t,wallet:this.ltcWallet},this.showBTCLikeWallet()))}async showQortWallet(){this.transactionsDOM.hidden=!0,this.loading=!0,this.transactions={type:"qort",transactions:[]},this.fetchQortBalance(),await this.fetchQortTransactions(),await this.renderTransactions(),await this.getTransactionGrid(this.selectedWallet.type),await this.updateItemsFromPage(1,!0),this.loading=!1,this.transactionsDOM.hidden=!1}async showBTCLikeWallet(){this.transactionsDOM.hidden=!0,this.loading=!0,this.fetchBTCLikeBalance(this.selectedWallet.type),await this.fetchBTCLikeTransactions(this.selectedWallet.type),await this.renderTransactions(),await this.getTransactionGrid(this.selectedWallet.type),await this.updateItemsFromPage(1,!0),this.loading=!1,this.transactionsDOM.hidden=!1}async fetchQortTransactions(){this.transactions={type:"qort",transactions:[]};const e=await fd.request("apiCall",{url:`/transactions/search?address=${this.qortWallet.address}&confirmationStatus=BOTH&reverse=true`});this.transactions.transactions=e}fetchQortBalance(){this.balance=0,this.balanceString="",fd.request("apiCall",{url:"/addresses/balance/"+this.qortWallet.address}).then(e=>{isNaN(Number(e))?fd.request("showSnackBar","Failed to Fetch QORT Balance. Try again!"):(this.balance=e,this.balanceString=this.balance+" QORT")})}async fetchBTCLikeTransactions(e){this.transactions={type:e,transactions:[]};const t=e+"Wallet",i=(await fd.request("apiCall",{url:`/crosschain/${e}/wallettransactions`,method:"POST",body:""+window.parent.reduxStore.getState().app.selectedAddress[t]._tDerivedmasterPublicKey})).sort((e,t)=>t.timestamp-e.timestamp);this.transactions.transactions=i}fetchBTCLikeBalance(e){this.balance=0,this.balanceString="";const t=e+"Wallet";fd.request("apiCall",{url:`/crosschain/${e}/walletbalance`,method:"POST",body:""+window.parent.reduxStore.getState().app.selectedAddress[t]._tDerivedmasterPublicKey}).then(t=>{isNaN(Number(t))?fd.request("showSnackBar",`Failed to Fetch ${e.toLocaleUpperCase()} Balance. Try again!`):(this.balance=(Number(t)/1e8).toFixed(8),this.balanceString=`${this.balance} ${e.toLocaleUpperCase()}`)})}showTransactionDetails(e,t){t.forEach(t=>{if(e.signature===t.signature){let i=e.creatorAddress===this.qortWallet.address?"OUT":"IN";this.selectedTransaction={...t,txnFlow:i},0!=this.selectedTransaction.signature.length&&this.shadowRoot.querySelector("#showTransactionDetailsDialog").show()}})}isEmptyArray(e){return!e||0===e.length}floor(e){return e=parseFloat(e),isNaN(e)?0:this._format(Math.floor(e))}decimals(e){return(e=parseFloat(e))%1>0?(e+"").split(".")[1]:"0"}sendOrRecieve(e){return e.sender==this.selectedLtcWallet._taddress}senderOrRecipient(e){return this.sendOrRecieve(e)?e.recipient:e.sender}txColor(e){return this.sendOrRecieve(e)?"red":"green"}subtract(e,t){return e-t}getConfirmations(e,t){return t-e+1}_format(e){return e.toLocaleString()}textColor(e){return"light"===e?"rgba(255,255,255,0.7)":"rgba(0,0,0,0.87)"}_unconfirmedClass(e){return e?"unconfirmed":""}})}));
