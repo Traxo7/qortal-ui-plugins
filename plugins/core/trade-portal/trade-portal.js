@@ -2562,7 +2562,7 @@
 		`}constructor(){super(),this.selectedAddress={},this.config={},this.qortBalance="0",this.ltcBalance="0",this.sellBtnDisable=!1,this.isSellLoading=!1,this.buyBtnDisable=!0,this.isBuyLoading=!1,this.initialAmount=0,this.openOrders=[],this.openFilteredOrders=[],this.historicTrades=[],this.myOrders=[],this.myHistoricTrades=[],this.tradeOffersSocketCounter=0,this.cancelBtnDisable=!1,this.myOfferingOrders=[],this.openTradeOrders=[],this.cancelStuckOfferBtnDisable=!1,this._foreignBlockchain="LITECOIN"}render(){return F`
 			<div id="trade-portal-page">
 				<div style="min-height:48px; display: flex; padding-bottom: 6px; margin: 2px;">
-					<h2 style="margin: 0; flex: 1; padding-top: .1em; display: inline;">Trade Portal</h2>
+					<h2 style="margin: 0; flex: 1; padding-top: .1em; display: inline;">Trade Portal - QORT/LTC</h2>
 				</div>
 
 				<div id="trade-portal">

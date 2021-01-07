@@ -309,7 +309,7 @@ class TradePortal extends LitElement {
 		return html`
 			<div id="trade-portal-page">
 				<div style="min-height:48px; display: flex; padding-bottom: 6px; margin: 2px;">
-					<h2 style="margin: 0; flex: 1; padding-top: .1em; display: inline;">Trade Portal</h2>
+					<h2 style="margin: 0; flex: 1; padding-top: .1em; display: inline;">Trade Portal - QORT/LTC</h2>
 				</div>
 
 				<div id="trade-portal">
