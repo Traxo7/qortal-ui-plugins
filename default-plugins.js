@@ -6,7 +6,7 @@ const WATCH = 'watch'
 
 /**
  * @package Plugins Controller
- * @param type String
+ * @param { String } type
  */
 
 const pluginsController = (type) => {

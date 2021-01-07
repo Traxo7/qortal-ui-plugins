@@ -1,11 +1,10 @@
 import { LitElement, html, css } from "lit-element";
+import { render } from 'lit-html'
 import { Epml } from "../../../epml.js";
 
 import "@polymer/paper-spinner/paper-spinner-lite.js";
-
 import "@vaadin/vaadin-grid/vaadin-grid.js";
 import "@vaadin/vaadin-grid/theme/material/all-imports.js";
-
 import "@material/mwc-icon";
 import "@material/mwc-textfield";
 import "@material/mwc-button";
@@ -38,95 +37,93 @@ class NodeManagement extends LitElement {
 
   static get styles() {
     return css`
-      * {
-        --mdc-theme-primary: rgb(3, 169, 244);
-        --paper-input-container-focus-color: var(--mdc-theme-primary);
-      }
+        * {
+            --mdc-theme-primary: rgb(3, 169, 244);
+            --paper-input-container-focus-color: var(--mdc-theme-primary);
+        }
 
-      paper-spinner-lite {
-        height: 24px;
-        width: 24px;
-        --paper-spinner-color: var(--mdc-theme-primary);
-        --paper-spinner-stroke-width: 2px;
-      }
+        paper-spinner-lite {
+            height: 24px;
+            width: 24px;
+            --paper-spinner-color: var(--mdc-theme-primary);
+            --paper-spinner-stroke-width: 2px;
+        }
 
-      #node-management-page {
-        background: #fff;
-      }
+        #node-management-page {
+            background: #fff;
+        }
 
-      mwc-textfield {
-        width: 100%;
-      }
+        mwc-textfield {
+            width: 100%;
+        }
 
-      .red {
-        --mdc-theme-primary: red;
-      }
+        .red {
+            --mdc-theme-primary: #F44336;
+        }
 
-      .red-button {
-        --mdc-theme-primary: red;
-        --mdc-theme-on-primary: white;
-      }
+        .red-button {
+            --mdc-theme-primary: red;
+            --mdc-theme-on-primary: white;
+        }
 
-      mwc-button.red-button {
-        --mdc-theme-primary: red;
-        --mdc-theme-on-primary: white;
-      }
+        mwc-button.red-button {
+            --mdc-theme-primary: red;
+            --mdc-theme-on-primary: white;
+        }
 
-      .node-card {
-        /* margin:12px; */
-        padding: 12px 24px;
-        background: #fff;
-        border-radius: 2px;
-        box-shadow: 11;
-      }
+        .node-card {
+            /* margin:12px; */
+            padding: 12px 24px;
+            background: #fff;
+            border-radius: 2px;
+            box-shadow: 11;
+        }
 
-      h2 {
-        margin: 0;
-      }
+        h2 {
+            margin: 0;
+        }
 
-      h2,
-      h3,
-      h4,
-      h5 {
-        color: #333;
-        font-weight: 400;
-      }
+        h2,
+        h3,
+        h4,
+        h5 {
+            color: #333;
+            font-weight: 400;
+        }
 
-      [hidden] {
-        display: hidden !important;
-        visibility: none !important;
-      }
-      .details {
-        display: flex;
-        font-size: 18px;
-      }
+        [hidden] {
+            display: hidden !important;
+            visibility: none !important;
+        }
+        .details {
+            display: flex;
+            font-size: 18px;
+        }
     `;
   }
 
-  constructor() {
-    super();
-    this.upTime = "";
-    this.mintingAccounts = [];
-    this.peers = [];
-    this.addPeerLoading = false;
-    this.confPeerLoading = false;
-    this.addMintingAccountLoading = false;
-    this.removeMintingAccountLoading = false;
-    this.addMintingAccountKey = "";
-    this.removeMintingAccountKey = "";
-    this.addPeerMessage = "";
-    this.confPeerMessage = "";
-    this.addMintingAccountMessage = "";
-    this.removeMintingAccountMessage = "";
-    this.tempMintingAccount = {};
-    this.config = {
-      user: {
-        node: {},
-      },
-    };
-    this.nodeConfig = {};
-    this.nodeDomain = "";
-  }
+    constructor() {
+        super();
+        this.upTime = "";
+        this.mintingAccounts = [];
+        this.peers = [];
+        this.addPeerLoading = false;
+        this.confPeerLoading = false;
+        this.addMintingAccountLoading = false;
+        this.removeMintingAccountLoading = false;
+        this.addMintingAccountKey = "";
+        this.addPeerMessage = "";
+        this.confPeerMessage = "";
+        this.addMintingAccountMessage = "";
+        this.tempMintingAccount = {};
+        this.config = {
+            user: {
+                node: {},
+            },
+        };
+        this.nodeConfig = {};
+        this.nodeDomain = "";
+    }
 
   render() {
     return html`
@@ -192,7 +189,6 @@ class NodeManagement extends LitElement {
                 slot="primaryAction"
                 @click=${this.addMintingAccount}
               >
-                <!--dialogAction="add"-->
                 Add
               </mwc-button>
               <mwc-button
@@ -205,109 +201,30 @@ class NodeManagement extends LitElement {
               </mwc-button>
             </mwc-dialog>
 
-            <!-- Remove Minting Account Dialog -->
-            <mwc-dialog
-              id="removeMintingAccountDialog"
-              scrimClickAction="${this.removeMintingAccountLoading
-        ? ""
-        : "close"}"
-            >
-              <div>
-                Type the Reward Share Key for this minting account below to
-                remove the minting account from this Node.
-              </div>
-              <br />
-              <mwc-textfield
-                ?disabled="${this.removeMintingAccountLoading}"
-                label="Rewardshare key"
-                id="removeMintingAccountKey"
-              ></mwc-textfield>
-              <div
-                style="text-align:right; height:36px;"
-                ?hidden=${this.removeMintingAccountMessage === ""}
-              >
-                <span ?hidden="${this.removeMintingAccountLoading}">
-                  ${this.removeMintingAccountMessage} &nbsp;
-                </span>
-                <span ?hidden="${!this.removeMintingAccountLoading}">
-                  <!-- loading message -->
-                  Loading... &nbsp;
-                  <paper-spinner-lite
-                    style="margin-top:12px;"
-                    ?active="${this.removeMintingAccountLoading}"
-                    alt="Removing minting account"
-                  ></paper-spinner-lite>
-                </span>
-              </div>
-              <mwc-button
-                ?disabled="${this.removeMintingAccountLoading}"
-                slot="primaryAction"
-                @click=${() => {
-        this.removeMintingAccount();
-      }}
-              >
-                Remove
-              </mwc-button>
-              <mwc-button
-                ?disabled="${this.removeMintingAccountLoading}"
-                slot="secondaryAction"
-                dialogAction="cancel"
-                class="red"
-              >
-                Close
-              </mwc-button>
-            </mwc-dialog>
-
-            <vaadin-grid
-              id="mintingAccountsGrid"
-              style="height:auto;"
-              ?hidden="${this.isEmptyArray(this.mintingAccounts)}"
-              aria-label="Peers"
-              .items="${this.mintingAccounts}"
-              height-by-rows
-            >
-              <vaadin-grid-column path="mintingAccount"></vaadin-grid-column>
-              <vaadin-grid-column path="recipientAccount"></vaadin-grid-column>
+            <vaadin-grid id="mintingAccountsGrid" style="height:auto;" ?hidden="${this.isEmptyArray(this.mintingAccounts)}" aria-label="Minting Accounts" .items="${this.mintingAccounts}" height-by-rows>
+              	<vaadin-grid-column auto-width header="Minting Account" path="mintingAccount"></vaadin-grid-column>
+              	<vaadin-grid-column auto-width header="Recipient Account" path="recipientAccount"></vaadin-grid-column>
+                <vaadin-grid-column  width="12em" header="Action" .renderer=${(root, column, data) => {
+                    render(html`<mwc-button class="red" ?disabled=${this.removeMintingAccountLoading} @click=${() => this.removeMintingAccount(data.item.publicKey)}><mwc-icon>create</mwc-icon>Remove</mwc-button>`, root)
+                }}></vaadin-grid-column>
             </vaadin-grid>
 
-            ${this.isEmptyArray(this.mintingAccounts)
-        ? html` No minting accounts found for this node `
-        : ""}
+            ${this.isEmptyArray(this.mintingAccounts) ? html` No minting accounts found for this node ` : ""}
           </div>
 
           <br />
           <div id="peers">
             <div style="min-height: 48px; display: flex; padding-bottom: 6px;">
-              <h3
-                style="margin: 0; flex: 1; padding-top: 8px; display: inline;"
-              >
-                Peers connected to node
-              </h3>
-              <mwc-button
-                @click=${() =>
-        this.shadowRoot.querySelector("#addPeerDialog").show()}
-                ><mwc-icon>add</mwc-icon>Add peer</mwc-button
-              >
+              <h3 style="margin: 0; flex: 1; padding-top: 8px; display: inline;">Peers connected to node</h3>
+              <mwc-button @click=${() => this.shadowRoot.querySelector("#addPeerDialog").show()}><mwc-icon>add</mwc-icon>Add peer</mwc-button>
             </div>
 
-            <mwc-dialog
-              id="addPeerDialog"
-              scrimClickAction="${this.addPeerLoading ? "" : "close"}"
-            >
+            <mwc-dialog id="addPeerDialog" scrimClickAction="${this.addPeerLoading ? "" : "close"}">
               <div>Type the peer you wish to add's address below</div>
               <br />
-              <mwc-textfield
-                ?disabled="${this.addPeerLoading}"
-                label="Peer address"
-                id="addPeerAddress"
-              ></mwc-textfield>
-              <div
-                style="text-align:right; height:36px;"
-                ?hidden=${this.addPeerMessage === ""}
-              >
-                <span ?hidden="${this.addPeerLoading}">
-                  ${this.addPeerMessage} &nbsp;
-                </span>
+              <mwc-textfield ?disabled="${this.addPeerLoading}" label="Peer Address" id="addPeerAddress" ></mwc-textfield>
+              <div style="text-align:right; height:36px;" ?hidden=${this.addPeerMessage === ""}>
+                <span ?hidden="${this.addPeerLoading}"> ${this.addPeerMessage} &nbsp;</span>
                 <span ?hidden="${!this.addPeerLoading}">
                   <paper-spinner-lite
                     style="margin-top:12px;"
@@ -333,39 +250,18 @@ class NodeManagement extends LitElement {
               </mwc-button>
             </mwc-dialog>
 
-            <vaadin-grid
-              id="peersGrid"
-              style="height:auto;"
-              ?hidden="${this.isEmptyArray(this.peers)}"
-              aria-label="Peers"
-              .items="${this.peers}"
-              height-by-rows
-            >
-              <vaadin-grid-column path="address"></vaadin-grid-column>
-              <vaadin-grid-column path="lastHeight"></vaadin-grid-column>
-              <vaadin-grid-column
-                path="version"
-                header="Build Version"
-              ></vaadin-grid-column>
+            <vaadin-grid id="peersGrid" style="height:auto;" ?hidden="${this.isEmptyArray(this.peers)}" aria-label="Peers" .items="${this.peers}" height-by-rows>
+                <vaadin-grid-column path="address"></vaadin-grid-column>
+                <vaadin-grid-column path="lastHeight"></vaadin-grid-column>
+                <vaadin-grid-column path="version" header="Build Version"></vaadin-grid-column>
             </vaadin-grid>
 
-            ${this.isEmptyArray(this.peers)
-        ? html` Node has no connected peers `
-        : ""}
+            ${this.isEmptyArray(this.peers) ? html` Node has no connected peers ` : ""}
           </div>
           <br />
         </div>
       </div>
     `;
-  }
-
-  getMintingAccountGrid() {
-    const myGrid = this.shadowRoot.querySelector("#mintingAccountsGrid");
-
-    myGrid.addEventListener("click", (e) => {
-      this.tempMintingAccount = myGrid.getEventContext(e).item;
-      this.shadowRoot.querySelector("#removeMintingAccountDialog").show();
-    });
   }
 
   onPageNavigation(pageUrl) {
@@ -417,107 +313,74 @@ class NodeManagement extends LitElement {
       });
   }
 
-  updateMintingAccounts() {
-    parentEpml
-      .request("apiCall", {
-        url: `/admin/mintingaccounts`,
-      })
-      .then((res) => {
-        setTimeout(() => {
-          this.mintingAccounts = res;
-        }, 1);
-      });
-
-    // setTimeout(updateMintingAccounts, this.config.user.nodeSettings.pingInterval) // Perhaps should be slower...?
-  }
-
-  _textMenu(event) {
-
-    const getSelectedText = () => {
-      var text = "";
-      if (typeof window.getSelection != "undefined") {
-        text = window.getSelection().toString();
-      } else if (typeof this.shadowRoot.selection != "undefined" && this.shadowRoot.selection.type == "Text") {
-        text = this.shadowRoot.selection.createRange().text;
-      }
-      return text;
+    updateMintingAccounts() {
+        parentEpml.request("apiCall", {
+            url: `/admin/mintingaccounts`,
+        }).then((res) => {
+            setTimeout(() => this.mintingAccounts = res, 1);
+        });
     }
 
-    const checkSelectedTextAndShowMenu = () => {
-      let selectedText = getSelectedText();
-      if (selectedText && typeof selectedText === 'string') {
+    _textMenu(event) {
 
-        let _eve = { pageX: event.pageX, pageY: event.pageY, clientX: event.clientX, clientY: event.clientY }
+        const getSelectedText = () => {
+            var text = "";
+            if (typeof window.getSelection != "undefined") {
+            text = window.getSelection().toString();
+            } else if (typeof this.shadowRoot.selection != "undefined" && this.shadowRoot.selection.type == "Text") {
+            text = this.shadowRoot.selection.createRange().text;
+            }
+            return text;
+        }
 
-        let textMenuObject = { selectedText: selectedText, eventObject: _eve, isFrame: true }
+        const checkSelectedTextAndShowMenu = () => {
+            let selectedText = getSelectedText();
+            if (selectedText && typeof selectedText === 'string') {
 
-        parentEpml.request('openCopyTextMenu', textMenuObject)
-      }
+            let _eve = { pageX: event.pageX, pageY: event.pageY, clientX: event.clientX, clientY: event.clientY }
+
+            let textMenuObject = { selectedText: selectedText, eventObject: _eve, isFrame: true }
+
+            parentEpml.request('openCopyTextMenu', textMenuObject)
+            }
+        }
+
+        checkSelectedTextAndShowMenu()
     }
 
-    checkSelectedTextAndShowMenu()
-  }
+	removeMintingAccount(publicKey) {        
+        this.removeMintingAccountLoading = true;
 
-  removeMintingAccount(e) {
-    this.removeMintingAccountLoading = true;
-    this.removeMintingAccountMessage = "Loading...";
-
-    this.removeMintingAccountKey = this.shadowRoot.querySelector(
-      "#removeMintingAccountKey"
-    ).value;
-
-    this.mintingAccounts.forEach((mintingAccount) => {
-      if (
-        this.tempMintingAccount.recipientAccount ===
-        mintingAccount.recipientAccount
-      ) {
-        parentEpml
-          .request("apiCall", {
+        parentEpml.request("apiCall", {
             url: `/admin/mintingaccounts`,
             method: "DELETE",
-            body: this.removeMintingAccountKey,
-          })
-          .then((res) => {
+            body: publicKey,
+        }).then((res) => {
             if (res === true) {
-              this.updateMintingAccounts();
-              this.removeMintingAccountKey = "";
-              this.removeMintingAccountMessage =
-                "Minting Node Removed Successfully!";
-              this.removeMintingAccountLoading = false;
+                this.updateMintingAccounts();
+                this.removeMintingAccountLoading = false;
+                parentEpml.request('showSnackBar', "Successfully Removed Minting Account!");
             } else {
-              this.removeMintingAccountKey = "";
-              this.removeMintingAccountMessage =
-                "Failed to Remove Minting Node!";
-              this.removeMintingAccountLoading = false;
+                this.removeMintingAccountLoading = false;
+                parentEpml.request('showSnackBar', "Failed to Remove Minting Account!");
             }
-          });
-      }
-    });
-  }
+        });
+	}
 
   firstUpdated() {
-    // Call getMintingAccountGrid
-    this.getMintingAccountGrid();
 
     // Call updateMintingAccounts
     this.updateMintingAccounts();
 
     window.addEventListener("contextmenu", (event) => {
-
       event.preventDefault();
       this._textMenu(event)
     });
-
     window.addEventListener("click", () => {
-
       parentEpml.request('closeCopyTextMenu', null)
     });
-
     window.onkeyup = (e) => {
-      if (e.keyCode === 27) {
-
-        parentEpml.request('closeCopyTextMenu', null)
-      }
+      if (e.keyCode === 27) parentEpml.request('closeCopyTextMenu', null)
     }
 
     // Calculate HH MM SS from Milliseconds...
@@ -578,9 +441,7 @@ class NodeManagement extends LitElement {
     let configLoaded = false;
     parentEpml.ready().then(() => {
       parentEpml.subscribe("config", async c => {
-
         if (!configLoaded) {
-
           setTimeout(getNodeUpTime, 1);
           setTimeout(updatePeers, 1);
           setTimeout(this.updateMintingAccounts, 1);
@@ -590,27 +451,19 @@ class NodeManagement extends LitElement {
         this.config = JSON.parse(c);
       })
       parentEpml.subscribe('copy_menu_switch', async value => {
-
-        if (value === 'false' && window.getSelection().toString().length !== 0) {
-
-          this.clearSelection()
-        }
+          if (value === 'false' && window.getSelection().toString().length !== 0) this.clearSelection();
       })
     });
-
     parentEpml.imReady();
   }
 
   clearSelection() {
-
     window.getSelection().removeAllRanges()
     window.parent.getSelection().removeAllRanges()
   }
 
   isEmptyArray(arr) {
-    if (!arr) {
-      return true;
-    }
+    if (!arr) return true;
     return arr.length === 0;
   }
 }

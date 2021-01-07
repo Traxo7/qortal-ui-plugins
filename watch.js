@@ -20,9 +20,8 @@ const watch = () => {
         watcher.on('event', event => {
             // ...
         })
-
-        console.log('WATCH PLUGINS ==> Write Bundle : Done 🎉');
     })
+    console.log('WATCH PLUGINS ==> Write Bundle : Done 🎉');
 }
 
 module.exports = watch

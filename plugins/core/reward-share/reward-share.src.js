@@ -76,12 +76,12 @@ class RewardShare extends LitElement {
                     <mwc-button style="float:right;" @click=${() => this.shadowRoot.querySelector('#createRewardShareDialog').show()}><mwc-icon>add</mwc-icon>Create reward share</mwc-button>
                 </div>
 
-                <vaadin-grid id="accountRewardSharesGrid" style="height:auto;" ?hidden="${this.isEmptyArray(this.rewardShares)}" aria-label="Peers" .items="${this.rewardShares}" height-by-rows>
-                    <vaadin-grid-column path="mintingAccount"></vaadin-grid-column>
-                    <vaadin-grid-column width="7.8rem" flex-grow="0" path="sharePercent"></vaadin-grid-column>
-                    <vaadin-grid-column path="recipient"></vaadin-grid-column>
-                    <vaadin-grid-column path="rewardSharePublicKey"></vaadin-grid-column>
-                    <vaadin-grid-column width="9.8rem" flex-grow="0" header="Action" .renderer=${(root, column, data) => {
+                <vaadin-grid id="accountRewardSharesGrid" style="height:auto;" ?hidden="${this.isEmptyArray(this.rewardShares)}" .items="${this.rewardShares}" height-by-rows>
+                    <vaadin-grid-column auto-width path="mintingAccount"></vaadin-grid-column>
+                    <vaadin-grid-column auto-width path="sharePercent"></vaadin-grid-column>
+                    <vaadin-grid-column auto-width path="recipient"></vaadin-grid-column>
+                    <vaadin-grid-column auto-width path="rewardSharePublicKey"></vaadin-grid-column>
+                    <vaadin-grid-column width="12em" header="Action" .renderer=${(root, column, data) => {
                 render(html`${this.renderRemoveRewardShareButton(data.item)}`, root)
             }}></vaadin-grid-column>
                 </vaadin-grid>

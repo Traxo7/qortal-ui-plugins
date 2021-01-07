@@ -17,7 +17,7 @@ const build = () => {
         }
 
         await bundle.write(file.outputOptions);
-        console.log('BUILD PLUGINS ==> Bundling Done 🎉');
     })
+    console.log('BUILD PLUGINS ==> Bundling Done 🎉');
 }
 module.exports = build
