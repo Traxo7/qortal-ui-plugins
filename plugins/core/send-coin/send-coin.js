@@ -1117,141 +1117,134 @@
       <div id="primaryProgress"></div>
     </div>
 `,is:"paper-progress",behaviors:[{properties:{value:{type:Number,value:0,notify:!0,reflectToAttribute:!0},min:{type:Number,value:0,notify:!0},max:{type:Number,value:100,notify:!0},step:{type:Number,value:1,notify:!0},ratio:{type:Number,value:0,readOnly:!0,notify:!0}},observers:["_update(value, min, max, step)"],_calcRatio:function(e){return(this._clampValue(e)-this.min)/(this.max-this.min)},_clampValue:function(e){return Math.min(this.max,Math.max(this.min,this._calcStep(e)))},_calcStep:function(e){if(e=parseFloat(e),!this.step)return e;var t=Math.round((e-this.min)/this.step);return this.step<1?t/(1/this.step)+this.min:t*this.step+this.min},_validateValue:function(){var e=this._clampValue(this.value);return this.value=this.oldValue=isNaN(e)?this.oldValue:e,this.value!==e},_update:function(){this._validateValue(),this._setRatio(100*this._calcRatio(this.value))}}],properties:{secondaryProgress:{type:Number,value:0},secondaryRatio:{type:Number,value:0,readOnly:!0},indeterminate:{type:Boolean,value:!1,observer:"_toggleIndeterminate"},disabled:{type:Boolean,value:!1,reflectToAttribute:!0,observer:"_disabledChanged"}},observers:["_progressChanged(secondaryProgress, value, min, max, indeterminate)"],hostAttributes:{role:"progressbar"},_toggleIndeterminate:function(e){this.toggleClass("indeterminate",e,this.$.primaryProgress)},_transformProgress:function(e,t){var i="scaleX("+t/100+")";e.style.transform=e.style.webkitTransform=i},_mainRatioChanged:function(e){this._transformProgress(this.$.primaryProgress,e)},_progressChanged:function(e,t,i,n,r){e=this._clampValue(e),t=this._clampValue(t);var o=100*this._calcRatio(e),s=100*this._calcRatio(t);this._setSecondaryRatio(o),this._transformProgress(this.$.secondaryProgress,o),this._transformProgress(this.$.primaryProgress,s),this.secondaryProgress=e,r?this.removeAttribute("aria-valuenow"):this.setAttribute("aria-valuenow",t),this.setAttribute("aria-valuemin",i),this.setAttribute("aria-valuemax",n)},_disabledChanged:function(e){this.setAttribute("aria-disabled",e?"true":"false")},_hideSecondaryProgress:function(e){return 0===e}});const yd=new pe({type:"WINDOW",source:window.parent});window.customElements.define("send-coin-page",class extends ae{static get properties(){return{addresses:{type:Array},amount:{type:Number},errorMessage:{type:String},sendMoneyLoading:{type:Boolean},btnDisable:{type:Boolean},data:{type:Object},selectedAddress:{type:Object},recipient:{type:String},isValidAmount:{type:Boolean},balance:{type:Number},qortBalance:{type:Number},btcBalance:{type:Number},ltcBalance:{type:Number},selectedCoin:{type:String},satFeePerByte:{type:Number}}}static get observers(){return["_kmxKeyUp(amount)"]}static get styles(){return oe`
-            * {
-                --mdc-theme-primary: rgb(3, 169, 244);
-                --mdc-theme-secondary: var(--mdc-theme-primary);
-                --paper-input-container-focus-color: var(--mdc-theme-primary);
-            }
-            #sendMoneyWrapper {
-                /* Extra 3px for left border */
-                /* overflow: hidden; */
-            }
+			* {
+				--mdc-theme-primary: rgb(3, 169, 244);
+				--mdc-theme-secondary: var(--mdc-theme-primary);
+				--paper-input-container-focus-color: var(--mdc-theme-primary);
+			}
+			#sendMoneyWrapper {
+				/* Extra 3px for left border */
+				/* overflow: hidden; */
+			}
 
-            /* #sendMoneyWrapper>* {
+			/* #sendMoneyWrapper>* {
                 width: auto !important;
                 padding: 0 15px;
             } */
 
-            #sendMoneyWrapper paper-button {
-                float: right;
-            }
+			#sendMoneyWrapper paper-button {
+				float: right;
+			}
 
-            #sendMoneyWrapper .buttons {
-                /* --paper-button-ink-color: var(--paper-green-500);
+			#sendMoneyWrapper .buttons {
+				/* --paper-button-ink-color: var(--paper-green-500);
                     color: var(--paper-green-500); */
-                width: auto !important;
-            }
+				width: auto !important;
+			}
 
-            .address-item {
-                --paper-item-focused: {
-                    background: transparent;
-                }
-                ;
-                --paper-item-focused-before: {
-                    opacity: 0;
-                }
-                ;
-            }
+			.address-item {
+				--paper-item-focused: {
+					background: transparent;
+				}
+				--paper-item-focused-before: {
+					opacity: 0;
+				}
+			}
 
-            .address-balance {
-                font-size: 42px;
-                font-weight: 100;
-            }
+			.address-balance {
+				font-size: 42px;
+				font-weight: 100;
+			}
 
-            .show-transactions {
-                cursor: pointer;
-            }
+			.show-transactions {
+				cursor: pointer;
+			}
 
-            .address-icon {
-                border-radius: 50%;
-                border: 5px solid;
-                /*border-left: 4px solid;*/
-                padding: 8px;
-            }
+			.address-icon {
+				border-radius: 50%;
+				border: 5px solid;
+				/*border-left: 4px solid;*/
+				padding: 8px;
+			}
 
-            mwc-textfield {
-                margin: 0;
-            }
+			mwc-textfield {
+				margin: 0;
+			}
 
-            .selectedBalance {
-                display: none;
-                font-size: 14px;
-            }
+			.selectedBalance {
+				display: none;
+				font-size: 14px;
+			}
 
-            .selectedBalance .balance {
-                font-size: 22px;
-                font-weight: 100;
-            }
-            paper-progress {
-                --paper-progress-active-color: var(--mdc-theme-primary)
-            }
-        `}render(){return L`
-            <div id="sendMoneyWrapper" style="width:auto; padding:10px; background: #fff; height:100vh;">
-                <div class="layout horizontal center" style=" padding:12px 15px;">
-                    <paper-card style="width:100%; max-width:740px;">
-                        <div style="background-color: ${this.selectedAddress.color}; margin:0; color: ${this.textColor(this.selectedAddress.textColor)};">
+			.selectedBalance .balance {
+				font-size: 22px;
+				font-weight: 100;
+			}
+			paper-progress {
+				--paper-progress-active-color: var(--mdc-theme-primary);
+			}
+		`}render(){return L`
+			<div id="sendMoneyWrapper" style="width:auto; padding:10px; background: #fff; height:100vh;">
+				<div class="layout horizontal center" style=" padding:12px 15px;">
+					<paper-card style="width:100%; max-width:740px;">
+						<div style="background-color: ${this.selectedAddress.color}; margin:0; color: ${this.textColor(this.selectedAddress.textColor)};">
+							<h3 style="margin:0; padding:8px 0;">Send Coin</h3>
 
-                            <h3 style="margin:0; padding:8px 0;">Send Coin</h3>
+							<div class="selectedBalance">
+								<span id="balance"></span> available for transfer from
+								<span id="address"></span>
+							</div>
+						</div>
+					</paper-card>
+					<p>
+						<mwc-select id="coinType" label="Select Coin" index="0" @selected=${e=>this.selectCoin(e)} style="min-width: 130px; max-width:100%; width:100%;">
+							<mwc-list-item value="qort">QORT</mwc-list-item>
+							<mwc-list-item value="btc">BTC</mwc-list-item>
+							<mwc-list-item value="ltc">LTC</mwc-list-item>
+						</mwc-select>
+					</p>
+					<p>
+						<mwc-textfield
+							style="width:100%;"
+							id="amountInput"
+							required
+							label="Amount (qort)"
+							@input=${e=>{this._checkAmount(e)}}
+							type="number"
+							auto-validate="false"
+							value="${this.amount}"
+						>
+						</mwc-textfield>
+					</p>
+					<p>
+						<mwc-textfield style="width:100%;" label="To (address or name)" id="recipient" type="text" value="${this.recipient}"></mwc-textfield>
+					</p>
 
-                            <div class="selectedBalance">
-                                <span id="balance"></span> available for
-                                transfer from
-                                <span id="address"></span>
-                            </div>
-                        </div>
+					<div style="${"invalid"===this.selectedCoin||"qort"===this.selectedCoin?"visibility: hidden; margin-bottom: -5em;":"visibility: visible; margin-bottom: 0;"}">
+						<p style="margin-bottom:0;">Fee per byte: ${(this.satFeePerByte/1e8).toFixed(8)} ${"invalid"===this.selectedCoin?"QORT":this.selectedCoin.toLocaleUpperCase()}</p>
+						<mwc-slider
+							@change="${e=>this.satFeePerByte=e.target.value}"
+							id="feeSlider"
+							style="width:100%;"
+							step="1"
+							min="10"
+							max="100"
+							?disabled=${"invalid"===this.selectedCoin||"qort"===this.selectedCoin}
+							value="${this.satFeePerByte}"
+						>
+						</mwc-slider>
+					</div>
 
-                    </paper-card>
-                    <p>
-                        <mwc-select id="coinType" label="Select Coin" index="0" @selected=${e=>this.selectCoin(e)} style="min-width: 130px; max-width:100%; width:100%;">
-                            <mwc-list-item value="qort">QORT</mwc-list-item>
-                            <mwc-list-item value="btc">BTC</mwc-list-item>
-                            <mwc-list-item value="ltc">LTC</mwc-list-item>
-                        </mwc-select>
-                    </p>
-                    <p>
-                        <mwc-textfield
-                            style="width:100%;"
-                            id="amountInput"
-                            required
-                            label="Amount (qort)"
-                            @input=${e=>{this._checkAmount(e)}}
-                            type="number"
-                            auto-validate="false"
-                            value="${this.amount}">
-                        </mwc-textfield>
-                    </p>
-                    <p>
-                        <mwc-textfield style="width:100%;" label="To (address or name)" id="recipient" type="text" value="${this.recipient}"></mwc-textfield>
-                    </p>
+					<p style="color:red">${this.errorMessage}</p>
+					<p style="color:green;word-break: break-word;">${this.successMessage}</p>
 
-                    <div style="${"invalid"===this.selectedCoin||"qort"===this.selectedCoin?"visibility: hidden; margin-bottom: -5em;":"visibility: visible; margin-bottom: 0;"}" >
-                        <p style="margin-bottom:0;">
-                            Fee per byte: ${(this.satFeePerByte/1e8).toFixed(8)} ${"invalid"===this.selectedCoin?"QORT":this.selectedCoin.toLocaleUpperCase()}
-                        </p>
-                        <mwc-slider
-                            @change="${e=>this.satFeePerByte=e.target.value}"
-                            id="feeSlider"
-                            style="width:100%;"
-                            step="1"
-                            min="10"
-                            max="100"
-                            ?disabled=${"invalid"===this.selectedCoin||"qort"===this.selectedCoin}
-                            value="${this.satFeePerByte}">
-                        </mwc-slider>
-                    </div>
+					${this.sendMoneyLoading?L` <paper-progress indeterminate style="width:100%; margin:4px;"></paper-progress> `:""}
 
-                    <p style="color:red">${this.errorMessage}</p>
-                    <p style="color:green;word-break: break-word;">${this.successMessage}</p>
-
-                    ${this.sendMoneyLoading?L`
-                        <paper-progress indeterminate style="width:100%; margin:4px;"></paper-progress>
-                    `:""}
-
-                    <div class="buttons" >
-                        <div>
-                            <mwc-button ?disabled=${this.btnDisable} style="width:100%;" raised icon="send" @click=${e=>this.doSend(e)}>Send &nbsp;</mwc-button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        `}_floor(e){return Math.floor(e)}_checkAmount(e){const t=e.target.value,i=e.target;0===t.length?(this.isValidAmount=!1,this.btnDisable=!0,e.target.blur(),e.target.focus(),e.target.invalid=!0,e.target.validationMessage="Invalid Amount!"):this.btnDisable=!1,e.target.blur(),e.target.focus(),e.target.validityTransform=(e,t)=>{if(!0===e.includes("-"))return this.btnDisable=!0,i.validationMessage="Invalid Amount!",{valid:!1};if(t.valid)this.btnDisable=!1;else if(!0===e.includes(".")){if(!(e.split(".")[1].length>8))return{valid:!0};this.btnDisable=!0,i.validationMessage="Invalid Amount!"}}}textColor(e){return"light"==e?"rgba(255,255,255,0.7)":"rgba(0,0,0,0.87)"}pasteToTextBox(e){window.focus(),navigator.clipboard.readText().then(t=>{let i=this.shadowRoot.getElementById(e);i.value+=t,i.focus()})}pasteMenu(e,t){let i={pageX:e.pageX,pageY:e.pageY,clientX:e.clientX,clientY:e.clientY,elementId:t};yd.request("openFramePasteMenu",i)}doSend(e){"invalid"===this.selectedCoin?yd.request("showSnackBar","Invalid Selection!"):"qort"===this.selectedCoin?this.sendQort():"btc"===this.selectedCoin?this.sendBtc():"ltc"===this.selectedCoin&&this.sendLtc()}async sendQort(){const e=this.shadowRoot.getElementById("amountInput").value;let t=this.shadowRoot.getElementById("recipient").value;if(this.sendMoneyLoading=!0,this.btnDisable=!0,parseFloat(e)+parseFloat(.001)>parseFloat(this.balance))return this.sendMoneyLoading=!1,this.btnDisable=!1,yd.request("showSnackBar","Insufficient Funds!"),!1;if(parseFloat(e)<=0)return this.sendMoneyLoading=!1,this.btnDisable=!1,yd.request("showSnackBar","Invalid Amount!"),!1;if(0===t.length)return this.sendMoneyLoading=!1,this.btnDisable=!1,yd.request("showSnackBar","Receiver cannot be empty!"),!1;const i=async()=>await yd.request("apiCall",{type:"api",url:"/addresses/lastreference/"+this.selectedAddress.address}),n=async(t,i)=>{let n=t,r=i;return await yd.request("transaction",{type:2,nonce:this.selectedAddress.nonce,params:{recipient:n,amount:e,lastReference:r,fee:.001}})},r=e=>{if(!1===e.success&&e.message)throw this.errorMessage=e.message,this.sendMoneyLoading=!1,this.btnDisable=!1,new Error(e);if(!0!==e.success||e.data.error)throw this.errorMessage=e.data.message,this.sendMoneyLoading=!1,this.btnDisable=!1,new Error(e);this.shadowRoot.getElementById("amountInput").value="",this.shadowRoot.getElementById("recipient").value="",this.errorMessage="",this.recipient="",this.amount=0,this.successMessage="Transaction Successful!",this.sendMoneyLoading=!1,this.btnDisable=!1};(async e=>{let t,o=await i();try{t=await(async e=>await window.parent.validateAddress(e))(e)}catch(e){t=!1}if(t){let t=await n(e,o);r(t)}else{let t=await(async e=>{let t,i=await yd.request("apiCall",{type:"api",url:"/names/"+e});return t=401!==i.error&&i,t})(e);if(!1!==t){let e=t.owner,i=await n(e,o);r(i)}else console.error("INVALID_RECEIVER"),this.errorMessage="INVALID_RECEIVER",this.sendMoneyLoading=!1,this.btnDisable=!1}})(t)}async sendBtc(){const e=this.shadowRoot.getElementById("amountInput").value;let t=this.shadowRoot.getElementById("recipient").value;const i=this.selectedAddress.btcWallet._tDerivedMasterPrivateKey;this.sendMoneyLoading=!0,this.btnDisable=!0;(e=>{if(64!==e.length)throw!1===e?(this.errorMessage="Transaction Failed!",this.sendMoneyLoading=!1,this.btnDisable=!1,new Error(txnResponse)):(this.errorMessage=e.message,this.sendMoneyLoading=!1,this.btnDisable=!1,new Error(e));this.shadowRoot.getElementById("amountInput").value=0,this.shadowRoot.getElementById("recipient").value="",this.errorMessage="",this.recipient="",this.amount=0,this.successMessage="Transaction Successful!",this.sendMoneyLoading=!1,this.btnDisable=!1})(await(async()=>{const n={xprv58:i,receivingAddress:t,bitcoinAmount:e,feePerByte:(this.satFeePerByte/1e8).toFixed(8)};return await yd.request("sendBtc",n)})())}async sendLtc(){const e=this.shadowRoot.getElementById("amountInput").value;let t=this.shadowRoot.getElementById("recipient").value;const i=this.selectedAddress.ltcWallet._tDerivedMasterPrivateKey;this.sendMoneyLoading=!0,this.btnDisable=!0;(e=>{if(64!==e.length)throw!1===e?(this.errorMessage="Transaction Failed!",this.sendMoneyLoading=!1,this.btnDisable=!1,new Error(txnResponse)):(this.errorMessage=e.message,this.sendMoneyLoading=!1,this.btnDisable=!1,new Error(e));this.shadowRoot.getElementById("amountInput").value=0,this.shadowRoot.getElementById("recipient").value="",this.errorMessage="",this.recipient="",this.amount=0,this.successMessage="Transaction Successful!",this.sendMoneyLoading=!1,this.btnDisable=!1})(await(async()=>{const n={xprv58:i,receivingAddress:t,litecoinAmount:e,feePerByte:(this.satFeePerByte/1e8).toFixed(8)};return await yd.request("sendLtc",n)})())}_textMenu(e){const t=()=>{var e="";return void 0!==window.getSelection?e=window.getSelection().toString():void 0!==this.shadowRoot.selection&&"Text"==this.shadowRoot.selection.type&&(e=this.shadowRoot.selection.createRange().text),e};(()=>{let i=t();if(i&&"string"==typeof i){let t={selectedText:i,eventObject:{pageX:e.pageX,pageY:e.pageY,clientX:e.clientX,clientY:e.clientY},isFrame:!0};yd.request("openCopyTextMenu",t)}})()}updateAccountBalance(){clearTimeout(this.updateAccountBalanceTimeout),yd.request("apiCall",{url:"/addresses/balance/"+this.selectedAddress.address}).then(e=>{this.qortBalance=e,this.updateAccountBalanceTimeout=setTimeout(()=>this.updateAccountBalance(),4e3)})}constructor(){super(),this.recipient="",this.errorMessage="",this.sendMoneyLoading=!1,this.btnDisable=!1,this.selectedAddress={},this.amount=0,this.satFeePerByte=1e5,this.btcSatMinFee=20,this.btcSatMaxFee=150,this.btcDefaultFee=100,this.ltcSatMinFee=10,this.ltcSatMaxFee=100,this.ltcDefaultFee=30,this.isValidAmount=!1,this.qortBalance=0,this.btcBalance=0,this.ltcBalance=0,this.selectedCoin="invalid",yd.ready().then(()=>{yd.subscribe("selected_address",async e=>{if(this.selectedAddress={},!(e=JSON.parse(e))||0===Object.entries(e).length)return;this.selectedAddress=e;e.address;this.updateAccountBalance()}),yd.subscribe("config",e=>{this.config=JSON.parse(e)}),yd.subscribe("copy_menu_switch",async e=>{"false"===e&&0!==window.getSelection().toString().length&&this.clearSelection()}),yd.subscribe("frame_paste_menu_switch",async e=>{!1===(e=JSON.parse(e)).isOpen&&!0===this.isPasteMenuOpen&&(this.pasteToTextBox(e.elementId),this.isPasteMenuOpen=!1)})})}firstUpdated(){this.updateBTCAccountBalance(),this.updateLTCAccountBalance(),window.addEventListener("contextmenu",e=>{e.preventDefault(),this._textMenu(e)}),window.addEventListener("click",()=>{yd.request("closeCopyTextMenu",null)}),window.onkeyup=e=>{27===e.keyCode&&yd.request("closeCopyTextMenu",null)},this.shadowRoot.getElementById("amountInput").addEventListener("contextmenu",e=>{const t=()=>{var e="";return void 0!==window.getSelection?e=window.getSelection().toString():void 0!==this.shadowRoot.selection&&"Text"==this.shadowRoot.selection.type&&(e=this.shadowRoot.selection.createRange().text),e};(()=>{let i=t();i&&"string"==typeof i||(this.pasteMenu(e,"amountInput"),this.isPasteMenuOpen=!0,e.preventDefault(),e.stopPropagation())})()}),this.shadowRoot.getElementById("recipient").addEventListener("contextmenu",e=>{const t=()=>{var e="";return void 0!==window.getSelection?e=window.getSelection().toString():void 0!==this.shadowRoot.selection&&"Text"==this.shadowRoot.selection.type&&(e=this.shadowRoot.selection.createRange().text),e};(()=>{let i=t();i&&"string"==typeof i||(this.pasteMenu(e,"recipient"),this.isPasteMenuOpen=!0,e.preventDefault(),e.stopPropagation())})()})}selectCoin(e){const t=this.shadowRoot.getElementById("coinType").value;this.selectedCoin=t,this.amount=0,this.recipient="",this.shadowRoot.getElementById("amountInput").value=0,this.shadowRoot.getElementById("recipient").value="",this.successMessage="",this.errorMessage="","qort"===t?(this.shadowRoot.getElementById("balance").textContent=this.qortBalance+" QORT",this.shadowRoot.getElementById("address").textContent=this.selectedAddress.address,this.shadowRoot.querySelector(".selectedBalance").style.display="block",this.shadowRoot.getElementById("amountInput").label="Amount (QORT)",this.shadowRoot.getElementById("recipient").label="To (address or name)",this.satFeePerByte=1e5):"btc"===t?(this.shadowRoot.getElementById("balance").textContent=this.btcBalance+" BTC",this.shadowRoot.getElementById("address").textContent=this.selectedAddress.btcWallet._taddress,this.shadowRoot.querySelector(".selectedBalance").style.display="block",this.shadowRoot.getElementById("amountInput").label="Amount (BTC)",this.shadowRoot.getElementById("recipient").label="To (BTC address)",this.shadowRoot.getElementById("feeSlider").min=this.btcSatMinFee,this.shadowRoot.getElementById("feeSlider").max=this.btcSatMaxFee,this.satFeePerByte=this.btcDefaultFee):"ltc"===t?(this.shadowRoot.getElementById("balance").textContent=this.ltcBalance+" LTC",this.shadowRoot.getElementById("address").textContent=this.selectedAddress.ltcWallet._taddress,this.shadowRoot.querySelector(".selectedBalance").style.display="block",this.shadowRoot.getElementById("amountInput").label="Amount (LTC)",this.shadowRoot.getElementById("recipient").label="To (LTC address)",this.shadowRoot.getElementById("feeSlider").min=this.ltcSatMinFee,this.shadowRoot.getElementById("feeSlider").max=this.ltcSatMaxFee,this.satFeePerByte=this.ltcDefaultFee):this.selectedCoin="invalid"}updateBTCAccountBalance(){yd.request("apiCall",{url:"/crosschain/btc/walletbalance",method:"POST",body:window.parent.reduxStore.getState().app.selectedAddress.btcWallet._tDerivedmasterPublicKey}).then(e=>{isNaN(Number(e))?yd.request("showSnackBar","Failed to Fetch BTC Balance. Try again!"):this.btcBalance=(Number(e)/1e8).toFixed(8)})}updateLTCAccountBalance(){yd.request("apiCall",{url:"/crosschain/ltc/walletbalance",method:"POST",body:window.parent.reduxStore.getState().app.selectedAddress.ltcWallet._tDerivedmasterPublicKey}).then(e=>{isNaN(Number(e))?yd.request("showSnackBar","Failed to Fetch LTC Balance. Try again!"):this.ltcBalance=(Number(e)/1e8).toFixed(8)})}clearSelection(){window.getSelection().removeAllRanges(),window.parent.getSelection().removeAllRanges()}})}));
+					<div class="buttons">
+						<div>
+							<mwc-button ?disabled=${this.btnDisable} style="width:100%;" raised icon="send" @click=${e=>this.doSend(e)}>Send &nbsp;</mwc-button>
+						</div>
+					</div>
+				</div>
+			</div>
+		`}_floor(e){return Math.floor(e)}_checkAmount(e){const t=e.target.value,i=e.target;0===t.length?(this.isValidAmount=!1,this.btnDisable=!0,e.target.blur(),e.target.focus(),e.target.invalid=!0,e.target.validationMessage="Invalid Amount!"):this.btnDisable=!1,e.target.blur(),e.target.focus(),e.target.validityTransform=(e,t)=>{if(!0===e.includes("-"))return this.btnDisable=!0,i.validationMessage="Invalid Amount!",{valid:!1};if(t.valid)this.btnDisable=!1;else if(!0===e.includes(".")){if(!(e.split(".")[1].length>8))return{valid:!0};this.btnDisable=!0,i.validationMessage="Invalid Amount!"}}}textColor(e){return"light"==e?"rgba(255,255,255,0.7)":"rgba(0,0,0,0.87)"}pasteToTextBox(e){window.focus(),navigator.clipboard.readText().then(t=>{let i=this.shadowRoot.getElementById(e);i.value+=t,i.focus()})}pasteMenu(e,t){let i={pageX:e.pageX,pageY:e.pageY,clientX:e.clientX,clientY:e.clientY,elementId:t};yd.request("openFramePasteMenu",i)}doSend(e){"invalid"===this.selectedCoin?yd.request("showSnackBar","Invalid Selection!"):"qort"===this.selectedCoin?this.sendQort():"btc"===this.selectedCoin?this.sendBtc():"ltc"===this.selectedCoin&&this.sendLtc()}async sendQort(){const e=this.shadowRoot.getElementById("amountInput").value;let t=this.shadowRoot.getElementById("recipient").value;if(this.sendMoneyLoading=!0,this.btnDisable=!0,parseFloat(e)+parseFloat(.001)>parseFloat(this.balance))return this.sendMoneyLoading=!1,this.btnDisable=!1,yd.request("showSnackBar","Insufficient Funds!"),!1;if(parseFloat(e)<=0)return this.sendMoneyLoading=!1,this.btnDisable=!1,yd.request("showSnackBar","Invalid Amount!"),!1;if(0===t.length)return this.sendMoneyLoading=!1,this.btnDisable=!1,yd.request("showSnackBar","Receiver cannot be empty!"),!1;const i=async()=>await yd.request("apiCall",{type:"api",url:"/addresses/lastreference/"+this.selectedAddress.address}),n=async(t,i)=>{let n=t,r=i;return await yd.request("transaction",{type:2,nonce:this.selectedAddress.nonce,params:{recipient:n,amount:e,lastReference:r,fee:.001}})},r=e=>{if(!1===e.success&&e.message)throw this.errorMessage=e.message,this.sendMoneyLoading=!1,this.btnDisable=!1,new Error(e);if(!0!==e.success||e.data.error)throw this.errorMessage=e.data.message,this.sendMoneyLoading=!1,this.btnDisable=!1,new Error(e);this.shadowRoot.getElementById("amountInput").value="",this.shadowRoot.getElementById("recipient").value="",this.errorMessage="",this.recipient="",this.amount=0,this.successMessage="Transaction Successful!",this.sendMoneyLoading=!1,this.btnDisable=!1};(async e=>{let t,o=await i();try{t=await(async e=>await window.parent.validateAddress(e))(e)}catch(e){t=!1}if(t){let t=await n(e,o);r(t)}else{let t=await(async e=>{let t,i=await yd.request("apiCall",{type:"api",url:"/names/"+e});return t=401!==i.error&&i,t})(e);if(!1!==t){let e=t.owner,i=await n(e,o);r(i)}else console.error("INVALID_RECEIVER"),this.errorMessage="INVALID_RECEIVER",this.sendMoneyLoading=!1,this.btnDisable=!1}})(t)}async sendBtc(){const e=this.shadowRoot.getElementById("amountInput").value;let t=this.shadowRoot.getElementById("recipient").value;const i=this.selectedAddress.btcWallet.derivedMasterPrivateKey;this.sendMoneyLoading=!0,this.btnDisable=!0;(e=>{if(64!==e.length)throw!1===e?(this.errorMessage="Transaction Failed!",this.sendMoneyLoading=!1,this.btnDisable=!1,new Error(txnResponse)):(this.errorMessage=e.message,this.sendMoneyLoading=!1,this.btnDisable=!1,new Error(e));this.shadowRoot.getElementById("amountInput").value=0,this.shadowRoot.getElementById("recipient").value="",this.errorMessage="",this.recipient="",this.amount=0,this.successMessage="Transaction Successful!",this.sendMoneyLoading=!1,this.btnDisable=!1})(await(async()=>{const n={xprv58:i,receivingAddress:t,bitcoinAmount:e,feePerByte:(this.satFeePerByte/1e8).toFixed(8)};return await yd.request("sendBtc",n)})())}async sendLtc(){const e=this.shadowRoot.getElementById("amountInput").value;let t=this.shadowRoot.getElementById("recipient").value;const i=this.selectedAddress.ltcWallet.derivedMasterPrivateKey;this.sendMoneyLoading=!0,this.btnDisable=!0;(e=>{if(64!==e.length)throw!1===e?(this.errorMessage="Transaction Failed!",this.sendMoneyLoading=!1,this.btnDisable=!1,new Error(txnResponse)):(this.errorMessage=e.message,this.sendMoneyLoading=!1,this.btnDisable=!1,new Error(e));this.shadowRoot.getElementById("amountInput").value=0,this.shadowRoot.getElementById("recipient").value="",this.errorMessage="",this.recipient="",this.amount=0,this.successMessage="Transaction Successful!",this.sendMoneyLoading=!1,this.btnDisable=!1})(await(async()=>{const n={xprv58:i,receivingAddress:t,litecoinAmount:e,feePerByte:(this.satFeePerByte/1e8).toFixed(8)};return await yd.request("sendLtc",n)})())}_textMenu(e){const t=()=>{var e="";return void 0!==window.getSelection?e=window.getSelection().toString():void 0!==this.shadowRoot.selection&&"Text"==this.shadowRoot.selection.type&&(e=this.shadowRoot.selection.createRange().text),e};(()=>{let i=t();if(i&&"string"==typeof i){let t={selectedText:i,eventObject:{pageX:e.pageX,pageY:e.pageY,clientX:e.clientX,clientY:e.clientY},isFrame:!0};yd.request("openCopyTextMenu",t)}})()}updateAccountBalance(){clearTimeout(this.updateAccountBalanceTimeout),yd.request("apiCall",{url:"/addresses/balance/"+this.selectedAddress.address}).then(e=>{this.qortBalance=e,this.updateAccountBalanceTimeout=setTimeout(()=>this.updateAccountBalance(),4e3)})}constructor(){super(),this.recipient="",this.errorMessage="",this.sendMoneyLoading=!1,this.btnDisable=!1,this.selectedAddress={},this.amount=0,this.satFeePerByte=1e5,this.btcSatMinFee=20,this.btcSatMaxFee=150,this.btcDefaultFee=100,this.ltcSatMinFee=10,this.ltcSatMaxFee=100,this.ltcDefaultFee=30,this.isValidAmount=!1,this.qortBalance=0,this.btcBalance=0,this.ltcBalance=0,this.selectedCoin="invalid",yd.ready().then(()=>{yd.subscribe("selected_address",async e=>{if(this.selectedAddress={},!(e=JSON.parse(e))||0===Object.entries(e).length)return;this.selectedAddress=e;e.address;this.updateAccountBalance()}),yd.subscribe("config",e=>{this.config=JSON.parse(e)}),yd.subscribe("copy_menu_switch",async e=>{"false"===e&&0!==window.getSelection().toString().length&&this.clearSelection()}),yd.subscribe("frame_paste_menu_switch",async e=>{!1===(e=JSON.parse(e)).isOpen&&!0===this.isPasteMenuOpen&&(this.pasteToTextBox(e.elementId),this.isPasteMenuOpen=!1)})})}firstUpdated(){this.updateBTCAccountBalance(),this.updateLTCAccountBalance(),window.addEventListener("contextmenu",e=>{e.preventDefault(),this._textMenu(e)}),window.addEventListener("click",()=>{yd.request("closeCopyTextMenu",null)}),window.onkeyup=e=>{27===e.keyCode&&yd.request("closeCopyTextMenu",null)},this.shadowRoot.getElementById("amountInput").addEventListener("contextmenu",e=>{const t=()=>{var e="";return void 0!==window.getSelection?e=window.getSelection().toString():void 0!==this.shadowRoot.selection&&"Text"==this.shadowRoot.selection.type&&(e=this.shadowRoot.selection.createRange().text),e};(()=>{let i=t();i&&"string"==typeof i||(this.pasteMenu(e,"amountInput"),this.isPasteMenuOpen=!0,e.preventDefault(),e.stopPropagation())})()}),this.shadowRoot.getElementById("recipient").addEventListener("contextmenu",e=>{const t=()=>{var e="";return void 0!==window.getSelection?e=window.getSelection().toString():void 0!==this.shadowRoot.selection&&"Text"==this.shadowRoot.selection.type&&(e=this.shadowRoot.selection.createRange().text),e};(()=>{let i=t();i&&"string"==typeof i||(this.pasteMenu(e,"recipient"),this.isPasteMenuOpen=!0,e.preventDefault(),e.stopPropagation())})()})}selectCoin(e){const t=this.shadowRoot.getElementById("coinType").value;this.selectedCoin=t,this.amount=0,this.recipient="",this.shadowRoot.getElementById("amountInput").value=0,this.shadowRoot.getElementById("recipient").value="",this.successMessage="",this.errorMessage="","qort"===t?(this.shadowRoot.getElementById("balance").textContent=this.qortBalance+" QORT",this.shadowRoot.getElementById("address").textContent=this.selectedAddress.address,this.shadowRoot.querySelector(".selectedBalance").style.display="block",this.shadowRoot.getElementById("amountInput").label="Amount (QORT)",this.shadowRoot.getElementById("recipient").label="To (address or name)",this.satFeePerByte=1e5):"btc"===t?(this.shadowRoot.getElementById("balance").textContent=this.btcBalance+" BTC",this.shadowRoot.getElementById("address").textContent=this.selectedAddress.btcWallet.address,this.shadowRoot.querySelector(".selectedBalance").style.display="block",this.shadowRoot.getElementById("amountInput").label="Amount (BTC)",this.shadowRoot.getElementById("recipient").label="To (BTC address)",this.shadowRoot.getElementById("feeSlider").min=this.btcSatMinFee,this.shadowRoot.getElementById("feeSlider").max=this.btcSatMaxFee,this.satFeePerByte=this.btcDefaultFee):"ltc"===t?(this.shadowRoot.getElementById("balance").textContent=this.ltcBalance+" LTC",this.shadowRoot.getElementById("address").textContent=this.selectedAddress.ltcWallet.address,this.shadowRoot.querySelector(".selectedBalance").style.display="block",this.shadowRoot.getElementById("amountInput").label="Amount (LTC)",this.shadowRoot.getElementById("recipient").label="To (LTC address)",this.shadowRoot.getElementById("feeSlider").min=this.ltcSatMinFee,this.shadowRoot.getElementById("feeSlider").max=this.ltcSatMaxFee,this.satFeePerByte=this.ltcDefaultFee):this.selectedCoin="invalid"}updateBTCAccountBalance(){yd.request("apiCall",{url:"/crosschain/btc/walletbalance",method:"POST",body:window.parent.reduxStore.getState().app.selectedAddress.btcWallet.derivedMasterPublicKey}).then(e=>{isNaN(Number(e))?yd.request("showSnackBar","Failed to Fetch BTC Balance. Try again!"):this.btcBalance=(Number(e)/1e8).toFixed(8)})}updateLTCAccountBalance(){yd.request("apiCall",{url:"/crosschain/ltc/walletbalance",method:"POST",body:window.parent.reduxStore.getState().app.selectedAddress.ltcWallet.derivedMasterPublicKey}).then(e=>{isNaN(Number(e))?yd.request("showSnackBar","Failed to Fetch LTC Balance. Try again!"):this.ltcBalance=(Number(e)/1e8).toFixed(8)})}clearSelection(){window.getSelection().removeAllRanges(),window.parent.getSelection().removeAllRanges()}})}));

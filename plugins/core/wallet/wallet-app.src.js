@@ -525,7 +525,7 @@ class MultiWallet extends LitElement {
 					<h2 class="wallet-header">
 						Current Wallet
 						<div class="">
-							<span style="display: block; font-size: 18px; color: rgb(68, 71, 80); margin-bottom: 6px;"> ${this.selectedWallet.type === 'qort' ? this.selectedWallet.wallet.address : this.selectedWallet.wallet._taddress} </span>
+							<span style="display: block; font-size: 18px; color: rgb(68, 71, 80); margin-bottom: 6px;"> ${this.selectedWallet.type === 'qort' ? this.selectedWallet.wallet.address : this.selectedWallet.wallet.address} </span>
 							<span class="total-balance"> ${this.balanceString} </span>
 						</div>
 					</h2>
@@ -925,7 +925,7 @@ class MultiWallet extends LitElement {
 		const res = await parentEpml.request('apiCall', {
 			url: `/crosschain/${type}/wallettransactions`,
 			method: 'POST',
-			body: `${window.parent.reduxStore.getState().app.selectedAddress[walletName]._tDerivedmasterPublicKey}`,
+			body: `${window.parent.reduxStore.getState().app.selectedAddress[walletName].derivedMasterPublicKey}`,
 		})
 		const compareFn = (a, b) => {
 			return b.timestamp - a.timestamp
@@ -943,7 +943,7 @@ class MultiWallet extends LitElement {
 			.request('apiCall', {
 				url: `/crosschain/${type}/walletbalance`,
 				method: 'POST',
-				body: `${window.parent.reduxStore.getState().app.selectedAddress[walletName]._tDerivedmasterPublicKey}`,
+				body: `${window.parent.reduxStore.getState().app.selectedAddress[walletName].derivedMasterPublicKey}`,
 			})
 			.then((res) => {
 				if (isNaN(Number(res))) {
@@ -987,7 +987,7 @@ class MultiWallet extends LitElement {
 	}
 
 	sendOrRecieve(tx) {
-		return tx.sender == this.selectedLtcWallet._taddress
+		return tx.sender == this.selectedLtcWallet.address
 	}
 
 	senderOrRecipient(tx) {

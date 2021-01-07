@@ -1233,7 +1233,7 @@ class TradePortal extends LitElement {
 				foreignBlockchain: 'LITECOIN', // TODO: remove hard-coded values
 				foreignAmount: parseFloat(sellTotalInput),
 				tradeTimeout: 60, // FIX: reduce the tradeTimeout to 1 hour (60 minutes)
-				receivingAddress: this.selectedAddress.ltcWallet._taddress,
+				receivingAddress: this.selectedAddress.ltcWallet.address,
 			})
 
 			return response
@@ -1281,7 +1281,7 @@ class TradePortal extends LitElement {
 		const makeRequest = async () => {
 			const response = await parentEpml.request('tradeBotRespondRequest', {
 				atAddress: qortalAtAddress,
-				foreignKey: this.selectedAddress.ltcWallet._tDerivedMasterPrivateKey,
+				foreignKey: this.selectedAddress.ltcWallet.derivedMasterPrivateKey,
 				receivingAddress: this.selectedAddress.address,
 			})
 
@@ -1373,7 +1373,7 @@ class TradePortal extends LitElement {
 			.request('apiCall', {
 				url: `/crosschain/ltc/walletbalance`,
 				method: 'POST',
-				body: window.parent.reduxStore.getState().app.selectedAddress.ltcWallet._tDerivedmasterPublicKey,
+				body: window.parent.reduxStore.getState().app.selectedAddress.ltcWallet.derivedMasterPublicKey,
 			})
 			.then((res) => {
 				if (isNaN(Number(res))) {
