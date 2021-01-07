@@ -1162,7 +1162,7 @@ class TradePortal extends LitElement {
 
 		const initPresenceWebSocket = (restarted = false) => {
 			let socketTimeout
-			let socketLink = `ws://localhost:62391/websockets/presence?presenceType=TRADE_BOT`
+			let socketLink = `ws://localhost:12391/websockets/presence?presenceType=TRADE_BOT`
 			const socket = new WebSocket(socketLink)
 			// Open Connection
 			socket.onopen = () => {
