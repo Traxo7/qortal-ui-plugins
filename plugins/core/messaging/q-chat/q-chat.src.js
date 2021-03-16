@@ -366,10 +366,14 @@ class Chat extends LitElement {
 
     setChatHeads(chatObj) {
 
-        let groupList = chatObj.groups.map(group => group.groupId === 0 ? { groupId: group.groupId, url: `group/${group.groupId}`, groupName: "Qortal General Chat", timestamp: group.timestamp === undefined ? 1 : group.timestamp } : { ...group, url: `group/${group.groupId}` })
+        let groupList = chatObj.groups.map(group => group.groupId === 0 ? { groupId: group.groupId, url: `group/${group.groupId}`, groupName: "Qortal General Chat", timestamp: group.timestamp === undefined ? 2 : group.timestamp } : { ...group, timestamp: group.timestamp === undefined ? 1 : group.timestamp, url: `group/${group.groupId}` })
         let directList = chatObj.direct.map(dc => {
             return { ...dc, url: `direct/${dc.address}` }
         })
+        const compareNames = (a, b) => {
+            return a.groupName.localeCompare(b.groupName)
+        }
+        groupList.sort(compareNames)
         let chatHeadMasterList = [...groupList, ...directList]
 
         const compareArgs = (a, b) => {
