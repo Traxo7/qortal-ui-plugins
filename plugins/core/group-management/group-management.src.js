@@ -26,6 +26,7 @@ class GroupManagement extends LitElement {
             selectedAddress: { type: Object },
             manageGroupObj: { type: Object },
             joinGroupObj: { type: Object },
+            leaveGroupObj: { type: Object },
             btnDisable: { type: Boolean },
             isLoading: { type: Boolean },
             error: { type: Boolean },
@@ -123,6 +124,7 @@ class GroupManagement extends LitElement {
         this.joinedGroups = []
         this.manageGroupObj = {}
         this.joinGroupObj = {}
+        this.leaveGroupObj = {}
         this.recipientPublicKey = ''
         this.btnDisable = false
         this.isLoading = false
@@ -325,6 +327,65 @@ class GroupManagement extends LitElement {
                     </mwc-button>
                 </mwc-dialog>
 
+                <!-- Leave Group Dialog -->
+                <mwc-dialog id="leaveDialog" scrimClickAction="${this.isLoading ? '' : 'close'}">
+                    <div style="text-align:center">
+                        <h1>Leave Group Request</h1>
+                        <hr>
+                    </div>
+                    
+                    <div class="itemList">
+                        <span class="title">Group Name</span>
+                        <br>
+                        <div><span>${this.leaveGroupObj.groupName}</span></div>
+
+                        <span class="title">Description</span>
+                        <br>
+                        <div><span>${this.leaveGroupObj.description}</span></div>
+
+                        <span class="title">Owner</span>
+                        <br>
+                        <div><span>${this.leaveGroupObj.owner}</span></div>
+
+                        <span class="title">Date Created</span>
+                        <br>
+                        <div><span><time-ago datetime=${this.timeIsoString(this.leaveGroupObj.created)}></time-ago></span></div>
+
+                        ${!this.leaveGroupObj.updated ? "" : html`<span class="title">Date Updated</span>
+                        <br>
+                        <div><span><time-ago datetime=${this.timeIsoString(this.leaveGroupObj.updated)}></time-ago></span></div>`}
+                    </div>
+
+                    <div style="text-align:right; height:36px;">
+                        <span ?hidden="${!this.isLoading}">
+                            <!-- loading message -->
+                            Leaving &nbsp;
+                            <paper-spinner-lite
+                                style="margin-top:12px;"
+                                ?active="${this.isLoading}"
+                                alt="Leaving"></paper-spinner-lite>
+                        </span>
+                        <span ?hidden=${this.message === ''} style="${this.error ? 'color:red;' : ''}">
+                            ${this.message}
+                        </span>
+                    </div>
+                    
+                    <mwc-button
+                        ?disabled="${this.isLoading}"
+                        slot="primaryAction"
+                        @click=${() => this._leaveGroup(this.leaveGroupObj.groupId, this.leaveGroupObj.groupName)}
+                        >
+                        Leave Group
+                    </mwc-button>
+                    <mwc-button
+                        ?disabled="${this.isLoading}"
+                        slot="secondaryAction"
+                        dialogAction="cancel"
+                        class="red">
+                        Close
+                    </mwc-button>
+                </mwc-dialog>
+
                 <!-- Manage Group Owner Dialog -->
                 <mwc-dialog id="manageGroupOwnerDialog" scrimClickAction="${this.isLoading ? '' : 'close'}">
                     <div>Manage Group Owner: ${this.manageGroupObj.groupName}</div>
@@ -381,6 +442,13 @@ class GroupManagement extends LitElement {
         this.shadowRoot.querySelector('#joinDialog').show()
     }
 
+    leaveGroup(groupObj) {
+        this.resetDefaultSettings()
+        this.leaveGroupObj = groupObj
+
+        this.shadowRoot.querySelector('#leaveDialog').show()
+    }
+
     timeIsoString(timestamp) {
         let myTimestamp = timestamp === undefined ? 1587560082346 : timestamp
         let time = new Date(myTimestamp)
@@ -405,8 +473,8 @@ class GroupManagement extends LitElement {
             // render admin actions modal
             return html`<mwc-button @click=${() => this.manageGroupAdmin(groupObj)}><mwc-icon>create</mwc-icon>Manage</mwc-button>`
         } else {
-            // render nothing...
-            return ""
+            // render member leave group modal
+            return html`<mwc-button @click=${() => this.leaveGroup(groupObj)}><mwc-icon>exit_to_app</mwc-icon>Leave</mwc-button>`
         }
     }
 
@@ -682,6 +750,71 @@ class GroupManagement extends LitElement {
                 throw new Error(txnResponse)
             } else if (txnResponse.success === true && !txnResponse.data.error) {
                 this.message = 'Join Group Request Sent Successfully!'
+                this.error = false
+            } else {
+                this.error = true
+                this.message = txnResponse.data.message
+                throw new Error(txnResponse)
+            }
+        }
+
+        validateReceiver()
+
+        this.resetDefaultSettings()
+    }
+
+    async _leaveGroup(groupId, groupName) {
+        // Reset Default Settings...
+        this.resetDefaultSettings()
+
+        this.isLoading = true
+
+        // Get Last Ref
+        const getLastRef = async () => {
+            let myRef = await parentEpml.request('apiCall', {
+                type: 'api',
+                url: `/addresses/lastreference/${this.selectedAddress.address}`
+            })
+            return myRef
+        };
+
+        const validateReceiver = async () => {
+            let lastRef = await getLastRef();
+
+            this.resetDefaultSettings()
+            let myTransaction = await makeTransactionRequest(lastRef)
+            getTxnRequestResponse(myTransaction)
+
+        }
+
+        // Make Transaction Request
+        const makeTransactionRequest = async (lastRef) => {
+
+            let myTxnrequest = await parentEpml.request('transaction', {
+                type: 32,
+                nonce: this.selectedAddress.nonce,
+                params: {
+                    registrantAddress: this.selectedAddress.address,
+                    rGroupName: groupName,
+                    rGroupId: groupId,
+                    lastReference: lastRef,
+                }
+            })
+
+            return myTxnrequest
+        }
+
+        // FAILED txnResponse = {success: false, message: "User declined transaction"}
+        // SUCCESS txnResponse = { success: true, data: true }
+
+        const getTxnRequestResponse = (txnResponse) => {
+
+            if (txnResponse.success === false && txnResponse.message) {
+                this.error = true
+                this.message = txnResponse.message
+                throw new Error(txnResponse)
+            } else if (txnResponse.success === true && !txnResponse.data.error) {
+                this.message = 'Leave Group Request Sent Successfully!'
                 this.error = false
             } else {
                 this.error = true
