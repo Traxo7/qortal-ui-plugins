@@ -33,6 +33,6 @@
   "dependencies": {
     "@material/mwc-list": "^0.17.2",
     "@material/mwc-select": "^0.17.2",
-    "emoji-picker-js": "https://github.com/lotw7277/emoji-picker-js"
+    "emoji-picker-js": "https://github.com/CWDSYSTEMS/emoji-picker-js"
   }
 }
