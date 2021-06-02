@@ -254,6 +254,7 @@ class NodeManagement extends LitElement {
                 <vaadin-grid-column path="address"></vaadin-grid-column>
                 <vaadin-grid-column path="lastHeight"></vaadin-grid-column>
                 <vaadin-grid-column path="version" header="Build Version"></vaadin-grid-column>
+                <vaadin-grid-column path="age" header="Connected for"></vaadin-grid-column>
             </vaadin-grid>
 
             ${this.isEmptyArray(this.peers) ? html` Node has no connected peers ` : ""}
@@ -393,6 +394,9 @@ class NodeManagement extends LitElement {
       minute = minute % 60;
       day = Math.floor(hour / 24);
       hour = hour % 24;
+      if (isNaN(day)) {
+        return "offline";
+      }
       return day + "d " + hour + "h " + minute + "m";
     };
 
