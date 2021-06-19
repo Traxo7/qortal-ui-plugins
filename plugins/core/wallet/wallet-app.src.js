@@ -212,12 +212,11 @@ class MultiWallet extends LitElement {
 				}
 
 				.wallet {
-					width: 250px;
-					background-color: #f2f2f2;
-					height: 100%;
+					width: 170px;
+					height: 100vh;
 					border-top-left-radius: inherit;
 					border-bottom-left-radius: inherit;
-					padding: 50px;
+    			border-right: 1px solid #eee;
 				}
 
 				.wallet-header {
@@ -308,36 +307,48 @@ class MultiWallet extends LitElement {
 					display: inline-block;
 				}
 
-				.cards {
-					margin-top: 60px;
-				}
-
 				.currency-box {
+				  display: flex;
 					background-color: #fff;
 					text-align: center;
-					padding: 15px;
-					margin-bottom: 45px;
-					border-radius: 3px;
-					border: 2px solid #e1e1e1;
+					padding: 12px;
 					cursor: pointer;
 					transition: 0.1s ease-in-out;
 				}
-				.currency-box:hover {
-					transform: scale(1.07);
+				.currency-box:not(:last-child) {
+				  border-bottom: 1px solid #eee;
 				}
 
 				.active {
-					border-color: #8393ca;
-					border-width: 3px;
+				  background: #ddd;
 				}
 
 				.currency-image {
 					display: inline-block;
-					height: 58px;
-					width: 58px;
+					height: 42px;
+					width: 42px;
 					background-repeat: no-repeat;
 					background-size: cover;
 					border-radius: 3px;
+    			filter: grayscale(100%);
+				}
+				.currency-box.active .currency-image,
+				.currency-box:hover .currency-image {
+				  filter: none;
+				}
+				.currency-box:hover {
+				  background: #bbb;
+				}
+				.currency-box.active,
+				.currency-box:hover .currency-text {
+				  font-weight: 500;
+				}				
+				
+				.currency-text {
+				  margin: auto 0;
+				  margin-left: 8px;
+					font-size: 20px;
+					color: #777;
 				}
 
 				.qort .currency-image {
@@ -408,7 +419,6 @@ class MultiWallet extends LitElement {
 						display: inline-block;
 						margin-right: 25px;
 						margin-bottom: 25px;
-						text-align: center;
 					}
 					.currency-box:nth-of-type(2) {
 						margin-right: 0;
@@ -507,16 +517,19 @@ class MultiWallet extends LitElement {
 		return html`
 			<div class="wrapper">
 				<div class="wallet">
-					<h2>My Wallets</h2>
+					<div style="font-size: 20px; color: #777; padding: 16px; border-bottom: 1px solid #eee;">Wallets</div>
 					<div class="cards">
 						<div type="qort" class="currency-box qort active">
 							<div class="currency-image"></div>
+							<div class="currency-text">Qort</div>
 						</div>
 						<div type="btc" class="currency-box btc">
 							<div class="currency-image"></div>
+							<div class="currency-text">Bitcoin</div>
 						</div>
 						<div type="ltc" class="currency-box ltc">
 							<div class="currency-image"></div>
+							<div class="currency-text">Litecoin</div>
 						</div>
 					</div>
 				</div>
