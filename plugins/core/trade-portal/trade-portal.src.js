@@ -6,6 +6,8 @@ import '@material/mwc-button'
 import '@material/mwc-textfield'
 import '@material/mwc-icon-button'
 import '@material/mwc-dialog'
+import '@material/mwc-tab-bar'
+import '@material/mwc-tab'
 import '@polymer/paper-spinner/paper-spinner-lite.js'
 import '@vaadin/vaadin-grid/vaadin-grid.js'
 import '@vaadin/vaadin-grid/vaadin-grid-sorter'
@@ -41,6 +43,30 @@ class TradePortal extends LitElement {
 
 	static get styles() {
 		return css`
+		  #tabs-1 {
+		    --mdc-tab-height: 40px;
+		  }
+		  #tab-buy[active] {
+		    --mdc-theme-primary: rgba(55, 160, 51, 0.9);
+		  }
+		  #tabs-1-content {
+		     height: 100%;
+		     padding-bottom: 10px;
+		  }
+		  #tabs-1-content > div {
+		  	height: 100%;
+		    border: 1px solid rgb(102, 102, 102);
+		  }
+		  #tabs-1-content .card {
+		    border: none;
+		  }
+		  #tabs-1-content .btn-clear {
+		    --mdc-icon-button-size: 40px;
+		  }
+		  #tab-sell[active] {
+		    --mdc-theme-primary: rgb(255, 89, 89); 
+		  }
+		
 			* {
 				--mdc-theme-primary: rgb(3, 169, 244);
 				--mdc-theme-secondary: var(--mdc-theme-primary);
@@ -237,7 +263,7 @@ class TradePortal extends LitElement {
 
 				#first-trade-section {
 					display: grid;
-					grid-template-columns: 2.2fr 1.8fr;
+					grid-template-columns: 1fr 1fr 1fr;
 					grid-auto-rows: max(450px);
 					column-gap: 0.5em;
 					row-gap: 0.4em;
@@ -248,7 +274,7 @@ class TradePortal extends LitElement {
 
 				#second-trade-section {
 					display: grid;
-					grid-template-columns: 2fr 1fr;
+					grid-template-columns: 1fr 1fr;
 					grid-auto-rows: max(400px);
 					column-gap: 0.5em;
 					row-gap: 0.4em;
@@ -265,16 +291,6 @@ class TradePortal extends LitElement {
 					row-gap: 0.4em;
 				}
 
-				#third-trade-section {
-					display: grid;
-					grid-template-columns: 1fr 1fr;
-					grid-auto-rows: minmax(300px, auto);
-					column-gap: 0.5em;
-					row-gap: 0.4em;
-					justify-items: stretch;
-					align-items: stretch;
-					margin-bottom: 10px;
-				}
 			}
 		`
 	}
@@ -314,10 +330,31 @@ class TradePortal extends LitElement {
 
 				<div id="trade-portal">
 					<div id="first-trade-section">
-						<div class="trade-chart">
+						<div class="historic-trades">
 							<div class="box">
-								<header>CLOSED PRICE LINE CHART ("COMING SOON")</header>
-								<div class="card"></div>
+								<header>HISTORIC MARKET TRADES</header>
+								<div class="border-wrapper">
+									<vaadin-grid theme="compact column-borders row-stripes wrap-cell-content" id="historicTradesGrid" aria-label="Historic Trades" .items="${this.historicTrades}">
+										<vaadin-grid-column resizable header="Amount (QORT)" path="qortAmount"></vaadin-grid-column>
+										<vaadin-grid-column
+											resizable
+											header="Price (LTC)"
+											.renderer=${(root, column, data) => {
+												const price = this.round(parseFloat(data.item.foreignAmount) / parseFloat(data.item.qortAmount))
+												render(html`${price}`, root)
+											}}
+										>
+										</vaadin-grid-column>
+										<vaadin-grid-column
+											resizable
+											header="Total (LTC)"
+											.renderer=${(root, column, data) => {
+												render(html`<span> ${data.item.foreignAmount} </span>`, root)
+											}}
+										>
+										</vaadin-grid-column>
+									</vaadin-grid>
+								</div>
 							</div>
 						</div>
 						<div class="open-trades">
@@ -361,18 +398,18 @@ class TradePortal extends LitElement {
 								</div>
 							</div>
 						</div>
-					</div>
-
-					<div id="second-trade-section">
 						<div class="open-market-container">
-							<div class="buy-sell">
-								<div class="box">
-									<header>
-										<span>BUY QORT</span>
-
-										<mwc-icon-button icon="clear_all" @click=${() => this.clearBuyForm()}></mwc-icon-button>
-									</header>
+							<div class="box">
+								<mwc-tab-bar id="tabs-1" activeIndex="0">
+									<mwc-tab id="tab-buy" label="Buy" @click=${(e) => this.displayTabContent('buy')}></mwc-tab>
+									<mwc-tab id="tab-sell" label="Sell" @click=${(e) => this.displayTabContent('sell')}></mwc-tab>
+								</mwc-tab-bar>
+								<div id="tabs-1-content">
+									<div id="tab-buy-content">
 									<div class="card">
+										<div style="margin-left: auto">
+											<mwc-icon-button class="btn-clear" title="Clear form" icon="clear_all" @click=${() => this.clearBuyForm()}></mwc-icon-button>
+										</div>
 										<p>
 											<mwc-textfield style="width:100%;" id="buyAmountInput" required readOnly label="Amount (QORT)" placeholder="0.0000" type="text" auto-validate="false" outlined value="${this.initialAmount}"> </mwc-textfield>
 										</p>
@@ -397,95 +434,67 @@ class TradePortal extends LitElement {
 										</div>
 									</div>
 								</div>
-
-								<div class="box">
-									<header>
-										<span>SELL QORT</span>
-
-										<mwc-icon-button icon="clear_all" @click=${() => this.clearSellForm()}></mwc-icon-button>
-									</header>
-									<div class="card">
-										<p>
-											<mwc-textfield
-												style="width:100%;"
-												id="sellAmountInput"
-												required
-												label="Amount (QORT)"
-												placeholder="0.0000"
-												@input=${(e) => {
-													this._checkSellAmount(e)
-												}}
-												type="number"
-												auto-validate="false"
-												outlined
-												value="${this.initialAmount}"
-											>
-											</mwc-textfield>
-										</p>
-										<p>
-											<mwc-textfield
-												style="width:100%;"
-												id="sellPriceInput"
-												required
-												label="Price Ea. (LTC)"
-												placeholder="0.0000"
-												@input=${(e) => {
-													this._checkSellAmount(e)
-												}}
-												type="number"
-												auto-validate="false"
-												outlined
-												value="${this.initialAmount}"
-											>
-											</mwc-textfield>
-										</p>
-										<p style="margin-bottom: 8px;">
-											<mwc-textfield style="width:100%;" id="sellTotalInput" required readOnly label="Total (LTC)" placeholder="0.0000" type="text" auto-validate="false" outlined value="${this.initialAmount}"> </mwc-textfield>
-										</p>
-
-										<span class="you-have">You have: ${this.qortBalance} QORT</span>
-
-										<div class="buttons">
-											<div>
-												<mwc-button class="sell-button" ?disabled=${this.sellBtnDisable} style="width:100%;" raised @click=${(e) => this.sellAction()}
-													>${this.isSellLoading === false ? 'SELL' : html`<paper-spinner-lite active></paper-spinner-lite>`}</mwc-button
+									<div id="tab-sell-content">
+										<div class="card">
+											<div style="margin-left: auto">
+												<mwc-icon-button class="btn-clear" title="Clear form" icon="clear_all" @click=${() => this.clearSellForm()}></mwc-icon-button>
+											</div>										
+											<p>
+												<mwc-textfield
+													style="width:100%;"
+													id="sellAmountInput"
+													required
+													label="Amount (QORT)"
+													placeholder="0.0000"
+													@input=${(e) => {
+														this._checkSellAmount(e)
+													}}
+													type="number"
+													auto-validate="false"
+													outlined
+													value="${this.initialAmount}"
 												>
+												</mwc-textfield>
+											</p>
+											<p>
+												<mwc-textfield
+													style="width:100%;"
+													id="sellPriceInput"
+													required
+													label="Price Ea. (LTC)"
+													placeholder="0.0000"
+													@input=${(e) => {
+														this._checkSellAmount(e)
+													}}
+													type="number"
+													auto-validate="false"
+													outlined
+													value="${this.initialAmount}"
+												>
+												</mwc-textfield>
+											</p>
+											<p style="margin-bottom: 8px;">
+												<mwc-textfield style="width:100%;" id="sellTotalInput" required readOnly label="Total (LTC)" placeholder="0.0000" type="text" auto-validate="false" outlined value="${this.initialAmount}"> </mwc-textfield>
+											</p>
+	
+											<span class="you-have">You have: ${this.qortBalance} QORT</span>
+	
+											<div class="buttons">
+												<div>
+													<mwc-button class="sell-button" ?disabled=${this.sellBtnDisable} style="width:100%;" raised @click=${(e) => this.sellAction()}
+														>${this.isSellLoading === false ? 'SELL' : html`<paper-spinner-lite active></paper-spinner-lite>`}</mwc-button
+													>
+												</div>
 											</div>
 										</div>
 									</div>
 								</div>
 							</div>
-						</div>
-						<div class="historic-trades">
-							<div class="box">
-								<header>HISTORIC MARKET TRADES</header>
-								<div class="border-wrapper">
-									<vaadin-grid theme="compact column-borders row-stripes wrap-cell-content" id="historicTradesGrid" aria-label="Historic Trades" .items="${this.historicTrades}">
-										<vaadin-grid-column resizable header="Amount (QORT)" path="qortAmount"></vaadin-grid-column>
-										<vaadin-grid-column
-											resizable
-											header="Price (LTC)"
-											.renderer=${(root, column, data) => {
-												const price = this.round(parseFloat(data.item.foreignAmount) / parseFloat(data.item.qortAmount))
-												render(html`${price}`, root)
-											}}
-										>
-										</vaadin-grid-column>
-										<vaadin-grid-column
-											resizable
-											header="Total (LTC)"
-											.renderer=${(root, column, data) => {
-												render(html`<span> ${data.item.foreignAmount} </span>`, root)
-											}}
-										>
-										</vaadin-grid-column>
-									</vaadin-grid>
-								</div>
-							</div>
+							
 						</div>
 					</div>
 
-					<div id="third-trade-section">
+					<div id="second-trade-section">
 						<div class="my-open-orders">
 							<div class="box">
 								<header>
@@ -581,6 +590,7 @@ class TradePortal extends LitElement {
 								</div>
 							</div>
 						</div>
+						
 					</div>
 
 					<!-- <div class="full-width">
@@ -618,7 +628,17 @@ class TradePortal extends LitElement {
 		`
 	}
 
+	displayTabContent(tab) {
+		const tabBuyContent = this.shadowRoot.getElementById('tab-buy-content')
+		const tabSellContent = this.shadowRoot.getElementById('tab-sell-content')
+		tabBuyContent.style.display = (tab === 'buy') ? 'block' : 'none'
+		tabSellContent.style.display = (tab === 'sell') ? 'block' : 'none'
+	}
+
 	firstUpdated() {
+		setTimeout(() => { // initially `display: none` would not render CSS properly
+			this.displayTabContent('buy')
+		}, 0)
 		// Check LTC Wallet Balance
 		this.updateLTCAccountBalance()
 		// Set Trade Panes
