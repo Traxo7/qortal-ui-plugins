@@ -57,31 +57,12 @@ parentEpml.ready().then(() => {
             parent: false
         },
         {
-            url: 'messaging',
+            url: 'q-chat',
             domain: 'core',
-            page: 'messaging/index.html',
-            title: 'Messaging',
+            page: 'messaging/q-chat/index.html',
+            title: 'Q-Chat',
             icon: 'message',
-            menus: [
-                {
-                    url: 'chain-messaging',
-                    domain: 'core',
-                    page: 'messaging/chain-messaging/index.html',
-                    title: 'Chain Messaging',
-                    icon: 'toc',
-                    menus: [],
-                    parent: false
-                },
-                {
-                    url: 'q-chat',
-                    domain: 'core',
-                    page: 'messaging/q-chat/index.html',
-                    title: 'Q-Chat',
-                    icon: 'toc',
-                    menus: [],
-                    parent: false
-                }
-            ],
+            menus: [],
             parent: false
         },
         {
