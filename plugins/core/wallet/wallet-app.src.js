@@ -622,9 +622,19 @@ class MultiWallet extends LitElement {
 	}
 
 	renderQortTransactions(transactions, type) {
+
+		if (Array.isArray(transactions)) {
+			const currentBlockHeight = window.parent.reduxStore.getState().app.blockInfo.height
+			transactions = transactions.map(tx => {
+				tx.confirmations = (currentBlockHeight - tx.blockHeight) || ''
+				return tx
+			})
+		}
+
 		return html`
 			<div style="padding-left:12px;" ?hidden="${!this.isEmptyArray(transactions)}">Address has no transactions yet.</div>
 			<vaadin-grid id="${type}TransactionsGrid" ?hidden="${this.isEmptyArray(this.transactions.transactions)}" page-size="20" height-by-rows>
+				<vaadin-grid-column width="130px" header="Confirmations" path="confirmations"></vaadin-grid-column>
 				<vaadin-grid-column
 					auto-width
 					resizable
