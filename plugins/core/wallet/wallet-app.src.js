@@ -664,6 +664,7 @@ class MultiWallet extends LitElement {
 				>
 				</vaadin-grid-column>
 				<vaadin-grid-column
+					auto-width
 					resizable
 					header="Type"
 					.renderer=${(root, column, data) => {
