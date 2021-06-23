@@ -623,18 +623,46 @@ class MultiWallet extends LitElement {
 
 	renderQortTransactions(transactions, type) {
 
+		const requiredConfirmations = 3 // arbitrary value
+		// initially `currentBlockHeight` might not be set in the store
+		const currentBlockHeight = window.parent.reduxStore.getState().app.blockInfo.height
 		if (Array.isArray(transactions)) {
-			const currentBlockHeight = window.parent.reduxStore.getState().app.blockInfo.height
 			transactions = transactions.map(tx => {
-				tx.confirmations = (currentBlockHeight - tx.blockHeight) || ''
+				tx.confirmations = (currentBlockHeight - (tx.blockHeight - 1)) || ''
 				return tx
 			})
 		}
 
 		return html`
+			<dom-module id="vaadin-grid-qort-theme" theme-for="vaadin-grid">
+				<template>
+					<style>
+						:host([theme~="qort"]) table thead tr > th:first-of-type,
+						:host([theme~="qort"]) table tbody tr > td:first-of-type {
+							min-width: 56px;
+							max-width: 56px;
+							padding: 4px 0;
+						}
+					</style>
+				</template>
+			</dom-module>
 			<div style="padding-left:12px;" ?hidden="${!this.isEmptyArray(transactions)}">Address has no transactions yet.</div>
-			<vaadin-grid id="${type}TransactionsGrid" ?hidden="${this.isEmptyArray(this.transactions.transactions)}" page-size="20" height-by-rows>
-				<vaadin-grid-column width="130px" header="Confirmations" path="confirmations"></vaadin-grid-column>
+			<vaadin-grid theme="${type}" id="${type}TransactionsGrid" ?hidden="${this.isEmptyArray(this.transactions.transactions)}" page-size="20" height-by-rows>
+				<vaadin-grid-column
+					auto-width
+					.renderer=${(root, column, data) => {
+						if (!currentBlockHeight) {
+							return render(html``, root)
+						}
+						const confirmed = data.item.confirmations >= requiredConfirmations
+						if (confirmed) {
+							render(html`<mwc-icon title="${ data.item.confirmations } Confirmations" style="color: #00C851">check</mwc-icon>`, root)
+						} else {
+							render(html`<mwc-icon title="${ data.item.confirmations || 0 }/${ requiredConfirmations } Confirmations" style="color: #777">schedule</mwc-icon>`, root)
+						}
+					}}
+				>
+				</vaadin-grid-column>
 				<vaadin-grid-column
 					auto-width
 					resizable
