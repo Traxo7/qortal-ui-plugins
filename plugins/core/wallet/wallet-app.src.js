@@ -875,6 +875,12 @@ class MultiWallet extends LitElement {
 	}
 
 	async showQortWallet() {
+		if (!window.parent.reduxStore.getState().app.blockInfo.height) {
+			// we make sure that `blockHeight` is set before rendering QORT transactions
+			await parentEpml.request('apiCall', { url: `/blocks/height`, type: 'api' })
+				.then(height => parentEpml.request('updateBlockInfo', { height }))
+		}
+
 		this.transactionsDOM.hidden = true
 		this.loading = true
 
