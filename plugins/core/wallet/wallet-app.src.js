@@ -641,7 +641,6 @@ class MultiWallet extends LitElement {
 						:host([theme~="qort"]) table tbody tr > td:first-of-type {
 							min-width: 56px;
 							max-width: 56px;
-							padding: 4px 0;
 						}
 					</style>
 				</template>
